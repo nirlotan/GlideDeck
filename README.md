@@ -1,0 +1,382 @@
+<p align="center">
+  <img src="assets/icon/glidedeck-256.png" width="112" alt="GlideDeck icon">
+</p>
+
+<h1 align="center">GlideDeck</h1>
+
+<p align="center">
+  <b>Zooming presentations, built natively.</b><br>
+  An infinite canvas you glide across: local-first, GPU-accelerated, written in Rust.
+</p>
+
+<p align="center">
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-1.88%2B-dea584?logo=rust">
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-4f46e5">
+  <img alt="Offline" src="https://img.shields.io/badge/cloud-none-17a398">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
+
+![GlideDeck editor](docs/screenshots/editor.png)
+
+---
+
+## Contents
+
+- [The concept](#the-concept)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Automation: CLI and JSON ops](#automation-cli-and-json-ops)
+- [Packaging](#packaging)
+  - [Windows MSI installer](#windows-msi-installer)
+  - [Creating a macOS DMG](#creating-a-macos-dmg)
+- [Architecture](#architecture)
+- [Privacy](#privacy)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+---
+
+## The concept
+
+Slides are boxes in a row. Ideas aren't. **GlideDeck** puts your whole talk on a single,
+unbounded canvas and moves a camera across it. It zooms out to show how things connect,
+dives into a detail, and rotates into the next thought. Your story becomes a **path
+through space** instead of a stack of pages.
+
+GlideDeck follows the **ArtCraft philosophy**:
+
+- **Native, not web.** Pure Rust with a GPU renderer (wgpu: DirectX 12, Metal, Vulkan). No
+  Electron, no web views, no JavaScript.
+- **Local-first and private.** No accounts, cloud, sync or telemetry. Your deck is one
+  human-readable JSON file, with media in an `assets/` folder next to it.
+- **Single-player.** No collaboration features. It's a focused tool for one author.
+- **Agent-ready.** Every edit is a JSON operation. Scripts and AI agents can build,
+  restyle, render and export decks from the command line.
+
+## Features
+
+### An infinite, precise canvas
+- Unbounded 2D space with smooth pan, zoom and rotation, with all maths in 64-bit floats,
+  so content stays exact even **a million times** deeper.
+- Text, shapes, icons and SVGs are **tessellated vectors**. They stay razor sharp at every
+  zoom, with no blurry bitmaps.
+- Familiar controls: scroll or pinch to zoom, Space-drag to pan, Alt-scroll to rotate,
+  Shift/Ctrl-click to multi-select, and marquee selection.
+
+### Slides are frames
+- Draw **frames** anywhere. Each frame on the path becomes a slide in a PowerPoint-style
+  **slide strip** with live thumbnails, drag-to-reorder and right-click actions.
+- Frames are **invisible by default**. They group objects logically and guide the
+  camera, show only a faint outline on hover in the editor, and never appear in the show
+  unless you give them a border or fill.
+- Moving a frame carries its contents. **Frame them** wraps any selection into a new slide.
+
+### Cinematic motion
+- **Smooth zoom** transitions follow the van Wijk–Nuij optimal path: the camera pulls back
+  just enough for context, then dives in. **Direct** and **Cut** styles are also
+  available, with per-slide duration and easing.
+- **Fullscreen presenting** with keyboard and clicker navigation, an auto-hiding control
+  bar, free zooming mid-talk, and videos that start automatically when you arrive at
+  their slide.
+
+### Design that looks good by default
+- **Templates**: pitch deck, Prezi-style journey, big-picture mind map, nested-detail
+  lecture, or a blank canvas, each a complete story with a path.
+- **Eight themes**, colour and font pairings with optional gradient backgrounds. Switching
+  theme restyles text by its role, and colours taken from the old theme follow to the new
+  one; colours you picked by hand stay put.
+- **Slide layouts**: Title, Section, Three points, Big number, Quote, Agenda, Timeline and
+  Image + text, each dropped in next to the current slide.
+- **Icon library**: about 1,500 Phosphor icons in four weights, searchable, recolourable,
+  and exported to PowerPoint as editable vectors.
+- **Text styles** (Title, Heading, Subtitle, Body, Caption, Quote), **bullets and
+  numbering** with hanging indents, GPU **soft shadows**, **gradient fills**, and
+  **rounded or circular image masks**.
+- **Smart guides** snap edges and centres while you drag, alongside **align and
+  distribute**.
+- **Design check** reviews the deck for low-contrast text (WCAG), text too small to read
+  on its slide, empty slides, missing or low-resolution images, and font sprawl, with
+  one-click fixes.
+
+### Rich content
+- **Images**: insert them, drag and drop, or paste screenshots, browser images, copied
+  files and text straight from other apps.
+- **SVG** rendered as true vectors, including gradients, strokes and text.
+- **Video** with sound, a framed player, autoplay, loop and mute (uses a local FFmpeg).
+- **In-place text editing** with full **right-to-left** support (Hebrew, Arabic), bidi,
+  IME and word motion, built on the same engine that renders the text.
+- **Resize and rotate handles**: corner handles scale uniformly, and a knob rotates
+  (Shift snaps to 15°).
+
+### Export
+- **PowerPoint (.pptx)**: one slide per step. Every object keeps its identity (`!!<id>`)
+  and slides are linked with **Morph**, so PowerPoint itself animates the zooms, pans and
+  rotations. Icons export as vector shapes, SVGs natively, and videos embedded.
+- **PNG** of any view at 2×. Headless rendering of any slide is available from the CLI.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Themes and dark mode](docs/screenshots/design-dark.png) **Themes, slide strip and dark mode** | ![Templates](docs/screenshots/templates.png) **Start from a template** |
+| ![Slide layouts](docs/screenshots/layouts.png) **Pre-designed slide layouts** | ![Icon library](docs/screenshots/icons.png) **1,500 vector icons** |
+| ![Right-to-left editing](docs/screenshots/rtl-editing.png) **In-place editing with right-to-left text and numbering** | ![Design check](docs/screenshots/design-check.png) **Design check with one-click fixes** |
+| ![Presenting](docs/screenshots/present.png) **Fullscreen presenting** | |
+
+<sub>Screenshots are produced by the automated UI suite (`readme_screenshots` in
+`crates/glidedeck/src/ui_tests.rs`), which drives the real app on the GPU.</sub>
+
+## Installation
+
+### Windows: installer
+
+1. Download `GlideDeck-<version>-x64.msi` from the repository's **Releases** page, or
+   [build it yourself](#windows-msi-installer).
+2. Run it. GlideDeck installs to `Program Files\GlideDeck`, adds a Start-menu entry and a
+   desktop shortcut (optional), and puts the `glidedeck` CLI on your `PATH`.
+3. *(Optional, for video)* install FFmpeg:
+
+```bash
+winget install Gyan.FFmpeg
+```
+
+Uninstall from **Settings → Apps**.
+
+### macOS
+
+Use a DMG built with the [macOS packaging guide](#creating-a-macos-dmg), or run from
+source as below. For video, install FFmpeg:
+
+```bash
+brew install ffmpeg
+```
+
+### From source (Windows and macOS)
+
+You need Rust 1.88+ ([rustup.rs](https://rustup.rs)) plus a platform linker: the Visual
+Studio C++ Build Tools on Windows, or `xcode-select --install` on macOS.
+
+```bash
+git clone https://github.com/nirlotan/GlideDeck.git
+```
+
+```bash
+cd GlideDeck
+```
+
+```bash
+cargo run --release -p glidedeck
+```
+
+See **[RUNNING.md](RUNNING.md)** for the full guide: prerequisites, platform notes,
+every shortcut, and the complete CLI and JSON reference.
+
+## Quick start
+
+1. Launch GlideDeck. The welcome canvas is itself a presentation, so press **F5**.
+2. Choose **File → New from template**, or start blank and pick a theme on the **Design** tab.
+3. Press **F** and drag on the canvas to draw a frame, or use **Insert → Layouts** to add
+   a ready-made slide.
+4. Add text (**T**), shapes (**R**, **O**), icons (**Ctrl/⌘+Shift+K**), images, SVGs and
+   video, or simply paste and drop.
+5. Set transitions on the **Transitions** tab and run **Design check**.
+6. **Present** (F5), or **Present → PowerPoint** to hand off a Morph-animated deck.
+
+| Action | Input |
+|---|---|
+| Zoom / pan / rotate | Scroll or pinch · Space-drag or middle-drag · Alt-scroll, `[` `]` |
+| Tools | `V` select · `H` hand · `F` frame · `R` rect · `O` ellipse · `T` text |
+| Edit text in place | Double-click, or Enter / F2 |
+| Resize / rotate | Corner handles · round knob (Shift snaps to 15°) |
+| Snap off while dragging | Hold Alt |
+| Present | F5 (from start) · Shift+F5 (from current slide) |
+| Everything else | F1 shows the full shortcut sheet |
+
+## Automation: CLI and JSON ops
+
+The same binary is also a headless tool:
+
+```bash
+glidedeck new talk.glide.json --template pitch-deck
+```
+
+```bash
+glidedeck apply talk.glide.json examples/add-slide.ops.json
+```
+
+```bash
+glidedeck render talk.glide.json --step 3 --out slide3.png
+```
+
+```bash
+glidedeck export-pptx talk.glide.json --out talk.pptx
+```
+
+Operations are plain tagged JSON and are applied **atomically** per batch:
+
+```json
+[
+  {"op": "add_element", "element": {"id": "hello", "transform": {"x": 0, "y": 0},
+    "kind": {"type": "text", "content": "Hello", "role": "title"}}},
+  {"op": "add_element", "element": {"id": "f1",
+    "kind": {"type": "frame", "width": 1600, "height": 900}}},
+  {"op": "add_step", "frame": "f1", "transition": {"style": "smooth", "duration": 1.4}}
+]
+```
+
+The document format (`"format": "glidedeck/1"`) is stable, pretty-printed JSON that stores
+only layout, coordinates and text. Media lives in `assets/`, named by content hash and
+referenced by relative path. Full reference: [RUNNING.md § 4](RUNNING.md#4-headless-cli-scripts-and-agents).
+
+## Packaging
+
+### Windows MSI installer
+
+Requirements: the Rust toolchain and the **WiX Toolset 3** binaries. Download
+`wix314-binaries.zip` from the [WiX releases](https://github.com/wixtoolset/wix3/releases)
+and unzip it anywhere; no installation is needed.
+
+```bash
+powershell -ExecutionPolicy Bypass -File packaging\windows\build-msi.ps1 -WixDir C:\tools\wix314
+```
+
+The script builds the release binary, which embeds the icon and version info, then writes
+`dist\GlideDeck-<version>-x64.msi`. The installer:
+
+- installs per machine into `Program Files\GlideDeck`;
+- creates Start-menu and (optional) desktop shortcuts;
+- adds the CLI to `PATH`;
+- ships the example deck;
+- supports upgrades in place, through a stable `UpgradeCode` with major-upgrade rules.
+
+Edit `packaging/windows/glidedeck.wxs` to change what it installs.
+
+To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
+
+```bash
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.0-x64.msi
+```
+
+### Creating a macOS DMG
+
+Run these steps on a Mac with Rust and the Xcode Command Line Tools installed.
+
+**1. Build the app bundle and DMG**, either for this Mac's architecture or as a
+universal binary for Apple Silicon and Intel:
+
+```bash
+packaging/macos/build-dmg.sh
+```
+
+```bash
+UNIVERSAL=1 packaging/macos/build-dmg.sh
+```
+
+The script:
+1. builds the release binary (or, with `UNIVERSAL=1`, both architectures joined with `lipo`);
+2. assembles `dist/GlideDeck.app`, filling in `Info.plist` from
+   `packaging/macos/Info.plist`;
+3. generates `GlideDeck.icns` from `assets/icon/` with `iconutil`;
+4. ad-hoc signs the app;
+5. creates `dist/GlideDeck-<version>.dmg`, with the usual drag-to-*Applications* shortcut.
+
+**2. Install locally.** Open the DMG and drag **GlideDeck** to **Applications**. Ad-hoc
+signed apps run on the Mac that built them. On other Macs, right-click the app, choose
+**Open** and confirm the first time, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/GlideDeck.app
+```
+
+**3. Distribute (optional): sign and notarize** with an Apple Developer ID.
+
+First, find your signing identity:
+
+```bash
+security find-identity -v -p codesigning
+```
+
+Then store notarization credentials once:
+
+```bash
+xcrun notarytool store-credentials glidedeck-notary --apple-id you@example.com --team-id TEAMID
+```
+
+Finally, sign, notarize and staple in one go:
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=glidedeck-notary UNIVERSAL=1 packaging/macos/build-dmg.sh
+```
+
+With `SIGN_IDENTITY` set, the script signs with the hardened runtime and a secure
+timestamp. With `NOTARY_PROFILE` set, it also submits the DMG with `notarytool --wait` and
+staples the ticket, so the DMG opens without Gatekeeper warnings on any Mac.
+
+**Doing it by hand.** A `.app` is just a folder:
+
+```
+GlideDeck.app/Contents/
+  Info.plist              bundle id, version, icon name
+  MacOS/GlideDeck         the release binary
+  Resources/GlideDeck.icns
+```
+
+`hdiutil create -volname GlideDeck -srcfolder <folder> -format UDZO GlideDeck.dmg` turns a
+folder holding the app and an `Applications` symlink into a compressed disk image.
+
+## Architecture
+
+```
+crates/
+  glide-core     Document schema (serde JSON), f64 camera maths, transitions, themes,
+                 the atomic Op set. No GUI/GPU dependencies.
+  glide-render   wgpu renderer: lyon tessellation, cosmic-text shaping and editing,
+                 vector icons, SVG (usvg), mipmapped images, video (FFmpeg + cpal),
+                 analytic shadows, offscreen MSAA targets, headless readback.
+  glide-pptx     OpenXML writer: path → slides linked with Morph; vector icons,
+                 native SVG, embedded video.
+  glidedeck      The app: eframe/egui editor (ribbon, slide strip, inspector,
+                 galleries, design check) + the CLI.
+```
+
+Key design decisions:
+
+- **Tessellate once, transform forever.** Meshes live in element-local space on the GPU.
+  Moving, rotating and camera motion only update a per-instance affine. Curves are
+  re-tessellated only when on-screen scale crosses a power of two.
+- **Precision at depth.** Transforms are f64, and each element's matrix is composed
+  relative to the camera before dropping to f32.
+- **One renderer, many outputs.** The editor, slide thumbnails, galleries, the show,
+  PNG export, and the icon itself all come from the same offscreen renderer.
+- **Text you can trust.** One cosmic-text pipeline shapes, renders and *edits* text, so
+  carets, bidi and line breaks are identical everywhere.
+- **Non-destructive and diff-friendly.** Geometry and transforms are stored separately,
+  never baked. Files are pretty-printed JSON written atomically, and media is
+  content-addressed.
+
+Tests cover the core maths, the exporter, the renderer, and end-to-end UI flows driven
+through `egui_kittest` on a real GPU device:
+
+```bash
+cargo test --workspace
+```
+
+## Privacy
+
+GlideDeck never opens a network connection. It reads fonts installed on your system,
+bundles its icons, and spawns your local FFmpeg only to play video. There are no
+accounts, no telemetry and no update pings.
+
+## Roadmap
+
+- MCP server exposing the JSON op channel to AI agents
+- Presenter view on a second display (timer, current/next, notes)
+- Audio-only clips, video trimming, and video/PDF export of the path
+- Grouping, more shape types and connectors
+
+## License
+
+[MIT](LICENSE). Phosphor icons © Phosphor Icons, MIT
+([assets](crates/glide-render/assets/phosphor/LICENSE.md)).

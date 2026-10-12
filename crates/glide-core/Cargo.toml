@@ -1,0 +1,14 @@
+[package]
+name = "glide-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Document model, camera math and the JSON operation set for the GlideDeck ZUI."
+
+[dependencies]
+glam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true

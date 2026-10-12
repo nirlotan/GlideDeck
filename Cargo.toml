@@ -1,0 +1,39 @@
+[workspace]
+resolver = "3"
+members = ["crates/glide-core", "crates/glide-render", "crates/glide-pptx", "crates/glidedeck"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+
+[workspace.dependencies]
+glide-core = { path = "crates/glide-core" }
+glide-render = { path = "crates/glide-render" }
+glide-pptx = { path = "crates/glide-pptx" }
+anyhow = "1"
+arboard = { version = "3", default-features = false, features = ["image-data"] }
+bytemuck = { version = "1", features = ["derive"] }
+cpal = "0.18"
+clap = { version = "4", features = ["derive"] }
+cosmic-text = "0.19"
+eframe = { version = "0.36", default-features = false, features = ["wgpu", "default_fonts", "accesskit", "wayland", "x11"] }
+egui-phosphor = { version = "0.14", features = ["regular", "fill", "bold", "light"] }
+egui_kittest = { version = "0.36", features = ["eframe", "wgpu", "snapshot"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "tiff", "ico"] }
+glam = { version = "0.34", features = ["serde"] }
+log = "0.4"
+lyon = "1"
+png = "0.18"
+pollster = "1"
+resvg = { version = "0.48", default-features = false, features = ["text", "system-fonts", "raster-images"] }
+rfd = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+thiserror = "2"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+uuid = { version = "1", features = ["v4"] }
+
+[profile.dev.package."*"]
+opt-level = 2

@@ -1,0 +1,22 @@
+[package]
+name = "glide-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "wgpu renderer for the GlideDeck infinite canvas (vector tessellation + outline text)."
+
+[dependencies]
+glide-core.workspace = true
+bytemuck.workspace = true
+cosmic-text.workspace = true
+glam.workspace = true
+image.workspace = true
+log.workspace = true
+lyon.workspace = true
+pollster.workspace = true
+resvg.workspace = true
+serde_json.workspace = true
+cpal.workspace = true
+thiserror.workspace = true
+wgpu = "30"

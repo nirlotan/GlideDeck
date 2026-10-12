@@ -1,0 +1,16 @@
+[package]
+name = "glide-pptx"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Compiles a GlideDeck path into a PowerPoint deck that animates with Morph."
+
+[dependencies]
+glide-core.workspace = true
+glide-render.workspace = true
+glam.workspace = true
+image.workspace = true
+resvg.workspace = true
+thiserror.workspace = true
+zip.workspace = true

@@ -1,0 +1,5 @@
+/target
+/dist
+*.tmp
+# Media created while trying the app with the example deck.
+/examples/assets/

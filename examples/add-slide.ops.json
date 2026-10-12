@@ -1,0 +1,34 @@
+[
+  {
+    "op": "add_element",
+    "element": {
+      "id": "agenda-frame",
+      "name": "Agenda frame",
+      "transform": { "x": 1600, "y": 0, "scale": 1, "rotation": -6 },
+      "kind": {
+        "type": "rect",
+        "width": 900,
+        "height": 560,
+        "corner_radius": 32,
+        "fill": "#ffffff",
+        "stroke": { "color": "#3d5a80", "width": 6 }
+      }
+    }
+  },
+  {
+    "op": "add_element",
+    "element": {
+      "id": "agenda-text",
+      "name": "Agenda",
+      "transform": { "x": 1600, "y": 0, "scale": 1, "rotation": -6 },
+      "kind": {
+        "type": "text",
+        "content": "Agenda\n1. The canvas\n2. The camera\n3. The path",
+        "font_size": 56,
+        "weight": 600,
+        "color": "#1f232b"
+      }
+    }
+  },
+  { "op": "set_transform", "id": "sticker", "rotation": -12 }
+]
