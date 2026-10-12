@@ -115,3 +115,31 @@ pub fn read_back(device: &wgpu::Device, queue: &wgpu::Queue, target: &RenderTarg
     }
     Ok(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glide_core::{Element, ElementKind, Media};
+
+    /// An opaque image renders with its exact colors, square and rounded.
+    #[test]
+    fn opaque_images_render_fully_opaque() {
+        let Ok(mut r) = HeadlessRenderer::new() else { return };
+        let dir = std::env::temp_dir().join(format!("glide-img-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        image::RgbaImage::from_pixel(64, 32, image::Rgba([20, 120, 200, 255])).save(dir.join("solid.png")).unwrap();
+        r.canvas.set_base_dir(Some(dir.clone()));
+        for radius in [0.0, 6.0] {
+            let mut doc = Document::new("t");
+            let mut media = Media::new("solid.png", 64.0, 32.0);
+            media.corner_radius = radius;
+            doc.add(Element::new(ElementKind::Image(media)));
+            let camera = Camera { center: DVec2::ZERO, zoom: 2.0, rotation: 0.0 };
+            let px = r.render_rgba(&doc, &camera, [160, 100], false).unwrap();
+            let at = |x: usize, y: usize| &px[(y * 160 + x) * 4..(y * 160 + x) * 4 + 4];
+            assert_eq!(at(80, 50), [20, 120, 200, 255], "center, corner radius {radius}");
+            assert_eq!(at(60, 40), [20, 120, 200, 255], "off-center, corner radius {radius}");
+        }
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}

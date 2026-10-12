@@ -8,10 +8,13 @@ mod design;
 mod galleries;
 mod history;
 mod inspector;
+mod layouts;
 mod media;
+mod office;
 mod present;
 mod ribbon;
 mod slides;
+mod templates;
 mod textedit;
 mod theme;
 #[cfg(test)]

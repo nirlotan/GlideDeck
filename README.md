@@ -82,13 +82,23 @@ GlideDeck follows the **ArtCraft philosophy**:
   their slide.
 
 ### Design that looks good by default
-- **Templates**: pitch deck, Prezi-style journey, big-picture mind map, nested-detail
-  lecture, or a blank canvas, each a complete story with a path.
+- **17 templates** in four groups, each a complete story with a theme and a path:
+  - **Business**: pitch deck, roadmap, showcase, branches.
+  - **Storytelling**: journey, summit, spiral, deep dive.
+  - **Ideas & maps**: big picture, hive, orbit, mood board.
+  - **Teaching**: lecture, chapters, workshop, cycle.
+
+  Many use structures only an infinite canvas allows: planets on orbits, camps up a
+  mountain, a honeycomb, a spiral, portholes nested five levels deep, and a wheel the camera
+  turns around.
 - **Eight themes**, colour and font pairings with optional gradient backgrounds. Switching
   theme restyles text by its role, and colours taken from the old theme follow to the new
   one; colours you picked by hand stay put.
-- **Slide layouts**: Title, Section, Three points, Big number, Quote, Agenda, Timeline and
-  Image + text, each dropped in next to the current slide.
+- **20 slide layouts**, each dropped in next to the current slide:
+  - **Basics**: title, section, quote, big number, image + text, agenda.
+  - **Grids**: three points, comparison, quadrants, bento grid, dashboard, team.
+  - **Diagrams**: hub & spokes, cycle, Venn, pyramid.
+  - **Flows**: timeline, process, staircase, winding road.
 - **Icon library**: about 1,500 Phosphor icons in four weights, searchable, recolourable,
   and exported to PowerPoint as editable vectors.
 - **Text styles** (Title, Heading, Subtitle, Body, Caption, Quote), **bullets and
@@ -103,6 +113,9 @@ GlideDeck follows the **ArtCraft philosophy**:
 ### Rich content
 - **Images**: insert them, drag and drop, or paste screenshots, browser images, copied
   files and text straight from other apps.
+- **Paste from PowerPoint** (Windows): copied shapes arrive as editable text boxes, shapes
+  and pictures, keeping their layout, fonts and colours. Ctrl/⌘+Shift+V pastes plain text
+  from any app.
 - **SVG** rendered as true vectors, including gradients, strokes and text.
 - **Video** with sound, a framed player, autoplay, loop and mute (uses a local FFmpeg).
 - **In-place text editing** with full **right-to-left** support (Hebrew, Arabic), bidi,
@@ -256,7 +269,7 @@ Edit `packaging/windows/glidedeck.wxs` to change what it installs.
 To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
 
 ```bash
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.0-x64.msi
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.1-x64.msi
 ```
 
 ### Creating a macOS DMG

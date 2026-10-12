@@ -41,7 +41,9 @@ try {
 $out = Join-Path $repo "dist"
 $obj = Join-Path $repo "target\wix"
 New-Item -ItemType Directory -Force $out, $obj | Out-Null
-$exe = Join-Path $repo "target\release\glidedeck.exe"
+# Honour CARGO_TARGET_DIR, e.g. to build while a copy from target\ is running.
+$targetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $repo "target" }
+$exe = Join-Path $targetDir "release\glidedeck.exe"
 
 & $candle -nologo -arch x64 -ext WixUIExtension `
     "-dVersion=$version" "-dExePath=$exe" "-dRepoDir=$repo" `

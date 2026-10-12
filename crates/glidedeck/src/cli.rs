@@ -34,7 +34,9 @@ pub enum Command {
         /// Start from the welcome canvas instead of an empty one.
         #[arg(long)]
         demo: bool,
-        /// Start from a template: pitch-deck, journey, big-picture, lecture or blank.
+        /// Start from a template: pitch-deck, roadmap, showcase, branches, journey, summit,
+        /// spiral, deep-dive, big-picture, hive, orbit, mood-board, lecture, chapters,
+        /// workshop, cycle or blank.
         #[arg(long)]
         template: Option<String>,
         /// Overwrite an existing file.
@@ -113,7 +115,10 @@ pub fn run(cmd: Command) -> Result<()> {
                     let t = crate::design::Template::ALL
                         .into_iter()
                         .find(|t| slug(t.label()) == slug(&name) || (slug(&name) == "blank" && *t == crate::design::Template::Blank))
-                        .with_context(|| format!("unknown template {name:?} (try pitch-deck, journey, big-picture, lecture, blank)"))?;
+                        .with_context(|| {
+                            let names: Vec<String> = crate::design::Template::ALL.iter().map(|t| if *t == crate::design::Template::Blank { "blank".into() } else { slug(t.label()) }).collect();
+                            format!("unknown template {name:?} (try {})", names.join(", "))
+                        })?;
                     crate::design::build_template(t)
                 }
                 (false, None) => Document::default(),

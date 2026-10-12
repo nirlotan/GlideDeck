@@ -236,6 +236,18 @@ fn layouts_themes_and_templates() {
     assert!(h.state().doc.elements.iter().any(|e| e.shadow.is_some()), "cards get soft shadows");
     snapshot(&mut h, "layout-inserted");
 
+    // A non-linear layout from further down the gallery.
+    h.get_by_label("Layouts").click();
+    h.run_steps(4);
+    h.get_by_label("Insert layout Venn").scroll_to_me();
+    h.run_steps(4);
+    h.get_by_label("Insert layout Venn").click();
+    for _ in 0..80 {
+        h.step();
+    }
+    assert_eq!(h.state().doc.path.len(), 2);
+    assert_eq!(h.state().doc.elements.iter().filter(|e| matches!(e.name.as_str(), "Set 1" | "Set 2" | "Set 3")).count(), 3, "three Venn sets");
+
     // Switch theme from the Design tab.
     h.get_by_label("Design").click();
     h.run_steps(2);
@@ -256,6 +268,15 @@ fn layouts_themes_and_templates() {
     assert_eq!(doc.title, "Pitch deck");
     assert!(doc.path.len() >= 6);
     snapshot(&mut h, "template-pitch");
+
+    // One of the structural templates.
+    h.get_by_label("Templates").click();
+    h.run_steps(6);
+    h.get_by_label("Use template Orbit").click();
+    h.run_steps(6);
+    let doc = &h.state().doc;
+    assert_eq!(doc.title, "Orbit");
+    assert_eq!(doc.elements.iter().filter(|e| e.name == "Planet").count(), 5);
 }
 
 #[test]

@@ -194,7 +194,11 @@ impl GlideDeckApp {
             self.import_image_files(ctx, &[as_path.to_path_buf()], at_screen);
             return;
         }
-        // Plain text becomes a text element.
+        self.add_text_box(text, at_screen);
+    }
+
+    /// Plain text becomes a text element.
+    fn add_text_box(&mut self, text: &str, at_screen: Option<DVec2>) {
         let pos = self.placement(at_screen);
         let mut block = TextBlock { font_size: 40.0, ..TextBlock::new(text.trim_end()) };
         if text.chars().count() > 80 {
@@ -210,8 +214,69 @@ impl GlideDeckApp {
         self.selection = vec![id];
     }
 
-    /// Reads the OS clipboard directly: images, then copied files, then text.
+    /// Pastes shapes copied in PowerPoint (or another Office app) as editable
+    /// text boxes, shapes and pictures. Returns false when the clipboard holds
+    /// no Office shapes, or none could be read, so the caller can fall back.
+    fn paste_office_shapes(&mut self, ctx: &egui::Context, at_screen: Option<DVec2>) -> bool {
+        let Some(package) = crate::office::clipboard_package() else { return false };
+        let text = &mut self.renderer.text;
+        let clip = match crate::office::parse_package(&package, &mut |k| glide_render::local_size(text, k)) {
+            Ok(clip) if !clip.elements.is_empty() => clip,
+            Ok(_) => return false,
+            Err(e) => {
+                log::warn!("could not read Office shapes from the clipboard: {e}");
+                return false;
+            }
+        };
+        // Store embedded pictures next to the document.
+        let base = self.base_dir();
+        let stored: Vec<Option<String>> = clip.media.iter().map(|(bytes, ext)| assets::import_bytes(&base, bytes, ext).ok()).collect();
+        let mut elements: Vec<Element> = clip
+            .elements
+            .into_iter()
+            .filter_map(|mut el| {
+                if let ElementKind::Image(m) = &mut el.kind
+                    && let Some(i) = m.path.strip_prefix(crate::office::MEDIA_PREFIX)
+                {
+                    m.path = stored.get(i.parse::<usize>().ok()?)?.clone()?;
+                }
+                Some(el)
+            })
+            .collect();
+        // Keep the Office layout, sized like PowerPoint at 100% (never more
+        // than ~70% of the view) and turned to match the view.
+        let bounds = elements.iter().fold(glide_core::Aabb::EMPTY, |b, e| b.union(e.world_aabb(glide_render::local_size(&mut self.renderer.text, &e.kind))));
+        let vp = self.viewport();
+        let size = bounds.size().max(DVec2::splat(1.0));
+        let k = ((vp.x * 0.7) / size.x).min((vp.y * 0.7) / size.y).min(1.0) / self.camera.zoom;
+        let target = self.placement(at_screen);
+        let turn = DVec2::from_angle(self.camera.rotation);
+        for el in &mut elements {
+            let p = target + turn.rotate((el.transform.position() - bounds.center()) * k);
+            el.transform = Transform { x: p.x, y: p.y, scale: el.transform.scale * k, rotation: el.transform.rotation + self.camera.rotation.to_degrees() };
+        }
+        let n = elements.len();
+        self.paste_elements(elements, DVec2::ZERO);
+        self.tool = Tool::Select;
+        self.notify(ctx, format!("Pasted {n} object{} from Office", if n == 1 { "" } else { "s" }));
+        true
+    }
+
+    /// Ctrl/⌘+Shift+V: the clipboard's text as a plain text box, ignoring any
+    /// picture that came with it.
+    fn paste_plain_text(&mut self, ctx: &egui::Context, text: Option<String>, at_screen: Option<DVec2>) {
+        let text = text.or_else(|| arboard::Clipboard::new().ok().and_then(|mut c| c.get_text().ok()));
+        match text.filter(|t| !t.trim().is_empty()) {
+            Some(t) => self.add_text_box(&t, at_screen),
+            None => self.notify(ctx, "There is no text on the clipboard"),
+        }
+    }
+
+    /// Reads the OS clipboard directly: Office shapes, images, copied files, then text.
     pub fn paste_from_clipboard(&mut self, ctx: &egui::Context, at_screen: Option<DVec2>) {
+        if self.paste_office_shapes(ctx, at_screen) {
+            return;
+        }
         let Ok(mut cb) = arboard::Clipboard::new() else {
             self.notify(ctx, "The clipboard is not available");
             return;
@@ -255,8 +320,16 @@ impl GlideDeckApp {
             match ev {
                 egui::Event::Paste(text) => {
                     self.paste_consumed = true;
+                    if ctx.input(|i| i.modifiers.command && i.modifiers.shift) {
+                        self.paste_plain_text(ctx, Some(text), pointer);
+                        continue;
+                    }
+                    if self.paste_office_shapes(ctx, pointer) {
+                        continue;
+                    }
                     // Prefer a real image if the clipboard has one (e.g. copied from a browser).
-                    let has_image = arboard::Clipboard::new().is_ok_and(|mut c| c.get_image().is_ok());
+                    // Tests never consult the machine's real clipboard.
+                    let has_image = !cfg!(test) && arboard::Clipboard::new().is_ok_and(|mut c| c.get_image().is_ok());
                     if has_image {
                         self.paste_from_clipboard(ctx, pointer);
                     } else {
@@ -267,7 +340,9 @@ impl GlideDeckApp {
                     if std::mem::take(&mut self.paste_consumed) {
                         continue;
                     }
-                    if modifiers.command {
+                    if modifiers.command && modifiers.shift {
+                        self.paste_plain_text(ctx, None, pointer);
+                    } else if modifiers.command {
                         self.paste_from_clipboard(ctx, pointer);
                     }
                 }

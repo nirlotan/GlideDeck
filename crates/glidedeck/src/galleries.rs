@@ -11,7 +11,7 @@ use glam::DVec2;
 use std::collections::HashMap;
 use glide_core::theme::builtin_themes;
 use glide_core::{Camera, Color, Document, IconStyle, Theme};
-use glide_render::{RenderOptions, RenderTarget, ICONS};
+use glide_render::{RenderOptions, RenderTarget, TextEngine, ICONS};
 
 /// GPU-rendered thumbnails keyed by a content key.
 #[derive(Default)]
@@ -57,15 +57,24 @@ fn c32(c: Color) -> Color32 {
     Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), c.a())
 }
 
-/// Renders (once) a document view into a texture for previews.
-fn preview(app: &mut GlideDeckApp, frame: &eframe::Frame, key: &str, size: egui::Vec2, ppp: f32, build: impl FnOnce() -> Document) -> Option<egui::TextureId> {
+/// Renders (once) a document view into a texture for previews: the frame named
+/// "Overview" if there is one, else the first slide.
+fn preview(
+    app: &mut GlideDeckApp,
+    frame: &eframe::Frame,
+    key: &str,
+    size: egui::Vec2,
+    ppp: f32,
+    build: impl FnOnce(&mut TextEngine) -> Document,
+) -> Option<egui::TextureId> {
     if let Some((_, tex)) = app.previews.items.get(key) {
         return Some(*tex);
     }
     let rs = frame.wgpu_render_state()?;
-    let doc = build();
+    let doc = build(&mut app.renderer.text);
     let vp = DVec2::new(size.x as f64, size.y as f64);
-    let camera = match doc.step_frame(0).and_then(|f| Camera::for_frame(f, vp, 0.0)) {
+    let shown = doc.elements.iter().find(|e| e.kind.is_frame() && e.name == "Overview").or_else(|| doc.step_frame(0));
+    let camera = match shown.and_then(|f| Camera::for_frame(f, vp, 0.0)) {
         Some(c) => c,
         None => {
             let b = doc
@@ -93,6 +102,17 @@ fn card_frame(ui: &mut egui::Ui, rect: egui::Rect, hovered: bool, selected: bool
         egui::Stroke::new(1.0, p.border)
     };
     ui.painter().rect_stroke(rect, 10, stroke, StrokeKind::Outside);
+}
+
+/// A small section heading inside a gallery.
+fn section_heading(ui: &mut egui::Ui, label: &str, count: usize) {
+    let p = ui_theme::palette(ui.ctx());
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(label).font(ui_theme::semibold(13.5)));
+        ui.label(RichText::new(count.to_string()).size(11.5).color(p.text_muted));
+    });
+    ui.add_space(2.0);
 }
 
 // --- icon picker ---------------------------------------------------------------------
@@ -226,28 +246,41 @@ pub fn template_gallery(app: &mut GlideDeckApp, ctx: &egui::Context, frame: &efr
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
             ui.label(RichText::new("Each template is a complete zooming story with a theme, frames and a path. Make it yours.").color(p.text_muted));
-            ui.add_space(8.0);
-            let size = egui::vec2(288.0, 162.0);
-            egui::Grid::new("templates").num_columns(3).spacing([16.0, 16.0]).show(ui, |ui| {
-                for (i, t) in Template::ALL.into_iter().enumerate() {
-                    ui.vertical(|ui| {
-                        let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-                        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Use template {}", t.label())));
-                        if let Some(tex) = preview(app, frame, &format!("template:{t:?}"), size, ppp, || design::build_template(t)) {
-                            egui::Image::new(egui::load::SizedTexture::new(tex, size)).corner_radius(10).paint_at(ui, rect);
-                        }
-                        card_frame(ui, rect, resp.hovered(), false);
-                        ui.label(RichText::new(t.label()).font(ui_theme::semibold(14.0)));
-                        ui.allocate_ui_with_layout(egui::vec2(size.x, 34.0), egui::Layout::top_down(egui::Align::Min), |ui| {
-                            ui.add(egui::Label::new(RichText::new(t.blurb()).size(12.0).color(p.text_muted)).wrap());
-                        });
-                        if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-                            out.push(Action::NewFromTemplate(t));
+            ui.add_space(6.0);
+            let size = egui::vec2(240.0, 135.0);
+            let cols = 4;
+            egui::ScrollArea::vertical()
+                .max_height(ctx.content_rect().height() * 0.74)
+                .min_scrolled_height(ctx.content_rect().height() * 0.74)
+                .auto_shrink([false, true]).show(ui, |ui| {
+                ui.set_width(cols as f32 * (size.x + 14.0));
+                for category in Template::CATEGORIES {
+                    let items: Vec<Template> = Template::ALL.into_iter().filter(|t| t.category() == category).collect();
+                    section_heading(ui, category, items.len());
+                    egui::Grid::new(("templates", category)).num_columns(cols).spacing([14.0, 14.0]).show(ui, |ui| {
+                        for (i, t) in items.into_iter().enumerate() {
+                            ui.vertical(|ui| {
+                                ui.spacing_mut().item_spacing.y = 3.0;
+                                let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
+                                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Use template {}", t.label())));
+                                if let Some(tex) = preview(app, frame, &format!("template:{t:?}"), size, ppp, |text| design::build_template_with(t, text)) {
+                                    egui::Image::new(egui::load::SizedTexture::new(tex, size)).corner_radius(10).paint_at(ui, rect);
+                                }
+                                card_frame(ui, rect, resp.hovered(), false);
+                                ui.label(RichText::new(t.label()).font(ui_theme::semibold(13.5)));
+                                ui.allocate_ui_with_layout(egui::vec2(size.x, 32.0), egui::Layout::top_down(egui::Align::Min), |ui| {
+                                    ui.add(egui::Label::new(RichText::new(t.blurb()).size(11.5).color(p.text_muted)).wrap());
+                                });
+                                if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+                                    out.push(Action::NewFromTemplate(t));
+                                }
+                            });
+                            if i % cols == cols - 1 {
+                                ui.end_row();
+                            }
                         }
                     });
-                    if i % 3 == 2 {
-                        ui.end_row();
-                    }
+                    ui.add_space(8.0);
                 }
             });
         });
@@ -275,33 +308,46 @@ pub fn layout_gallery(app: &mut GlideDeckApp, ctx: &egui::Context, frame: &efram
         .default_pos(ctx.content_rect().left_top() + egui::vec2(260.0, 150.0))
         .show(ctx, |ui| {
             ui.label(RichText::new(format!("Adds a ready-made slide next to the current one, styled with “{}”.", theme.name)).color(p.text_muted));
-            ui.add_space(6.0);
+            ui.add_space(4.0);
             let size = egui::vec2(208.0, 117.0);
-            egui::Grid::new("layouts").num_columns(4).spacing([12.0, 12.0]).show(ui, |ui| {
-                for (i, kind) in LayoutKind::ALL.into_iter().enumerate() {
-                    ui.vertical(|ui| {
-                        let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-                        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Insert layout {}", kind.label())));
-                        let key = format!("layout:{kind:?}:{}", theme.name);
-                        let th = theme.clone();
-                        if let Some(tex) = preview(app, frame, &key, size, ppp, move || {
-                            let mut d = Document::new("preview");
-                            glide_core::theme::apply_theme(&mut d, &th);
-                            let id = design::place_layout(&mut d, kind, &th, DVec2::ZERO, design::LAYOUT_W, 0.0);
-                            d.path.push(glide_core::Step::new(id));
-                            d
-                        }) {
-                            egui::Image::new(egui::load::SizedTexture::new(tex, size)).corner_radius(8).paint_at(ui, rect);
-                        }
-                        card_frame(ui, rect, resp.hovered(), false);
-                        ui.label(RichText::new(kind.label()).size(12.5));
-                        if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-                            out.push(Action::InsertLayout(kind));
+            let cols = 4;
+            egui::ScrollArea::vertical()
+                .max_height(ctx.content_rect().height() * 0.68)
+                .min_scrolled_height(ctx.content_rect().height() * 0.68)
+                .auto_shrink([false, true]).show(ui, |ui| {
+                ui.set_width(cols as f32 * (size.x + 12.0));
+                for category in LayoutKind::CATEGORIES {
+                    let items: Vec<LayoutKind> = LayoutKind::ALL.into_iter().filter(|k| k.category() == category).collect();
+                    section_heading(ui, category, items.len());
+                    egui::Grid::new(("layouts", category)).num_columns(cols).spacing([12.0, 10.0]).show(ui, |ui| {
+                        for (i, kind) in items.into_iter().enumerate() {
+                            ui.vertical(|ui| {
+                                ui.spacing_mut().item_spacing.y = 3.0;
+                                let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
+                                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Insert layout {}", kind.label())));
+                                let key = format!("layout:{kind:?}:{}", theme.name);
+                                let th = theme.clone();
+                                if let Some(tex) = preview(app, frame, &key, size, ppp, move |_| {
+                                    let mut d = Document::new("preview");
+                                    glide_core::theme::apply_theme(&mut d, &th);
+                                    let id = design::place_layout(&mut d, kind, &th, DVec2::ZERO, design::LAYOUT_W, 0.0);
+                                    d.path.push(glide_core::Step::new(id));
+                                    d
+                                }) {
+                                    egui::Image::new(egui::load::SizedTexture::new(tex, size)).corner_radius(8).paint_at(ui, rect);
+                                }
+                                card_frame(ui, rect, resp.hovered(), false);
+                                ui.label(RichText::new(kind.label()).size(12.5));
+                                if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+                                    out.push(Action::InsertLayout(kind));
+                                }
+                            });
+                            if i % cols == cols - 1 {
+                                ui.end_row();
+                            }
                         }
                     });
-                    if i % 4 == 3 {
-                        ui.end_row();
-                    }
+                    ui.add_space(6.0);
                 }
             });
         });

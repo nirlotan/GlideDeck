@@ -25,7 +25,12 @@ glam.workspace = true
 log.workspace = true
 png.workspace = true
 rfd.workspace = true
+roxmltree = "0.21"
 serde_json.workspace = true
+zip.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+clipboard-win = "5.4"
 
 [dev-dependencies]
 egui_kittest.workspace = true

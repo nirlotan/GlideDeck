@@ -114,18 +114,42 @@ right. The app follows your system's light/dark setting; the sun/moon button swi
 
 ### Design tools
 
-- **Templates** (File → New from template, or Design → Templates): complete zooming stories,
-  each with a theme, frames and a path. Choose from a pitch deck, a journey along rotated
-  frames, a big-picture mind map, a lecture with nested detail, or a blank canvas. The
-  previews are live renders.
+- **Templates** (File → New from template, or Design → Templates): 17 complete zooming
+  stories, each with a theme, frames and a path. The previews are live renders.
+  - **Business**:
+    - *Pitch deck*: a grid of slides with an overview.
+    - *Roadmap*: quarters × teams.
+    - *Showcase*: a bento grid of slides.
+    - *Branches*: a tree from one idea down to details.
+  - **Storytelling**:
+    - *Journey*: rotated frames along a winding road.
+    - *Summit*: camps up a mountain to the peak.
+    - *Spiral*: slides that grow along a spiral while the camera turns.
+    - *Deep dive*: each slide hides the next inside a porthole.
+  - **Ideas & maps**:
+    - *Big picture*: a central idea with four branches.
+    - *Hive*: a honeycomb.
+    - *Orbit*: planets around a sun.
+    - *Mood board*: tilted polaroids around a title.
+  - **Teaching**:
+    - *Lecture*: an agenda with nested detail.
+    - *Chapters*: a bookshelf whose spines open into chapters.
+    - *Workshop*: sticky-note clusters.
+    - *Cycle*: six stages on a wheel.
+  - Or start from a **blank canvas**.
 - **Themes** (Design tab): eight curated colour and font pairings, some with gradient
   backgrounds. Switching theme restyles text by its role, and any colour taken from the
   previous theme moves to the matching colour in the new one. Colours you picked by hand
   are left alone. Theme colours also appear as one-click swatches next to every colour
   picker.
-- **Slide layouts** (Insert → Layouts, Ctrl/⌘+Shift+L): Title, Section, Three points, Big
-  number, Quote, Agenda, Timeline and Image + text. Each one is added as a new frame next to
-  the current slide, styled by the theme, and added to the path.
+- **Slide layouts** (Insert → Layouts, Ctrl/⌘+Shift+L): 20 layouts in four groups.
+  - **Basics**: Title, Section, Quote, Big number, Image + text, Agenda.
+  - **Grids**: Three points, Comparison, Quadrants, Bento grid, Dashboard, Team.
+  - **Diagrams**: Hub & spokes, Cycle, Venn, Pyramid.
+  - **Flows**: Timeline, Process, Staircase, Winding road.
+
+  Each one is added as a new frame next to the current slide, styled by the theme, and
+  added to the path.
 - **Icons** (Insert → Icons, Ctrl/⌘+Shift+K): about 1,500 Phosphor icons in Light, Regular,
   Bold and Fill weights, with search and categories. Icons are true vectors: crisp at any
   zoom, recolourable, and exported to PowerPoint as editable vector shapes.
@@ -175,6 +199,18 @@ editable in Properties → Layout.
   files onto the window, or paste with Ctrl/⌘+V: screenshots, images copied from a
   browser or another app, files copied in Explorer/Finder, plain text (which becomes a
   text box), and GlideDeck objects copied with Ctrl/⌘+C.
+- **From PowerPoint (Windows):** shapes copied in PowerPoint, Word or Excel paste as
+  editable elements, keeping their arrangement:
+  - text boxes, with font, size, bold, italic, colour, alignment and bullets;
+  - rectangles, rounded rectangles and ellipses, with fill and outline;
+  - pictures;
+  - grouped shapes.
+
+  Other shape types keep their text but lose the outline. If Office's shape data isn't
+  available, which is always the case on macOS, the picture Office puts on the clipboard
+  is pasted instead.
+- **Ctrl/⌘+Shift+V** pastes the clipboard's text as a plain text box, even when a picture
+  came with it.
 - **SVGs** are parsed and drawn as true vectors: fills, strokes, linear and radial
   gradients, and text converted to outlines. They stay sharp at any zoom.
 - **Insert → Video** (MP4, MOV, WebM, MKV…). Videos sit on the canvas like a framed
@@ -202,6 +238,7 @@ editable in Properties → Layout.
 | Multi-select | Shift- or Ctrl/⌘-click · drag a marquee on empty canvas |
 | Move / nudge | Drag a selection · arrow keys (Shift = 10×) |
 | Cut / copy / paste / duplicate | Ctrl/⌘ + `X` / `C` / `V` / `D` |
+| Paste as plain text | Ctrl/⌘ + Shift + `V` |
 | Delete | `Delete` / `Backspace` |
 | Z-order | Ctrl/⌘ + Shift + `]` / `[` |
 | Undo / redo | Ctrl/⌘ + `Z` · Ctrl/⌘ + Shift + `Z` (or Ctrl + `Y`) |
@@ -254,7 +291,9 @@ glidedeck export-pptx talk.glide.json --out talk.pptx
 ```
 
 - `new [--demo | --template NAME] [--force]` creates an empty document, the welcome canvas, or
-  a template (`pitch-deck`, `journey`, `big-picture`, `lecture`, `blank`).
+  a template: `pitch-deck`, `roadmap`, `showcase`, `branches`, `journey`, `summit`, `spiral`,
+  `deep-dive`, `big-picture`, `hive`, `orbit`, `mood-board`, `lecture`, `chapters`,
+  `workshop`, `cycle` or `blank`.
 - `apply FILE [OPS]` applies a JSON operation, or an array of them, read from a file or
   from stdin. The batch is **atomic**: if any op fails, the file is left untouched and the
   command exits non-zero with `{"ok":false,...}`.

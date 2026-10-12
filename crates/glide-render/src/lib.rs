@@ -239,8 +239,15 @@ impl CanvasRenderer {
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &instance_attrs,
         };
-        let image_instance_attrs = wgpu::vertex_attr_array![
-            2 => Float32x2, 3 => Float32x2, 4 => Float32x2, 5 => Float32, 6 => Float32x4
+        // Explicit offsets: `params` sits after the `_pad` field, which
+        // `vertex_attr_array!` (tightly packed) would not account for.
+        let attr = |shader_location, format, offset| wgpu::VertexAttribute { format, offset, shader_location };
+        let image_instance_attrs = [
+            attr(2, wgpu::VertexFormat::Float32x2, std::mem::offset_of!(Instance, col_a) as u64),
+            attr(3, wgpu::VertexFormat::Float32x2, std::mem::offset_of!(Instance, col_b) as u64),
+            attr(4, wgpu::VertexFormat::Float32x2, std::mem::offset_of!(Instance, translate) as u64),
+            attr(5, wgpu::VertexFormat::Float32, std::mem::offset_of!(Instance, opacity) as u64),
+            attr(6, wgpu::VertexFormat::Float32x4, std::mem::offset_of!(Instance, params) as u64),
         ];
         let image_instance_layout = wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Instance>() as u64,
