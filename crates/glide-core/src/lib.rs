@@ -19,6 +19,7 @@ pub use color::Color;
 pub use document::{Document, DocumentError, Step, Transition, TransitionStyle, FORMAT_ID};
 pub use easing::Easing;
 pub use element::{
+    SpanStyle, TextSpan,
     Element, ElementKind, EllipseShape, Frame, Gradient, Icon, IconStyle, ListStyle, Media, RectShape, Shadow, Stroke, TextAlign,
     TextBlock, TextRole, Transform,
 };

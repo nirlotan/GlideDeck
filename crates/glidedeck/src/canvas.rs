@@ -60,6 +60,23 @@ pub enum Drag {
         anchor: DVec2,
         diag: DVec2,
         scale: f64,
+        cursor: CursorIcon,
+    },
+    /// One-dimensional resize from a side handle: a text box's wrap width, or
+    /// a shape's or frame's width/height. The opposite side stays put.
+    Stretch {
+        id: String,
+        /// World point that stays fixed: the opposite side's midpoint, or for
+        /// text the opposite top corner (so the top edge doesn't move as lines reflow).
+        anchor: DVec2,
+        /// Unit world direction from the anchor toward the dragged side.
+        dir: DVec2,
+        /// Unit world direction of the element's local +y.
+        down: DVec2,
+        /// The element's world scale.
+        scale: f64,
+        horizontal: bool,
+        cursor: CursorIcon,
     },
     /// Rotating with the knob above the element.
     Rotate {
@@ -68,6 +85,56 @@ pub enum Drag {
         start_angle: f64,
         start_rotation: f64,
     },
+}
+
+/// The rectangle a creation drag describes. It always keeps the press point as
+/// one corner; frames grow to 16:9 away from it unless `free_aspect`.
+pub fn drawn_rect(start: Pos2, end: Pos2, tool: Tool, free_aspect: bool) -> egui::Rect {
+    if tool != Tool::Frame || free_aspect {
+        return egui::Rect::from_two_pos(start, end);
+    }
+    let d = end - start;
+    let w = d.x.abs().max(d.y.abs() * 16.0 / 9.0);
+    let sign = |v: f32| if v < 0.0 { -1.0 } else { 1.0 };
+    egui::Rect::from_two_pos(start, start + egui::vec2(sign(d.x) * w, sign(d.y) * w * 9.0 / 16.0))
+}
+
+/// The selected element's on-screen handles.
+struct Handles {
+    id: String,
+    /// Top-left, top-right, bottom-right, bottom-left (in the element's own frame).
+    corners: [Pos2; 4],
+    sides: Vec<(Side, Pos2)>,
+    knob: Pos2,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Side {
+    Top,
+    Right,
+    Bottom,
+    Left,
+}
+
+impl Side {
+    /// Indices of the corners this side runs between.
+    fn corners(self) -> (usize, usize) {
+        match self {
+            Side::Top => (0, 1),
+            Side::Right => (1, 2),
+            Side::Bottom => (3, 2),
+            Side::Left => (0, 3),
+        }
+    }
+
+    fn opposite(self) -> Side {
+        match self {
+            Side::Top => Side::Bottom,
+            Side::Bottom => Side::Top,
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+        }
+    }
 }
 
 /// Distance (screen points) within which a handle is grabbed.
@@ -167,6 +234,7 @@ impl GlideDeckApp {
         ui.painter().rect_stroke(rect, 10, egui::Stroke::new(1.0, p.border), StrokeKind::Inside);
         let painter = ui.painter_at(rect);
         self.paint_overlays(&painter, rect, response.hover_pos());
+        self.format_bar(ui, rect);
         self.floating_controls(ui, rect, &mut actions);
         actions
     }
@@ -201,7 +269,7 @@ impl GlideDeckApp {
         let ctx = ui.ctx().clone();
         let viewport = self.viewport();
         let pointer = response.hover_pos();
-        let typing = ctx.egui_wants_keyboard_input();
+        let typing = ctx.text_edit_focused();
         let (events, modifiers, space_down, press_origin) =
             ctx.input(|i| (i.events.clone(), i.modifiers, i.key_down(egui::Key::Space), i.pointer.press_origin()));
         let space = space_down && !typing;
@@ -292,7 +360,7 @@ impl GlideDeckApp {
                     let snap = !modifiers.alt;
                     self.update_move(delta, snap);
                 }
-                Drag::Resize { id, anchor, diag, scale } => {
+                Drag::Resize { id, anchor, diag, scale, .. } => {
                     if let Some(p) = pointer.or(ctx.pointer_latest_pos()) {
                         let world = self.camera.screen_to_world(Self::to_local(rect, p), viewport);
                         let t = ((world - *anchor).dot(*diag) / diag.length_squared().max(1e-300)).max(0.05);
@@ -301,6 +369,12 @@ impl GlideDeckApp {
                             el.transform.scale = scale * t;
                             el.transform.set_position(anchor + diag * t * 0.5);
                         }
+                    }
+                }
+                Drag::Stretch { .. } => {
+                    if let Some(p) = pointer.or(ctx.pointer_latest_pos()) {
+                        let world = self.camera.screen_to_world(Self::to_local(rect, p), viewport);
+                        self.update_stretch(world);
                     }
                 }
                 Drag::Rotate { id, center, start_angle, start_rotation } => {
@@ -328,9 +402,9 @@ impl GlideDeckApp {
                     self.marquee_select(rect, egui::Rect::from_two_pos(start, end), additive);
                 }
                 (Drag::Create { start, tool }, Some(end)) => {
-                    let r = egui::Rect::from_two_pos(start, end);
-                    let drawn = (r.width() >= MIN_DRAW || r.height() >= MIN_DRAW).then_some(r);
                     let alt = modifiers.alt;
+                    let r = drawn_rect(start, end, tool, alt);
+                    let drawn = (r.width() >= MIN_DRAW || r.height() >= MIN_DRAW).then_some(r);
                     self.create(tool, rect, drawn, end, alt);
                 }
                 _ => {}
@@ -403,11 +477,15 @@ impl GlideDeckApp {
             (Some(p), Drag::None) if self.tool == Tool::Select => self.handle_at(rect, p),
             _ => None,
         };
+        let handle_cursor = match &handle_hover {
+            Some(Drag::Resize { cursor, .. } | Drag::Stretch { cursor, .. }) => Some(*cursor),
+            _ => None,
+        };
         if response.hovered() || self.drag != Drag::None {
             let icon = match (&self.drag, self.tool) {
-                (Drag::Resize { .. }, _) => CursorIcon::Crosshair,
+                (Drag::Resize { cursor, .. } | Drag::Stretch { cursor, .. }, _) => *cursor,
                 (Drag::Rotate { .. }, _) => CursorIcon::Grabbing,
-                _ if matches!(handle_hover, Some(Drag::Resize { .. })) => CursorIcon::ResizeNwSe,
+                _ if handle_cursor.is_some() => handle_cursor.unwrap_or_default(),
                 _ if matches!(handle_hover, Some(Drag::Rotate { .. })) => CursorIcon::Grab,
                 (Drag::Pan, _) => CursorIcon::Grabbing,
                 (Drag::Move(_), _) => CursorIcon::Grabbing,
@@ -421,9 +499,9 @@ impl GlideDeckApp {
         }
     }
 
-    /// Screen positions (absolute) of the single selected element's corners
-    /// and its rotation knob, when handles apply.
-    fn handle_points(&mut self, rect: egui::Rect) -> Option<(String, [Pos2; 4], Pos2)> {
+    /// Screen positions (absolute) of the single selected element's handles,
+    /// when handles apply.
+    fn handle_points(&mut self, rect: egui::Rect) -> Option<Handles> {
         if self.selection.len() != 1 || self.text_edit.is_some() {
             return None;
         }
@@ -437,27 +515,100 @@ impl GlideDeckApp {
             let s = self.camera.world_to_screen(c, vp);
             rect.min + egui::vec2(s.x as f32, s.y as f32)
         });
-        let center = egui::pos2((corners[0].x + corners[2].x) / 2.0, (corners[0].y + corners[2].y) / 2.0);
-        let top_mid = egui::pos2((corners[0].x + corners[1].x) / 2.0, (corners[0].y + corners[1].y) / 2.0);
+        let mid = |a: Pos2, b: Pos2| egui::pos2((a.x + b.x) / 2.0, (a.y + b.y) / 2.0);
+        let center = mid(corners[0], corners[2]);
+        let top_mid = mid(corners[0], corners[1]);
         let up = (top_mid - center).normalized();
         let up = if up.is_finite() { up } else { egui::vec2(0.0, -1.0) };
-        Some((el.id, corners, top_mid + up * KNOB_OFFSET))
+        // Side handles: text changes its wrap width; shapes and frames stretch.
+        let sides: &[Side] = match el.kind {
+            ElementKind::Text(_) => &[Side::Left, Side::Right],
+            ElementKind::Rect(_) | ElementKind::Ellipse(_) | ElementKind::Frame(_) => &[Side::Top, Side::Right, Side::Bottom, Side::Left],
+            _ => &[],
+        };
+        let sides = sides
+            .iter()
+            .map(|&side| {
+                let (a, b) = side.corners();
+                (side, mid(corners[a], corners[b]))
+            })
+            // Only when the side is long enough on screen to grab separately from the corners.
+            .filter(|(side, _)| {
+                let (a, b) = side.corners();
+                corners[a].distance(corners[b]) > HANDLE_REACH * 4.0
+            })
+            .collect();
+        Some(Handles { id: el.id, corners, sides, knob: top_mid + up * KNOB_OFFSET })
     }
 
-    /// A resize or rotate drag if `p` is on a handle of the selected element.
+    /// A resize, stretch or rotate drag if `p` is on a handle of the selected element.
     fn handle_at(&mut self, rect: egui::Rect, p: Pos2) -> Option<Drag> {
-        let (id, corners, knob) = self.handle_points(rect)?;
-        let el = self.doc.get(&id)?.clone();
-        if knob.distance(p) <= HANDLE_REACH + 2.0 {
-            let center = egui::pos2((corners[0].x + corners[2].x) / 2.0, (corners[0].y + corners[2].y) / 2.0);
+        let h = self.handle_points(rect)?;
+        let el = self.doc.get(&h.id)?.clone();
+        let center = egui::pos2((h.corners[0].x + h.corners[2].x) / 2.0, (h.corners[0].y + h.corners[2].y) / 2.0);
+        if h.knob.distance(p) <= HANDLE_REACH + 2.0 {
             let v = p - center;
-            return Some(Drag::Rotate { id, center, start_angle: (v.y as f64).atan2(v.x as f64), start_rotation: el.transform.rotation });
+            return Some(Drag::Rotate { id: h.id, center, start_angle: (v.y as f64).atan2(v.x as f64), start_rotation: el.transform.rotation });
         }
-        let i = corners.iter().position(|c| c.distance(p) <= HANDLE_REACH)?;
         let size = self.renderer.local_size(&el);
         let world = el.world_corners(size);
-        let anchor = world[(i + 2) % 4];
-        Some(Drag::Resize { id, anchor, diag: world[i] - anchor, scale: el.transform.scale })
+        if let Some(i) = h.corners.iter().position(|c| c.distance(p) <= HANDLE_REACH) {
+            // The arrow follows the on-screen diagonal through this corner.
+            let v = h.corners[i] - center;
+            let cursor = if (v.x > 0.0) == (v.y > 0.0) { CursorIcon::ResizeNwSe } else { CursorIcon::ResizeNeSw };
+            let anchor = world[(i + 2) % 4];
+            return Some(Drag::Resize { id: h.id, anchor, diag: world[i] - anchor, scale: el.transform.scale, cursor });
+        }
+        let (side, at) = h.sides.iter().find(|(_, at)| at.distance(p) <= HANDLE_REACH)?;
+        let v = *at - center;
+        let cursor = if v.x.abs() > v.y.abs() { CursorIcon::ResizeHorizontal } else { CursorIcon::ResizeVertical };
+        let (a, b) = side.corners();
+        let (oa, ob) = side.opposite().corners();
+        let here = (world[a] + world[b]) * 0.5;
+        let there = (world[oa] + world[ob]) * 0.5;
+        let dir = (here - there).normalize_or_zero();
+        let down = (world[3] - world[0]).normalize_or_zero();
+        // Text keeps its top edge: anchor at the opposite side's top corner.
+        let anchor = if matches!(el.kind, ElementKind::Text(_)) { world[side.opposite().corners().0.min(side.opposite().corners().1)] } else { there };
+        let horizontal = matches!(side, Side::Left | Side::Right);
+        Some(Drag::Stretch { id: h.id, anchor, dir, down, scale: el.transform.scale.abs().max(1e-300), horizontal, cursor })
+    }
+
+    /// Applies a side-handle drag with the pointer at `world`.
+    fn update_stretch(&mut self, world: DVec2) {
+        let Drag::Stretch { id, anchor, dir, down, scale, horizontal, .. } = self.drag.clone() else { return };
+        let min = 12.0 / self.camera.zoom;
+        let extent = (world - anchor).dot(dir).max(min);
+        let local = extent / scale;
+        let Some(el) = self.doc.get_mut(&id) else { return };
+        let is_text = match &mut el.kind {
+            ElementKind::Text(t) => {
+                t.max_width = Some(local);
+                true
+            }
+            ElementKind::Rect(r) => {
+                *if horizontal { &mut r.width } else { &mut r.height } = local;
+                false
+            }
+            ElementKind::Ellipse(e) => {
+                *if horizontal { &mut e.width } else { &mut e.height } = local;
+                false
+            }
+            ElementKind::Frame(f) => {
+                *if horizontal { &mut f.width } else { &mut f.height } = local;
+                false
+            }
+            _ => return,
+        };
+        let center = if is_text {
+            let h = self.doc.get(&id).map(|e| glide_render::local_size(&mut self.renderer.text, &e.kind).y).unwrap_or(0.0) * scale;
+            anchor + dir * extent * 0.5 + down * h * 0.5
+        } else {
+            anchor + dir * extent * 0.5
+        };
+        if let Some(el) = self.doc.get_mut(&id) {
+            el.transform.set_position(center);
+        }
     }
 
     /// Screen-space (canvas-local) bounds of an element.
@@ -697,10 +848,19 @@ impl GlideDeckApp {
                 }
             }
         }
-        if let Some((_, corners, knob)) = self.handle_points(rect) {
-            let top_mid = egui::pos2((corners[0].x + corners[1].x) / 2.0, (corners[0].y + corners[1].y) / 2.0);
-            painter.line_segment([top_mid, knob], egui::Stroke::new(1.2, p.accent));
-            painter.circle(knob, 5.5, Color32::WHITE, egui::Stroke::new(1.5, p.accent));
+        if let Some(h) = self.handle_points(rect) {
+            // Side handles: small pills lying along their edge.
+            for (side, at) in &h.sides {
+                let (a, b) = side.corners();
+                let along = (h.corners[b] - h.corners[a]).normalized();
+                let along = if along.is_finite() { along } else { egui::vec2(1.0, 0.0) };
+                let half = along * 6.0;
+                painter.line_segment([*at - half, *at + half], egui::Stroke::new(6.0, p.accent));
+                painter.line_segment([*at - half * 0.75, *at + half * 0.75], egui::Stroke::new(3.0, Color32::WHITE));
+            }
+            let top_mid = egui::pos2((h.corners[0].x + h.corners[1].x) / 2.0, (h.corners[0].y + h.corners[1].y) / 2.0);
+            painter.line_segment([top_mid, h.knob], egui::Stroke::new(1.2, p.accent));
+            painter.circle(h.knob, 5.5, Color32::WHITE, egui::Stroke::new(1.5, p.accent));
         }
         self.paint_text_edit(painter, rect);
         self.paint_video_controls(painter, rect, pointer);
@@ -723,11 +883,7 @@ impl GlideDeckApp {
                 painter.rect(r, 2, p.accent.gamma_multiply(0.08), egui::Stroke::new(1.0, p.accent), StrokeKind::Inside);
             }
             (Drag::Create { start, tool }, Some(end)) => {
-                let mut r = egui::Rect::from_two_pos(*start, end);
-                if *tool == Tool::Frame && !painter.ctx().input(|i| i.modifiers.alt) {
-                    let w = r.width().max(r.height() * 16.0 / 9.0);
-                    r = egui::Rect::from_center_size(r.center(), egui::vec2(w, w * 9.0 / 16.0));
-                }
+                let r = drawn_rect(*start, end, *tool, painter.ctx().input(|i| i.modifiers.alt));
                 let stroke = egui::Stroke::new(1.5, p.accent);
                 match tool {
                     Tool::Ellipse => {

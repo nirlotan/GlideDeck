@@ -55,14 +55,14 @@ pub fn clipboard_package() -> Option<Vec<u8>> {
 
 // --- theme -----------------------------------------------------------------------
 
-struct OfficeTheme {
+pub(crate) struct OfficeTheme {
     colors: HashMap<String, Color>,
     major_font: Option<String>,
     minor_font: Option<String>,
 }
 
 impl OfficeTheme {
-    fn default_office() -> Self {
+    pub(crate) fn default_office() -> Self {
         let colors = [
             ("dk1", 0x000000),
             ("lt1", 0xFFFFFF),
@@ -83,7 +83,7 @@ impl OfficeTheme {
         OfficeTheme { colors, major_font: None, minor_font: None }
     }
 
-    fn parse(xml: &str) -> Self {
+    pub(crate) fn parse(xml: &str) -> Self {
         let mut theme = Self::default_office();
         let Ok(doc) = roxmltree::Document::parse(xml) else { return theme };
         if let Some(scheme) = find(doc.root(), "clrScheme") {
@@ -105,7 +105,7 @@ impl OfficeTheme {
         theme
     }
 
-    fn scheme(&self, name: &str, placeholder: Option<Color>) -> Option<Color> {
+    pub(crate) fn scheme(&self, name: &str, placeholder: Option<Color>) -> Option<Color> {
         let key = match name {
             "tx1" => "dk1",
             "bg1" => "lt1",
@@ -120,15 +120,15 @@ impl OfficeTheme {
 
 // --- xml helpers ---------------------------------------------------------------------
 
-fn child<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
+pub(crate) fn child<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
     node.children().find(|c| c.is_element() && c.tag_name().name() == name)
 }
 
-fn find<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
+pub(crate) fn find<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
     node.descendants().find(|c| c.is_element() && c.tag_name().name() == name)
 }
 
-fn num(node: Option<Node>, attr: &str) -> Option<f64> {
+pub(crate) fn num(node: Option<Node>, attr: &str) -> Option<f64> {
     node?.attribute(attr)?.parse().ok()
 }
 
@@ -234,18 +234,18 @@ fn color_value(node: Node, theme: &OfficeTheme, placeholder: Option<Color>) -> O
 }
 
 /// The first color child of `node` (e.g. inside `solidFill` or a style ref).
-fn first_color(node: Node, theme: &OfficeTheme, placeholder: Option<Color>) -> Option<Color> {
+pub(crate) fn first_color(node: Node, theme: &OfficeTheme, placeholder: Option<Color>) -> Option<Color> {
     node.children().filter(Node::is_element).find_map(|c| color_value(c, theme, placeholder))
 }
 
-enum Paint {
+pub(crate) enum Paint {
     None,
     Color(Color),
     Unset,
 }
 
 /// A fill declared directly on `props` (spPr, ln or rPr).
-fn paint(props: Option<Node>, theme: &OfficeTheme) -> Paint {
+pub(crate) fn paint(props: Option<Node>, theme: &OfficeTheme) -> Paint {
     let Some(props) = props else { return Paint::Unset };
     for c in props.children().filter(Node::is_element) {
         match c.tag_name().name() {
@@ -272,13 +272,13 @@ fn style_color(shape: Node, reference: &str, theme: &OfficeTheme) -> Option<Colo
 
 /// Maps group-child coordinates (EMU) into the clip's coordinates (EMU).
 #[derive(Clone, Copy)]
-struct GroupMap {
+pub(crate) struct GroupMap {
     scale: DVec2,
     offset: DVec2,
 }
 
 impl GroupMap {
-    const IDENTITY: GroupMap = GroupMap { scale: DVec2::ONE, offset: DVec2::ZERO };
+    pub(crate) const IDENTITY: GroupMap = GroupMap { scale: DVec2::ONE, offset: DVec2::ZERO };
 
     fn apply(&self, p: DVec2) -> DVec2 {
         p * self.scale + self.offset
@@ -319,22 +319,57 @@ fn placement(props: Option<Node>, map: &GroupMap) -> Option<Placed> {
 
 // --- parsing -------------------------------------------------------------------------
 
-struct Parser<'m> {
-    theme: OfficeTheme,
-    rels: HashMap<String, String>,
-    files: HashMap<String, Vec<u8>>,
-    measure: &'m mut dyn FnMut(&ElementKind) -> DVec2,
-    out: OfficeClip,
+/// Defaults a slide placeholder takes from its slide layout and master.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Inherited {
+    /// Offset and extent (EMU) when the placeholder has no position of its own.
+    pub xfrm: Option<(DVec2, DVec2)>,
+    /// Font size in hundredths of a point.
+    pub size: Option<f64>,
+    pub bold: Option<bool>,
+    pub bullets: Option<bool>,
+    pub align: Option<String>,
+    pub anchor: Option<String>,
+    pub color: Option<Color>,
 }
 
-/// Parses an Office shapes package. `measure` returns the local size of a
-/// text element, used to anchor text vertically inside its shape.
-pub fn parse_package(bytes: &[u8], measure: &mut dyn FnMut(&ElementKind) -> DVec2) -> Result<OfficeClip, String> {
+/// Looks up what a placeholder shape inherits.
+pub(crate) type InheritFn<'m> = &'m dyn Fn(Node) -> Option<Inherited>;
+
+/// Walks a DrawingML shape tree into GlideDeck elements (pixels at 96 dpi).
+pub(crate) struct Parser<'m> {
+    pub theme: &'m OfficeTheme,
+    /// The part's relationships: id → target part.
+    pub rels: HashMap<String, String>,
+    pub files: &'m HashMap<String, Vec<u8>>,
+    pub measure: &'m mut dyn FnMut(&ElementKind) -> DVec2,
+    pub out: &'m mut OfficeClip,
+    /// Skip placeholders (on slide layouts and masters they are only prompts).
+    pub skip_placeholders: bool,
+    /// Looks up what a slide placeholder inherits.
+    pub inherit: Option<InheritFn<'m>>,
+    current: Inherited,
+}
+
+impl<'m> Parser<'m> {
+    pub(crate) fn new(
+        theme: &'m OfficeTheme,
+        rels: HashMap<String, String>,
+        files: &'m HashMap<String, Vec<u8>>,
+        measure: &'m mut dyn FnMut(&ElementKind) -> DVec2,
+        out: &'m mut OfficeClip,
+    ) -> Self {
+        Parser { theme, rels, files, measure, out, skip_placeholders: false, inherit: None, current: Inherited::default() }
+    }
+}
+
+/// Reads every part of an Office zip package (skipping very large files).
+pub(crate) fn unzip(bytes: &[u8]) -> Result<HashMap<String, Vec<u8>>, String> {
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| e.to_string())?;
     let mut files = HashMap::new();
     for i in 0..zip.len() {
         let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-        if f.is_dir() || f.size() > 64 << 20 {
+        if f.is_dir() || f.size() > 256 << 20 {
             continue;
         }
         let name = f.name().map_err(|e| e.to_string())?.trim_start_matches('/').to_owned();
@@ -342,6 +377,32 @@ pub fn parse_package(bytes: &[u8], measure: &mut dyn FnMut(&ElementKind) -> DVec
         f.read_to_end(&mut data).map_err(|e| e.to_string())?;
         files.insert(name, data);
     }
+    Ok(files)
+}
+
+/// A part's relationships: id → (resolved target part, relationship type).
+pub(crate) fn relationships(files: &HashMap<String, Vec<u8>>, part: &str) -> HashMap<String, (String, String)> {
+    let (dir, file) = part.rsplit_once('/').unwrap_or(("", part));
+    let rels_name = if dir.is_empty() { format!("_rels/{file}.rels") } else { format!("{dir}/_rels/{file}.rels") };
+    let mut rels = HashMap::new();
+    let Some(data) = files.get(&rels_name) else { return rels };
+    let xml = String::from_utf8_lossy(data);
+    if let Ok(doc) = roxmltree::Document::parse(&xml) {
+        for r in doc.descendants().filter(|n| n.tag_name().name() == "Relationship") {
+            if let (Some(id), Some(target)) = (r.attribute("Id"), r.attribute("Target")) {
+                let external = r.attribute("TargetMode") == Some("External");
+                let target = if external { target.to_owned() } else { resolve(dir, target) };
+                rels.insert(id.to_owned(), (target, r.attribute("Type").unwrap_or_default().to_owned()));
+            }
+        }
+    }
+    rels
+}
+
+/// Parses an Office shapes package. `measure` returns the local size of a
+/// text element, used to anchor text vertically inside its shape.
+pub fn parse_package(bytes: &[u8], measure: &mut dyn FnMut(&ElementKind) -> DVec2) -> Result<OfficeClip, String> {
+    let files = unzip(bytes)?;
     let text = |data: &Vec<u8>| String::from_utf8_lossy(data).into_owned();
     let drawing_name = files
         .keys()
@@ -349,32 +410,19 @@ pub fn parse_package(bytes: &[u8], measure: &mut dyn FnMut(&ElementKind) -> DVec
         .find(|n| files.get(*n).is_some_and(|d| text(d).contains("lockedCanvas") || text(d).contains(":sp>")))
         .cloned()
         .ok_or("no drawing part in the package")?;
-    let theme = files.iter().find(|(n, _)| n.contains("theme") && n.ends_with(".xml")).map(|(_, d)| OfficeTheme::parse(&text(d)));
-    let (dir, file) = drawing_name.rsplit_once('/').unwrap_or(("", &drawing_name));
-    let rels_name = if dir.is_empty() { format!("_rels/{file}.rels") } else { format!("{dir}/_rels/{file}.rels") };
-    let mut rels = HashMap::new();
-    if let Some(data) = files.get(&rels_name) {
-        let xml = text(data);
-        if let Ok(doc) = roxmltree::Document::parse(&xml) {
-            for r in doc.descendants().filter(|n| n.tag_name().name() == "Relationship") {
-                if let (Some(id), Some(target)) = (r.attribute("Id"), r.attribute("Target")) {
-                    rels.insert(id.to_owned(), resolve(dir, target));
-                }
-            }
-        }
-    }
+    let theme = files
+        .iter()
+        .find(|(n, _)| n.contains("theme") && n.ends_with(".xml"))
+        .map(|(_, d)| OfficeTheme::parse(&text(d)))
+        .unwrap_or_else(OfficeTheme::default_office);
+    let rels = relationships(&files, &drawing_name).into_iter().map(|(id, (target, _))| (id, target)).collect();
     let xml = text(&files[&drawing_name]);
     let doc = roxmltree::Document::parse(&xml).map_err(|e| e.to_string())?;
-    let mut parser = Parser {
-        theme: theme.unwrap_or_else(OfficeTheme::default_office),
-        rels,
-        files,
-        measure,
-        out: OfficeClip { elements: Vec::new(), media: Vec::new() },
-    };
+    let mut out = OfficeClip { elements: Vec::new(), media: Vec::new() };
+    let mut parser = Parser::new(&theme, rels, &files, measure, &mut out);
     let root = find(doc.root(), "lockedCanvas").unwrap_or(doc.root_element());
     parser.walk(root, GroupMap::IDENTITY);
-    Ok(parser.out)
+    Ok(out)
 }
 
 /// Resolves a relationship target relative to the part's folder.
@@ -395,8 +443,12 @@ fn resolve(dir: &str, target: &str) -> String {
     parts.join("/")
 }
 
+fn is_placeholder(node: Node) -> bool {
+    find(node, "ph").is_some()
+}
+
 impl Parser<'_> {
-    fn walk(&mut self, node: Node, map: GroupMap) {
+    pub(crate) fn walk(&mut self, node: Node, map: GroupMap) {
         for c in node.children().filter(Node::is_element) {
             match c.tag_name().name() {
                 "sp" => self.shape(c, &map),
@@ -406,16 +458,28 @@ impl Parser<'_> {
                     self.walk(c, inner);
                 }
                 // Content wrappers PowerPoint may put around the canvas.
-                "graphic" | "graphicData" | "AlternateContent" | "Choice" => self.walk(c, map),
+                "graphic" | "graphicData" | "AlternateContent" | "Choice" | "spTree" | "cSld" => self.walk(c, map),
                 _ => {}
             }
         }
     }
 
+    /// What a placeholder inherits (nothing for ordinary shapes).
+    fn inherited(&self, node: Node) -> Inherited {
+        match self.inherit {
+            Some(f) if is_placeholder(node) => f(node).unwrap_or_default(),
+            _ => Inherited::default(),
+        }
+    }
+
     fn shape(&mut self, sp: Node, map: &GroupMap) {
+        if self.skip_placeholders && is_placeholder(sp) {
+            return;
+        }
+        self.current = self.inherited(sp);
         let props = child(sp, "spPr");
-        let Some(place) = placement(props, map) else { return };
-        let theme = &self.theme;
+        let Some(place) = placement(props, map).or_else(|| inherited_place(&self.current, map)) else { return };
+        let theme = self.theme;
         // Geometry: rectangles and ellipses become real shapes.
         let geometry = props.and_then(|p| child(p, "prstGeom")).and_then(|g| g.attribute("prst"));
         let fill = match paint(props, theme) {
@@ -453,18 +517,22 @@ impl Parser<'_> {
             self.out.elements.push(element(kind, place.center, place.rotation, "Shape"));
         }
         if let Some(body) = find(sp, "txBody") {
-            let font_color = style_color(sp, "fontRef", &self.theme);
+            let font_color = style_color(sp, "fontRef", self.theme);
             self.text(body, &place, font_color, map);
         }
     }
 
     fn text(&mut self, body: Node, place: &Placed, font_color: Option<Color>, map: &GroupMap) {
-        let theme = &self.theme;
+        let theme = self.theme;
+        let inherited = self.current.clone();
         let bp = child(body, "bodyPr");
         let inset = |attr: &str, default: f64| num(bp, attr).unwrap_or(default) * map.scale.x.abs() / EMU_PER_PX;
         let (l, t, r, b) = (inset("lIns", 91_440.0), inset("tIns", 45_720.0), inset("rIns", 91_440.0), inset("bIns", 45_720.0));
         let mut paragraphs = Vec::new();
         let mut first_run: Option<Node> = None;
+        // Every run's byte range in the final content, with its properties.
+        let mut runs: Vec<(usize, usize, Option<Node>)> = Vec::new();
+        let mut offset = 0usize;
         let mut align = None;
         let mut list = ListStyle::None;
         for p in body.children().filter(|n| n.is_element() && n.tag_name().name() == "p") {
@@ -473,7 +541,9 @@ impl Parser<'_> {
                 match part.tag_name().name() {
                     "r" | "fld" => {
                         if let Some(t) = child(part, "t").and_then(|t| t.text()) {
+                            let start = offset + line.len();
                             line.push_str(t);
+                            runs.push((start, offset + line.len(), child(part, "rPr")));
                         }
                         if first_run.is_none() {
                             first_run = child(part, "rPr");
@@ -494,9 +564,15 @@ impl Parser<'_> {
                     list = ListStyle::Numbered;
                 }
             }
+            // A body placeholder's paragraphs are bulleted unless they say otherwise.
+            let no_bullet = ppr.is_some_and(|pp| child(pp, "buNone").is_some());
+            if inherited.bullets == Some(true) && !no_bullet && list == ListStyle::None && !line.trim().is_empty() {
+                list = ListStyle::Bullet;
+            }
             if first_run.is_none() {
                 first_run = child(p, "endParaRPr");
             }
+            offset += line.len() + 1;
             paragraphs.push(line);
         }
         while paragraphs.last().is_some_and(|p| p.trim().is_empty()) {
@@ -507,10 +583,14 @@ impl Parser<'_> {
             return;
         }
         let rpr = first_run;
-        let size_pt = num(rpr, "sz").unwrap_or(1800.0) / 100.0;
+        let default_size = inherited.size.unwrap_or(1800.0);
+        let default_bold = inherited.bold.unwrap_or(false);
+        let size_pt = num(rpr, "sz").unwrap_or(default_size) / 100.0;
+        let default_color = font_color.or(inherited.color).or_else(|| theme.scheme("tx1", None)).unwrap_or(Color::BLACK);
+        let align = align.or(inherited.align.as_deref());
         let color = match paint(rpr, theme) {
             Paint::Color(c) => c,
-            _ => font_color.or_else(|| theme.scheme("tx1", None)).unwrap_or(Color::BLACK),
+            _ => default_color,
         };
         let family = rpr
             .and_then(|r| child(r, "latin"))
@@ -528,7 +608,7 @@ impl Parser<'_> {
         let mut block = TextBlock::new(content);
         block.font_size = size_pt * map.scale.y.abs() * 96.0 / 72.0;
         block.font_family = family;
-        block.weight = if rpr.and_then(|r| r.attribute("b")) == Some("1") { 700 } else { 400 };
+        block.weight = if rpr.and_then(|r| r.attribute("b")).map_or(default_bold, |b| b == "1") { 700 } else { 400 };
         block.italic = rpr.and_then(|r| r.attribute("i")) == Some("1");
         block.color = color;
         block.align = match align {
@@ -538,11 +618,32 @@ impl Parser<'_> {
         };
         block.max_width = wrap.then_some(width);
         block.list = list;
+        // Runs that differ from the first one become formatted spans.
+        let px_per_pt = map.scale.y.abs() * 96.0 / 72.0;
+        for (start, end, props) in runs {
+            if start >= end || end > block.content.len() {
+                continue;
+            }
+            let flag = |name: &str| props.and_then(|r| r.attribute(name));
+            // Office defaults for a run: not bold, not italic, 18 pt, the shape's text color.
+            let style = glide_core::SpanStyle {
+                bold: Some(flag("b").map_or(default_bold, |v| v == "1")),
+                italic: Some(flag("i") == Some("1")),
+                underline: flag("u").is_some_and(|v| v != "none"),
+                strike: flag("strike").is_some_and(|v| v != "noStrike"),
+                color: Some(match paint(props, theme) {
+                    Paint::Color(c) => c,
+                    _ => default_color,
+                }),
+                size: Some(num(props, "sz").unwrap_or(default_size) / 100.0 * px_per_pt),
+            };
+            block.format_range(start..end, |s| *s = style.clone());
+        }
         let kind = ElementKind::Text(block);
         // Anchor vertically inside the shape, then rotate with it.
         let text_h = (self.measure)(&kind).y;
         let half = place.size.y.abs() / 2.0;
-        let dy = match bp.and_then(|b| b.attribute("anchor")) {
+        let dy = match bp.and_then(|b| b.attribute("anchor")).or(inherited.anchor.as_deref()) {
             Some("ctr") => (t - b) / 2.0,
             Some("b") => half - b - text_h / 2.0,
             _ => -half + t + text_h / 2.0,
@@ -553,7 +654,11 @@ impl Parser<'_> {
     }
 
     fn picture(&mut self, pic: Node, map: &GroupMap) {
-        let Some(place) = placement(child(pic, "spPr"), map) else { return };
+        if self.skip_placeholders && is_placeholder(pic) {
+            return;
+        }
+        let inherited = self.inherited(pic);
+        let Some(place) = placement(child(pic, "spPr"), map).or_else(|| inherited_place(&inherited, map)) else { return };
         let Some(id) = find(pic, "blip").and_then(|b| b.attributes().find(|a| a.name() == "embed").map(|a| a.value().to_owned())) else {
             return;
         };
@@ -568,6 +673,14 @@ impl Parser<'_> {
         let media = Media::new(format!("{MEDIA_PREFIX}{index}"), place.size.x.abs(), place.size.y.abs());
         self.out.elements.push(element(ElementKind::Image(media), place.center, place.rotation, "Picture"));
     }
+}
+
+/// A placeholder's inherited position as a placed box.
+fn inherited_place(inherited: &Inherited, map: &GroupMap) -> Option<Placed> {
+    let (off, ext) = inherited.xfrm?;
+    let top_left = map.apply(off);
+    let size = ext * map.scale;
+    Some(Placed { center: (top_left + size / 2.0) / EMU_PER_PX, size: size / EMU_PER_PX, rotation: 0.0 })
 }
 
 fn element(kind: ElementKind, center: DVec2, rotation: f64, name: &str) -> Element {
@@ -651,6 +764,10 @@ mod tests {
         assert_eq!((t.weight, t.color, t.font_family.as_str()), (700, hex(0xC00000), "Aptos Display"));
         assert_eq!(t.list, ListStyle::Bullet);
         assert!((t.max_width.unwrap() - (300.0 - 19.2)).abs() < 1e-9, "wraps inside the insets");
+        // "Hello " is a bold red run; "world" is a plain run in the theme's text
+        // color, so it becomes a regular-weight, black span.
+        let world = t.spans.iter().find(|s| &t.content[s.start..s.end] == "world").expect("a span for the plain run");
+        assert_eq!((world.style.bold, world.style.color), (Some(false), Some(Color::BLACK)), "{:?}", t.spans);
         assert!((tb.transform.x - 250.0).abs() < 1e-9, "box spans 100..400 px");
 
         // The oval: theme fill and outline from the shape style, rotated 90°.

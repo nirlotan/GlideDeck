@@ -515,15 +515,21 @@ fn text_body(t: &glide_core::TextBlock, emu_per_local: f64, opacity: f64, family
     let wrap = if t.max_width.is_some() { "square" } else { "none" };
     // PowerPoint's "single" spacing is ~1.2× the font size.
     let spacing = ((t.line_height / 1.2) * 100_000.0).round().clamp(10_000.0, 1_000_000.0) as i64;
-    let bold = if t.weight >= 600 { "1" } else { "0" };
-    let italic = if t.italic { "1" } else { "0" };
     let face = esc(family);
-    let rpr = |extra: &str| {
+    // Run properties for a formatted span (the box's own style when plain).
+    let rpr_for = |extra: &str, style: &glide_core::SpanStyle| {
+        let size = style.size.map_or(sz, |z| (z * emu_per_local / EMU_PER_PT * 100.0).round().clamp(100.0, 400_000.0) as i64);
+        let b = if t.is_bold(style) { "1" } else { "0" };
+        let i = if t.is_italic(style) { "1" } else { "0" };
+        let u = if style.underline { r#" u="sng""# } else { "" };
+        let strike = if style.strike { r#" strike="sngStrike""# } else { "" };
         format!(
-            r#"<a:{extra} lang="en-US" sz="{sz}" b="{bold}" i="{italic}" dirty="0">{}<a:latin typeface="{face}"/><a:ea typeface="{face}"/><a:cs typeface="{face}"/></a:{extra}>"#,
-            solid(t.color, opacity)
+            r#"<a:{extra} lang="en-US" sz="{size}" b="{b}" i="{i}"{u}{strike} dirty="0">{}<a:latin typeface="{face}"/><a:ea typeface="{face}"/><a:cs typeface="{face}"/></a:{extra}>"#,
+            solid(style.color.unwrap_or(t.color), opacity)
         )
     };
+    let rpr = |extra: &str| rpr_for(extra, &glide_core::SpanStyle::default());
+    let segments = t.segments();
     let mut paras = String::new();
     // Hanging indent matching the canvas (0.95em bullets, 1.55em numbers).
     let em = t.font_size * emu_per_local;
@@ -543,16 +549,26 @@ fn text_body(t: &glide_core::TextBlock, emu_per_local: f64, opacity: f64, family
             }
         }
     };
-    for line in t.content.split('\n') {
-        let line = line.trim_end_matches('\r');
+    let mut line_start = 0;
+    for raw in t.content.split('\n') {
+        let start = line_start;
+        line_start += raw.len() + 1;
+        let line = raw.trim_end_matches('\r');
         let rtl = if is_rtl(line) { r#" rtl="1""# } else { "" };
         let (mar, bullet) = list_ppr(line);
         let ppr = format!(r#"<a:pPr{mar} algn="{algn}"{rtl}><a:lnSpc><a:spcPct val="{spacing}"/></a:lnSpc>{bullet}</a:pPr>"#);
         if line.is_empty() {
             let _ = write!(paras, "<a:p>{ppr}{}</a:p>", rpr("endParaRPr"));
         } else {
-            let run_props = rpr("rPr");
-            let _ = write!(paras, "<a:p>{ppr}<a:r>{run_props}<a:t>{}</a:t></a:r></a:p>", esc(line));
+            // One run per formatted segment of this paragraph.
+            let mut runs = String::new();
+            for (a, b, style) in &segments {
+                let (a, b) = ((*a).max(start), (*b).min(start + line.len()));
+                if a < b {
+                    let _ = write!(runs, "<a:r>{}<a:t>{}</a:t></a:r>", rpr_for("rPr", style), esc(&t.content[a..b]));
+                }
+            }
+            let _ = write!(paras, "<a:p>{ppr}{runs}</a:p>");
         }
     }
     format!(
@@ -747,7 +763,14 @@ mod tests {
         let mut f2 = Element::new(ElementKind::Frame(Frame::widescreen(160.0)))
             .with_transform(Transform { x: 300.0, y: 100.0, scale: 1.0, rotation: 30.0 });
         f2.id = "f2".into();
-        let mut t = Element::new(ElementKind::Text(TextBlock::new("Hello & <world>")))
+        let mut tb = TextBlock::new("Hello & <world>");
+        tb.format_range(0..5, |st| st.bold = Some(true));
+        tb.format_range(8..15, |st| {
+            st.underline = true;
+            st.strike = true;
+            st.color = Some(Color::rgb(0x12, 0x34, 0x56));
+        });
+        let mut t = Element::new(ElementKind::Text(tb))
             .with_transform(Transform { x: 300.0, y: 100.0, scale: 0.5, rotation: 30.0 });
         t.id = "hello".into();
         doc.add(f1);
@@ -790,7 +813,11 @@ mod tests {
         let s1 = read("ppt/slides/slide1.xml");
         let s2 = read("ppt/slides/slide2.xml");
         assert!(s1.contains(r#"name="!!hello""#) && s2.contains(r#"name="!!hello""#));
-        assert!(s1.contains("Hello &amp; &lt;world&gt;"));
+        // Formatted spans become separate runs.
+        assert!(s1.contains(r#"b="1""#), "a bold run");
+        assert!(s1.contains("<a:t>Hello</a:t>") && s1.contains("<a:t> &amp; </a:t>") && s1.contains("<a:t>&lt;world&gt;</a:t>"), "{s1}");
+        assert!(s1.contains(r#"u="sng" strike="sngStrike""#));
+        assert!(s1.contains(r#"val="123456""#));
         assert!(s1.contains("<a:custGeom>") && (s1.contains("<a:cubicBezTo>") || s1.contains("<a:quadBezTo>")), "icons export as vector geometry");
         assert!(s1.contains(r#"<a:lin ang="5400000""#), "gradient fill + gradient background");
         assert!(s1.contains("<a:outerShdw"), "shadows export");

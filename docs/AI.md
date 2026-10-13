@@ -155,6 +155,8 @@ MCP server also tells the assistant the workflow when it connects.
 | `remove_slide` | Removes a slide and its content |
 | `render_slide` | Renders a slide to PNG and returns the image, so the assistant can check its work |
 | `export_pptx` | PowerPoint export with Morph transitions |
+| `export_pdf` | PDF, one page per slide |
+| `import_pptx` | Converts a PowerPoint file into a GlideDeck project (slides, text, pictures, notes) |
 | `save_as` | Saves a copy or version of the project (media included) |
 | `open_in_editor` | Opens the project in the GlideDeck editor |
 | `search_icons` | Finds names among ~1,500 Phosphor icons |

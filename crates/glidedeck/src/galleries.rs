@@ -133,7 +133,11 @@ const CATEGORIES: [(&str, &str); 12] = [
 ];
 
 pub fn icon_picker(app: &mut GlideDeckApp, ctx: &egui::Context) {
+    // Focus the search box once when the picker opens, not every frame, so
+    // keyboard shortcuts (Delete, arrows…) still reach the canvas.
+    let focused_once = egui::Id::new("icon-picker-search-focused");
     if !app.icon_picker.open {
+        ctx.data_mut(|d| d.remove::<bool>(focused_once));
         return;
     }
     let p = ui_theme::palette(ctx);
@@ -150,8 +154,9 @@ pub fn icon_picker(app: &mut GlideDeckApp, ctx: &egui::Context) {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(icon::MAGNIFYING_GLASS).size(16.0).color(p.text_muted));
                 let r = ui.add(egui::TextEdit::singleline(&mut ip.query).hint_text("Search 1,500 icons…").desired_width(f32::INFINITY));
-                if ui.memory(|m| m.focused().is_none()) {
+                if !ui.data(|d| d.get_temp::<bool>(focused_once).unwrap_or(false)) {
                     r.request_focus();
+                    ui.data_mut(|d| d.insert_temp(focused_once, true));
                 }
             });
             ui.horizontal_wrapped(|ui| {

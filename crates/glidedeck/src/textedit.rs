@@ -7,6 +7,7 @@
 
 use crate::app::GlideDeckApp;
 use crate::canvas::dvec;
+use crate::textformat::{Pending, TextFormat};
 use crate::theme;
 use eframe::egui::{self, Event, Key, Pos2};
 use glam::DVec2;
@@ -21,6 +22,10 @@ pub struct TextEditSession {
     /// Time of the last edit or caret move (keeps the caret solid while typing).
     activity: f64,
     dragging: bool,
+    /// Formatting chosen with no selection, for the next characters typed.
+    pub pending: Option<Pending>,
+    /// Screen rect of the floating format bar (clicks there keep editing).
+    pub format_bar: Option<egui::Rect>,
 }
 
 impl GlideDeckApp {
@@ -32,7 +37,16 @@ impl GlideDeckApp {
         let state = EditState::select_all(&t.content);
         self.selection = vec![id.to_owned()];
         self.tool = crate::app::Tool::Select;
-        self.text_edit = Some(TextEditSession { id: id.to_owned(), state, caret: None, selection: Vec::new(), activity: 0.0, dragging: false });
+        self.text_edit = Some(TextEditSession {
+            id: id.to_owned(),
+            state,
+            caret: None,
+            selection: Vec::new(),
+            activity: 0.0,
+            dragging: false,
+            pending: None,
+            format_bar: None,
+        });
         match at {
             Some(world) => {
                 let local = el.transform.affine().inverse().transform_point2(world);
@@ -62,7 +76,18 @@ impl GlideDeckApp {
         let ElementKind::Text(t) = &mut el.kind else { return };
         let result = self.renderer.text.edit(t, session.state, actions);
         if t.content != result.content {
-            t.content = result.content;
+            // Keeps formatting attached to the unchanged text; typed text takes
+            // the pending formatting, if any.
+            let typed = t.set_content(result.content);
+            if let Some(p) = session.pending.take()
+                && !typed.is_empty()
+            {
+                crate::textformat::apply_pending(t, typed, &p);
+            }
+        }
+        // Moving the caret forgets formatting chosen for the old position.
+        if actions.iter().any(|a| !matches!(a, EditAction::Insert(_) | EditAction::Enter | EditAction::Copy)) && !actions.is_empty() {
+            session.pending = None;
         }
         session.state = result.state;
         session.caret = result.caret;
@@ -74,6 +99,15 @@ impl GlideDeckApp {
         }
         if let (Some(copied), Some(ctx)) = (result.copied, ctx) {
             ctx.copy_text(copied);
+        }
+    }
+
+    /// Recomputes the caret and selection after the text changed outside an edit.
+    pub fn refresh_text_edit(&mut self) {
+        let pending = self.text_edit.as_ref().and_then(|s| s.pending);
+        self.apply_edit(&[], None);
+        if let Some(s) = &mut self.text_edit {
+            s.pending = pending;
         }
     }
 
@@ -102,17 +136,37 @@ impl GlideDeckApp {
         });
 
         let mut actions = Vec::new();
+        let mut formats = Vec::new();
         let mut exit = false;
+        let shift_held = ctx.input(|i| i.modifiers.shift);
         for ev in ctx.input(|i| i.events.clone()) {
             match ev {
                 Event::Text(s) if !s.chars().all(char::is_control) => actions.push(EditAction::Insert(s)),
                 Event::Ime(egui::ImeEvent::Commit(s)) if !s.is_empty() => actions.push(EditAction::Insert(s)),
                 Event::Paste(s) => actions.push(EditAction::Insert(s.replace("\r\n", "\n"))),
                 Event::Copy => actions.push(EditAction::Copy),
+                // egui reports Ctrl/⌘+Shift+X as a cut; here it means strikethrough.
+                Event::Cut if shift_held => formats.push(TextFormat::Strike),
                 Event::Cut => actions.push(EditAction::Cut),
+                Event::Key { key, pressed: true, modifiers, .. } if modifiers.command => match key {
+                    Key::B => formats.push(TextFormat::Bold),
+                    Key::I => formats.push(TextFormat::Italic),
+                    Key::U => formats.push(TextFormat::Underline),
+                    Key::CloseBracket | Key::Period => formats.push(TextFormat::Bigger),
+                    Key::OpenBracket | Key::Comma => formats.push(TextFormat::Smaller),
+                    Key::Backslash => formats.push(TextFormat::Clear),
+                    Key::A => actions.push(EditAction::SelectAll),
+                    Key::ArrowLeft => actions.push(EditAction::Move { motion: TextMotion::PreviousWord, select: modifiers.shift }),
+                    Key::ArrowRight => actions.push(EditAction::Move { motion: TextMotion::NextWord, select: modifiers.shift }),
+                    Key::Home => actions.push(EditAction::Move { motion: TextMotion::BufferStart, select: modifiers.shift }),
+                    Key::End => actions.push(EditAction::Move { motion: TextMotion::BufferEnd, select: modifiers.shift }),
+                    Key::Backspace => actions.push(EditAction::Backspace),
+                    Key::Delete => actions.push(EditAction::Delete),
+                    _ => {}
+                },
                 Event::Key { key, pressed: true, modifiers, .. } => {
                     let select = modifiers.shift;
-                    let word = modifiers.command || modifiers.alt;
+                    let word = modifiers.alt;
                     let mv = |motion| EditAction::Move { motion, select };
                     match key {
                         Key::Enter => actions.push(EditAction::Enter),
@@ -123,9 +177,8 @@ impl GlideDeckApp {
                         Key::ArrowRight => actions.push(mv(if word { TextMotion::NextWord } else { TextMotion::Right })),
                         Key::ArrowUp => actions.push(mv(TextMotion::Up)),
                         Key::ArrowDown => actions.push(mv(TextMotion::Down)),
-                        Key::Home => actions.push(mv(if modifiers.command { TextMotion::BufferStart } else { TextMotion::Home })),
-                        Key::End => actions.push(mv(if modifiers.command { TextMotion::BufferEnd } else { TextMotion::End })),
-                        Key::A if modifiers.command => actions.push(EditAction::SelectAll),
+                        Key::Home => actions.push(mv(TextMotion::Home)),
+                        Key::End => actions.push(mv(TextMotion::End)),
                         _ => {}
                     }
                 }
@@ -147,8 +200,10 @@ impl GlideDeckApp {
                 i.modifiers.shift,
             )
         });
+        let on_bar = pos.is_some_and(|p| self.text_edit.as_ref().and_then(|s| s.format_bar).is_some_and(|r| r.contains(p)));
         if let Some(p) = pos
             && rect.contains(p)
+            && !on_bar
         {
             let size = self.renderer.local_size(&el);
             let tolerance = 6.0 / self.camera.zoom;
@@ -178,6 +233,9 @@ impl GlideDeckApp {
         }
         if !actions.is_empty() {
             self.apply_edit(&actions, Some(&ctx));
+        }
+        for f in formats {
+            self.format_text(f);
         }
         ctx.set_cursor_icon(egui::CursorIcon::Text);
         true

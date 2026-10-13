@@ -311,7 +311,7 @@ impl GlideDeckApp {
     /// text. Images and copied files arrive as a bare key release, which is
     /// picked up here and routed through the native clipboard.
     pub fn handle_paste_events(&mut self, ctx: &egui::Context) -> Vec<Action> {
-        if ctx.egui_wants_keyboard_input() {
+        if ctx.text_edit_focused() {
             return Vec::new();
         }
         let pointer = ctx.pointer_hover_pos().filter(|p| self.canvas_rect.contains(*p)).map(|p| crate::canvas::dvec(p - self.canvas_rect.min));
@@ -361,9 +361,14 @@ impl GlideDeckApp {
         }
         let paths: Vec<PathBuf> =
             dropped.iter().map(|f| f.path().to_path_buf()).filter(|p| !p.as_os_str().is_empty()).collect();
-        if let Some(doc) = paths.iter().find(|p| p.to_string_lossy().ends_with(".json")) {
+        if let Some(doc) = paths.iter().find(|p| {
+            let name = p.to_string_lossy().to_lowercase();
+            name.ends_with(".json") || name.ends_with(".pptx")
+        }) {
             let doc = doc.clone();
-            self.open_path(&doc);
+            if self.confirm_discard() {
+                self.open_any(ctx, &doc);
+            }
             return;
         }
         let videos: Vec<PathBuf> = paths.iter().filter(|p| is_video_path(p)).cloned().collect();

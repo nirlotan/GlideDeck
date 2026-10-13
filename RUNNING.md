@@ -168,8 +168,28 @@ right. The app follows your system's light/dark setting; the sun/moon button swi
 
 **Present** (F5 from the start, Shift+F5 from the current slide) goes fullscreen.
 → / Space / PageDown / click advance; ← / PageUp / right-click go back; Home / End jump;
-Esc ends the show. The mouse wheel still zooms freely, and the next step returns to the
-path. Presenter view on a second screen is planned for the next milestone.
+**B** or **W** blacks or whites out the screen; Esc ends the show. The mouse wheel still
+zooms freely, and the next step returns to the path.
+
+**Presenter view.** With a second display connected (a projector or TV), F5 shows the
+audience view fullscreen on that display. Your screen becomes the presenter console:
+
+- the live current slide, exactly as the audience sees it;
+- the next slide;
+- the slide's **speaker notes**, with A−/A+ to resize them. Notes support `# headings`,
+  `- bullets`, `1. numbers` and `**bold**`;
+- an elapsed **timer** (pause and reset) and the clock;
+- Previous / Next, Black / White screen, **Swap displays** (if the show landed on the
+  wrong screen) and End show.
+
+Keys and clickers work in either window. **Alt+F5** (Present → Presenter view) opens
+presenter view on a single display too: the audience view opens in its own window, which
+you can drag to another screen and make fullscreen. Write notes in Properties → Speaker
+notes when the slide's frame is selected. To open a file straight into the show:
+
+```bash
+glidedeck present talk.glide.json --presenter-view
+```
 
 ### Editing text in place
 
@@ -181,6 +201,21 @@ processor, at any zoom or rotation. **Esc** or clicking outside finishes; an emp
 box is removed. The multi-line field in Properties also edits text, but it shows
 right-to-left words in left-to-right order, so use the canvas for those scripts.
 
+**Formatting words and phrases:** while editing, select text and use the floating format
+bar above the text box, or the shortcuts below. With nothing selected, the formatting
+applies to what you type next.
+
+| Format | Shortcut |
+|---|---|
+| Bold / italic / underline | Ctrl/⌘ + `B` / `I` / `U` |
+| Strikethrough | Ctrl/⌘ + Shift + `X` |
+| Larger / smaller | Ctrl/⌘ + `]` / `[` |
+| Clear formatting | Ctrl/⌘ + `\` |
+
+The bar also has the theme's colours. When a text box is selected but not being edited,
+the same commands (and the Home → Text format buttons) format the whole box. Formatting
+is exported to PowerPoint as real formatted text.
+
 **Bullets and numbering:** select a text box, then use the list buttons in Home → Text
 format (or Properties → List). Each paragraph gets a marker with a proper hanging indent,
 placed on the right for right-to-left paragraphs. Lists export to PowerPoint as real
@@ -189,7 +224,10 @@ bullets.
 ### Resizing and rotating
 
 Select a single object to show its handles. Drag a **corner** to resize it uniformly from
-the opposite corner, so images, icons and SVGs never distort. Drag the **round knob**
+the opposite corner, so images, icons and SVGs never distort. Text boxes also have
+**side handles**: drag them to change the wrap width, and the text reflows onto more or
+fewer lines without changing size. Rectangles, ellipses and frames have a handle on each
+side to stretch just their width or height. Drag the **round knob**
 above the object to rotate it; hold **Shift** to snap to 15°. Exact values are always
 editable in Properties → Layout.
 
@@ -257,7 +295,37 @@ rotation, so you can zoom in and build nested "worlds".
   pans and rotations. Invisible frames are left out; bordered or filled frames are
   exported as shapes. Requires PowerPoint 2019 / Microsoft 365, or PowerPoint for Mac
   16.x. Older versions show a fade instead.
+- **Present → PDF** (or File → Export PDF) writes one page per slide on the path, rendered
+  exactly as in the show (2560 px wide images). It's handy for sharing a handout or
+  printing.
 - **Present → PNG image** saves the current view at 2× resolution.
+
+### Importing PowerPoint
+
+**File → Import PowerPoint…** (or File → Open, or dropping a `.pptx` on the window) turns a
+PowerPoint presentation into a new GlideDeck document.
+
+- **Layout:** every slide becomes a frame, laid out in a grid on a neutral canvas and
+  added to the path in slide order, ready to rearrange into a zooming story.
+- **Brought over:**
+  - text boxes and placeholders with their formatting (bold, italic, underline, colours,
+    sizes, alignment and bullets);
+  - rectangles, rounded rectangles, ellipses and pictures;
+  - slide backgrounds (colour or picture);
+  - the master's and layout's logos and lines;
+  - speaker notes, which presenter view shows.
+- **Inheritance:** placeholders take their position and style from the slide layout and
+  master, as in PowerPoint.
+- **Not converted yet:** tables, charts and SmartArt are listed as skipped. Shapes other
+  than rectangles and ellipses keep their text but not their outline.
+
+The import is unsaved until you save it; Save As stores its pictures next to the document.
+
+### Recent files
+
+**File → Open recent** lists the last 10 documents (and PowerPoint files) you opened, saved
+or imported. The list lives in your user settings folder: `%APPDATA%\GlideDeck` on
+Windows, `~/Library/Application Support/GlideDeck` on macOS.
 
 ---
 
@@ -288,6 +356,8 @@ glidedeck render talk.glide.json --out slide3.png --step 3
 
 ```bash
 glidedeck export-pptx talk.glide.json --out talk.pptx
+glidedeck export-pdf talk.glide.json --out talk.pdf
+glidedeck import-pptx deck.pptx --out deck.glide.json
 ```
 
 - `new [--demo | --template NAME] [--force]` creates an empty document, the welcome canvas, or

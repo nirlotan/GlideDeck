@@ -326,7 +326,12 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
                 });
             }),
             ElementKind::Text(t) => card(ui, "Text", |ui| {
-                let r = ui.add(egui::TextEdit::multiline(&mut t.content).desired_rows(3).desired_width(f32::INFINITY));
+                // Edit a copy so formatted spans move with the text that changed.
+                let mut content = t.content.clone();
+                let r = ui.add(egui::TextEdit::multiline(&mut content).desired_rows(3).desired_width(f32::INFINITY));
+                if r.changed() {
+                    t.set_content(content);
+                }
                 if focus_text {
                     r.request_focus();
                 }

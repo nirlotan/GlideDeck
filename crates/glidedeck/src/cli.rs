@@ -26,6 +26,17 @@ pub struct Cli {
 pub enum Command {
     /// Open a document (or the welcome canvas) in the editor.
     Open { file: Option<PathBuf> },
+    /// Open a document straight into the show.
+    Present {
+        file: PathBuf,
+        /// Use presenter view (notes, next slide, timer) even on a single display.
+        /// With a second display connected it is used automatically.
+        #[arg(long)]
+        presenter_view: bool,
+        /// Start at this slide (1-based).
+        #[arg(long, default_value_t = 1)]
+        slide: usize,
+    },
     /// Create a new document.
     New {
         file: PathBuf,
@@ -62,6 +73,27 @@ pub enum Command {
         file: PathBuf,
         #[arg(short, long)]
         out: PathBuf,
+    },
+    /// Import a PowerPoint presentation (.pptx) as a new GlideDeck project.
+    ///
+    /// Each slide becomes a frame with its text, shapes, pictures, background
+    /// and speaker notes; pictures are copied into `assets/` next to the output.
+    ImportPptx {
+        file: PathBuf,
+        #[arg(short, long)]
+        out: PathBuf,
+        /// Overwrite an existing file.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Export the presentation to PDF: one page per slide on the path.
+    ExportPdf {
+        file: PathBuf,
+        #[arg(short, long)]
+        out: PathBuf,
+        /// Rendered width of each slide, in pixels.
+        #[arg(long, default_value_t = 2560)]
+        width: u32,
     },
     /// Run the MCP server on stdio, so AI assistants (Claude, GitHub Copilot, …)
     /// can create and edit presentations.
@@ -129,7 +161,23 @@ fn parse_point(s: &str) -> Result<DVec2, String> {
 
 pub fn run(cmd: Command) -> Result<()> {
     match cmd {
-        Command::Open { .. } => unreachable!("handled by main"),
+        Command::Open { .. } | Command::Present { .. } => unreachable!("handled by main"),
+        Command::ImportPptx { file, out, force } => {
+            if out.exists() && !force {
+                bail!("{} already exists (use --force to overwrite)", out.display());
+            }
+            let mut text = glide_render::TextEngine::new();
+            let (doc, skipped) = crate::pptx_import::import_to_project(&file, &out, &mut text).map_err(|e| anyhow::anyhow!(e))?;
+            println!("{}", json!({ "written": out, "slides": doc.path.len(), "skipped": skipped }));
+        }
+        Command::ExportPdf { file, out, width } => {
+            let doc = Document::load(&file)?;
+            let mut r = HeadlessRenderer::new()?;
+            r.canvas.set_base_dir(file.parent().map(Path::to_path_buf));
+            let opts = crate::pdf::PdfOptions { width_px: width, ..Default::default() };
+            let report = crate::pdf::export(&mut r.canvas, &doc, &out, opts).map_err(|e| anyhow::anyhow!(e))?;
+            println!("{}", json!({ "written": out, "pages": report.pages, "bytes": report.bytes }));
+        }
         Command::Mcp { root } => {
             let root = match root {
                 Some(r) => r,

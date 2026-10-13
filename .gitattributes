@@ -3,4 +3,6 @@
 *.ico binary
 *.ttf binary
 *.msi binary
+*.pptx binary
+*.pdf binary
 *.ps1 text eol=crlf

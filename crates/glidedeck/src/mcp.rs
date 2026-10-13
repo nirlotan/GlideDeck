@@ -28,7 +28,7 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` if the user wants PowerPoint. Keep slide text short: one idea per slide.";
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`. Keep slide text short: one idea per slide.";
 
 /// Runs the server until stdin closes.
 pub fn serve(root: PathBuf) -> Result<()> {
@@ -178,6 +178,37 @@ impl Server {
                 }))])
             }
             "save_as" => self.save_as(args),
+            "import_pptx" => {
+                let pptx = self.resolve(str_arg(args, "pptx")?);
+                let path = match args.get("path").and_then(Value::as_str) {
+                    Some(_) => self.project_path(args, "path")?,
+                    None => with_suffix(&pptx, "glide.json"),
+                };
+                if path.exists() && !args.get("overwrite").and_then(Value::as_bool).unwrap_or(false) {
+                    bail!("{} already exists; pass overwrite: true or another path", path.display());
+                }
+                let (doc, skipped) = crate::pptx_import::import_to_project(&pptx, &path, self.text()).map_err(|e| anyhow::anyhow!(e))?;
+                let mut summary = self.summary(&doc, &path);
+                summary["skipped"] = json!(skipped);
+                Ok(vec![text_json(&summary)])
+            }
+            "export_pdf" => {
+                let path = self.project_path(args, "path")?;
+                let doc = load(&path)?;
+                let out = match args.get("out").and_then(Value::as_str) {
+                    Some(o) => self.resolve(o),
+                    None => with_suffix(&path, "pdf"),
+                };
+                if self.renderer.is_none() {
+                    self.renderer = Some(HeadlessRenderer::new().context("no GPU available for rendering")?);
+                }
+                let r = self.renderer.as_mut().expect("just created");
+                r.canvas.set_base_dir(Some(base_dir(&path)));
+                let width = args.get("width").and_then(Value::as_u64).unwrap_or(2560) as u32;
+                let report = crate::pdf::export(&mut r.canvas, &doc, &out, crate::pdf::PdfOptions { width_px: width, ..Default::default() })
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                Ok(vec![text_json(&json!({ "written": out, "pages": report.pages, "bytes": report.bytes }))])
+            }
             "open_in_editor" => {
                 let path = self.project_path(args, "path")?;
                 if !path.exists() {
@@ -262,7 +293,7 @@ impl Server {
             let el = doc.get_mut(id).with_context(|| format!("no element with id {id:?}"))?;
             if let Some(t) = u.get("text").and_then(Value::as_str) {
                 let ElementKind::Text(block) = &mut el.kind else { bail!("{id} is not a text element") };
-                block.content = t.to_owned();
+                set_text(block, t, u.get("markdown").and_then(Value::as_bool).unwrap_or(false));
             }
             if let Some(name) = u.get("icon").and_then(Value::as_str) {
                 let ElementKind::Icon(icon) = &mut el.kind else { bail!("{id} is not an icon") };
@@ -301,7 +332,7 @@ impl Server {
             _ => TextRole::Body,
         };
         let mut block = theme.text_style(role);
-        block.content = str_arg(args, "text")?.to_owned();
+        set_text(&mut block, str_arg(args, "text")?, args.get("markdown").and_then(Value::as_bool).unwrap_or(false));
         if let Some(size) = args.get("size").and_then(Value::as_f64) {
             block.font_size = size;
         }
@@ -505,7 +536,7 @@ fn base_dir(path: &Path) -> PathBuf {
 /// `talk.glide.json` → `talk.pptx` next to it.
 fn with_suffix(path: &Path, ext: &str) -> PathBuf {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("presentation");
-    let stem = name.strip_suffix(".glide.json").or_else(|| name.strip_suffix(".json")).unwrap_or(name);
+    let stem = name.strip_suffix(".glide.json").or_else(|| name.rsplit_once('.').map(|(stem, _)| stem)).unwrap_or(name);
     path.with_file_name(format!("{stem}.{ext}"))
 }
 
@@ -622,7 +653,10 @@ fn fill_fields(elements: &mut [Element], texts: Option<&Value>, icons: Option<&V
             }
             for (i, value) in targets.into_iter().zip(values(v)) {
                 match &mut elements[i].kind {
-                    ElementKind::Text(t) => t.content = value,
+                    ElementKind::Text(t) => {
+                        t.spans.clear();
+                        t.content = value;
+                    }
                     ElementKind::Icon(icon) => {
                         check_icon(&value)?;
                         icon.name = value;
@@ -670,6 +704,70 @@ fn owner_frame(doc: &Document, el: &Element, text: &mut TextEngine) -> Option<St
         })
         .min_by(|a, b| a.0.total_cmp(&b.0))
         .map(|(_, id)| id)
+}
+
+/// Sets a text box's text: plain (keeping formatting on unchanged text), or
+/// with inline Markdown (`**bold**`, `*italic*`, `__underline__`, `~~strike~~`)
+/// turned into formatting.
+fn set_text(block: &mut glide_core::TextBlock, text: &str, markdown: bool) {
+    if !markdown {
+        block.set_content(text.to_owned());
+        return;
+    }
+    let (plain, spans) = inline_markdown(text);
+    block.content = plain;
+    block.spans = spans;
+    block.normalize_spans();
+}
+
+/// Parses `**bold**`, `*italic*`/`_italic_`, `__underline__` and `~~strike~~`.
+fn inline_markdown(src: &str) -> (String, Vec<glide_core::TextSpan>) {
+    const MARKS: [&str; 5] = ["**", "__", "~~", "*", "_"];
+    let mut out = String::new();
+    let mut spans = Vec::new();
+    let mut open: Vec<(&str, usize)> = Vec::new();
+    let mut rest = src;
+    while !rest.is_empty() {
+        let mark = MARKS.iter().find(|m| rest.starts_with(**m)).copied();
+        // A single `_` inside a word (snake_case) is text, not italics.
+        let word_inside = mark == Some("_") && out.chars().last().is_some_and(char::is_alphanumeric) && rest[1..].chars().next().is_some_and(char::is_alphanumeric);
+        match mark {
+            Some(m) if !word_inside && (open.iter().any(|(o, _)| *o == m) || rest[m.len()..].contains(m)) => {
+                if let Some(i) = open.iter().rposition(|(o, _)| *o == m) {
+                    let (_, start) = open.remove(i);
+                    let mut style = glide_core::SpanStyle::default();
+                    match m {
+                        "**" => style.bold = Some(true),
+                        "__" => style.underline = true,
+                        "~~" => style.strike = true,
+                        _ => style.italic = Some(true),
+                    }
+                    spans.push(glide_core::TextSpan { start, end: out.len(), style });
+                } else {
+                    open.push((m, out.len()));
+                }
+                rest = &rest[m.len()..];
+            }
+            _ => {
+                let c = rest.chars().next().expect("non-empty");
+                out.push(c);
+                rest = &rest[c.len_utf8()..];
+            }
+        }
+    }
+    // Nested markers (`**bold _and italic_**`) overlap: flatten them into
+    // consecutive styled segments.
+    let mut block = glide_core::TextBlock::new(out.clone());
+    for s in spans {
+        let st = s.style.clone();
+        block.format_range(s.start..s.end, |x| {
+            x.bold = x.bold.or(st.bold);
+            x.italic = x.italic.or(st.italic);
+            x.underline |= st.underline;
+            x.strike |= st.strike;
+        });
+    }
+    (out, block.spans)
 }
 
 fn base64(bytes: &[u8]) -> String {
@@ -740,11 +838,12 @@ fn tool_definitions() -> Vec<Value> {
                 "name": { "type": "string", "description": "Slide name shown in the slide list." },
             }), &["path", "layout"], false),
         tool("update_elements", "Update text, icons or colors",
-            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes.",
+            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes.",
             json!({
                 "path": path_prop(),
                 "updates": { "type": "array", "items": { "type": "object", "properties": {
                     "id": { "type": "string" }, "text": { "type": "string" }, "icon": { "type": "string" }, "color": { "type": "string" },
+                    "markdown": { "type": "boolean", "description": "Read **bold**, *italic*, __underline__ and ~~strike~~ in `text` as formatting." },
                 }, "required": ["id"] } },
             }), &["path", "updates"], false),
         tool("add_text", "Add a text box",
@@ -759,6 +858,7 @@ fn tool_definitions() -> Vec<Value> {
                 "size": { "type": "number", "description": "Font size in slide units (body ≈ 32, heading ≈ 64)." },
                 "align": { "type": "string", "enum": ["left", "center", "right"] },
                 "bullets": { "type": "boolean" },
+                "markdown": { "type": "boolean", "description": "Read **bold**, *italic*, __underline__ and ~~strike~~ as formatting." },
             }), &["path", "text"], false),
         tool("add_image", "Add an image",
             "Copies an image or SVG file into the project's assets/ folder and places it on a slide (slide units: 1600 × 900, origin at the center).",
@@ -789,6 +889,16 @@ fn tool_definitions() -> Vec<Value> {
         tool("export_pptx", "Export to PowerPoint",
             "Exports the presentation to .pptx: one slide per step, with Morph transitions. Defaults to the project's name with .pptx.",
             json!({ "path": path_prop(), "out": { "type": "string" } }), &["path"], false),
+        tool("import_pptx", "Import a PowerPoint file",
+            "Converts a .pptx into a GlideDeck project: each slide becomes a frame with its text (with formatting), shapes, pictures, background and speaker notes, in slide order. Tables, charts and SmartArt are listed as skipped. Returns the slides like get_presentation.",
+            json!({
+                "pptx": { "type": "string", "description": "The .pptx file to import." },
+                "path": { "type": "string", "description": "Project file to create (default: next to the .pptx, as .glide.json)." },
+                "overwrite": { "type": "boolean", "default": false },
+            }), &["pptx"], false),
+        tool("export_pdf", "Export to PDF",
+            "Exports the presentation to PDF: one page per slide on the path, rendered exactly as in the show. Defaults to the project's name with .pdf.",
+            json!({ "path": path_prop(), "out": { "type": "string" }, "width": { "type": "integer", "default": 2560, "description": "Rendered slide width in pixels." } }), &["path"], false),
         tool("save_as", "Save a copy of the project",
             "Saves the project under a new name or folder (media files are copied along), e.g. to keep a version the user will edit later in GlideDeck.",
             json!({ "path": path_prop(), "new_path": { "type": "string" }, "title": { "type": "string" }, "overwrite": { "type": "boolean" } }), &["path", "new_path"], false),
@@ -820,7 +930,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
@@ -900,5 +1010,25 @@ mod tests {
         assert_eq!(base64(b"fo"), "Zm8=");
         assert_eq!(base64(b"foo"), "Zm9v");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn inline_markdown_becomes_spans() {
+        let (text, spans) = inline_markdown("Grow **revenue** by *18%* and ~~cut~~ __costs__");
+        assert_eq!(text, "Grow revenue by 18% and cut costs");
+        let styled: Vec<&str> = spans.iter().map(|s| &text[s.start..s.end]).collect();
+        assert_eq!(styled, ["revenue", "18%", "cut", "costs"]);
+        assert_eq!(spans[0].style.bold, Some(true));
+        assert_eq!(spans[1].style.italic, Some(true));
+        assert!(spans[2].style.strike && spans[3].style.underline);
+        // Lone markers and snake_case stay literal.
+        let (text, spans) = inline_markdown("2 * 3 = 6 in my_var_name");
+        assert_eq!(text, "2 * 3 = 6 in my_var_name");
+        assert!(spans.is_empty());
+        // Nesting.
+        let (text, spans) = inline_markdown("**bold *both* bold**");
+        assert_eq!(text, "bold both bold");
+        let both = spans.iter().find(|s| &text[s.start..s.end] == "both").unwrap();
+        assert_eq!((both.style.bold, both.style.italic), (Some(true), Some(true)));
     }
 }

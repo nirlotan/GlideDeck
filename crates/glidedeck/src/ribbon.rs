@@ -171,6 +171,7 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
     let p = theme::palette(ui.ctx());
     let ctx = ui.ctx().clone();
     let label = RichText::new("File").size(13.0).color(p.accent).font(theme::semibold(13.0));
+    let mut recent_pick: Option<Action> = None;
     ui.menu_button(label, |ui| {
         ui.set_min_width(240.0);
         let mut item = |ui: &mut egui::Ui, glyph: &str, text: &str, sc: Option<egui::KeyboardShortcut>, a: Action| {
@@ -186,11 +187,35 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
         item(ui, icon::FILE_PLUS, "New", Some(SC_NEW), Action::New);
         item(ui, icon::SQUARES_FOUR, "New from template…", None, Action::ShowTemplates);
         item(ui, icon::FOLDER_OPEN, "Open…", Some(SC_OPEN), Action::Open);
+        ui.menu_button(format!("{}   Open recent", icon::CLOCK_COUNTER_CLOCKWISE), |ui| {
+            ui.set_min_width(300.0);
+            if app.recent.paths.is_empty() {
+                ui.add_enabled(false, egui::Button::new("No recent files"));
+            }
+            for path in app.recent.paths.clone() {
+                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let glyph = if name.to_lowercase().ends_with(".pptx") { icon::FILE_PPT } else { icon::PRESENTATION };
+                let folder = path.parent().map(|d| d.display().to_string()).unwrap_or_default();
+                if ui.button(format!("{glyph}   {name}")).on_hover_text(folder).clicked() {
+                    recent_pick = Some(Action::OpenRecent(path));
+                    ui.close();
+                }
+            }
+            if !app.recent.paths.is_empty() {
+                ui.separator();
+                if ui.button(format!("{}   Clear recent", icon::TRASH)).clicked() {
+                    recent_pick = Some(Action::ClearRecent);
+                    ui.close();
+                }
+            }
+        });
+        item(ui, icon::FILE_PPT, "Import PowerPoint…", None, Action::ImportPptx);
         ui.separator();
         item(ui, icon::FLOPPY_DISK, "Save", Some(SC_SAVE), Action::Save);
         item(ui, icon::FLOPPY_DISK, "Save As…", Some(SC_SAVE_AS), Action::SaveAs);
         ui.separator();
         item(ui, icon::FILE_PPT, "Export PowerPoint (Morph)…", None, Action::ExportPptx);
+        item(ui, icon::FILE_PDF, "Export PDF…", None, Action::ExportPdf);
         item(ui, icon::FILE_IMAGE, "Export view as PNG…", None, Action::ExportPng);
         ui.separator();
         item(ui, icon::QUESTION, "Keyboard shortcuts", None, Action::ToggleShortcuts);
@@ -198,7 +223,7 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
         }
     });
-    let _ = app;
+    out.extend(recent_pick);
 }
 
 fn home_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
@@ -313,6 +338,7 @@ fn home_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
         });
     });
     group(ui, "Text format", |ui| {
+        let format = app.current_format_state().unwrap_or_default();
         let Some(glide_core::Element { kind: ElementKind::Text(t), .. }) = app.doc.get_mut(&text_id) else { return };
         column(ui, |ui| {
             ui.scope(|ui| {
@@ -328,12 +354,22 @@ fn home_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
                 });
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 2.0;
-                    let mut bold = t.weight >= 600;
-                    if ui.toggle_value(&mut bold, RichText::new(icon::TEXT_B).size(14.0)).changed() {
-                        t.weight = if bold { 700 } else { 400 };
+                    use crate::textformat::TextFormat as F;
+                    let cmd = if cfg!(target_os = "macos") { "⌘" } else { "Ctrl+" };
+                    for (on, glyph, f, tip) in [
+                        (format.bold, icon::TEXT_B, F::Bold, format!("Bold ({cmd}B)")),
+                        (format.italic, icon::TEXT_ITALIC, F::Italic, format!("Italic ({cmd}I)")),
+                        (format.underline, icon::TEXT_UNDERLINE, F::Underline, format!("Underline ({cmd}U)")),
+                        (format.strike, icon::TEXT_STRIKETHROUGH, F::Strike, format!("Strikethrough ({cmd}Shift+X)")),
+                    ] {
+                        if ui.selectable_label(on, RichText::new(glyph).size(14.0)).on_hover_text(tip).clicked() {
+                            out.push(Action::FormatText(f));
+                        }
                     }
-                    ui.toggle_value(&mut t.italic, RichText::new(icon::TEXT_ITALIC).size(14.0));
-                    ui.color_edit_button_srgba_unmultiplied(&mut t.color.0);
+                    let mut color = t.color.0;
+                    if ui.color_edit_button_srgba_unmultiplied(&mut color).changed() {
+                        out.push(Action::FormatText(F::Color(glide_core::Color(color))));
+                    }
                 });
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 2.0;
@@ -546,6 +582,12 @@ fn present_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>)
         if big(ui, icon::MONITOR_PLAY, "From current", false, has_path).on_hover_text("Shift+F5").clicked() {
             out.push(Action::Present { from_start: false });
         }
+        if big(ui, icon::PRESENTATION_CHART, "Presenter view", false, has_path)
+            .on_hover_text("Alt+F5 · notes, next slide and timer for you; the show on the other display (or in its own window)")
+            .clicked()
+        {
+            out.push(Action::PresenterView { from_start: false });
+        }
     });
     group(ui, "Export", |ui| {
         if big(ui, icon::FILE_PPT, "PowerPoint", false, true)
@@ -553,6 +595,9 @@ fn present_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>)
             .clicked()
         {
             out.push(Action::ExportPptx);
+        }
+        if big(ui, icon::FILE_PDF, "PDF", false, !app.doc.path.is_empty()).on_hover_text("One page per slide, in show order").clicked() {
+            out.push(Action::ExportPdf);
         }
         if big(ui, icon::FILE_IMAGE, "PNG image", false, true).on_hover_text("Export the current view at 2×").clicked() {
             out.push(Action::ExportPng);
@@ -661,6 +706,7 @@ pub fn shortcuts_window(app: &mut GlideDeckApp, ctx: &egui::Context) {
         (cmd(&SC_FRAME_VIEW), "Frame from current view"),
         ("PageUp / PageDown".into(), "Previous / next slide"),
         ("F5 / Shift+F5".into(), "Present from start / current slide"),
+        ("Alt+F5".into(), "Presenter view: notes, next slide, timer"),
         ("Shift or Ctrl/⌘ + click".into(), "Add to / toggle selection"),
         ("Arrows (Shift ×10)".into(), "Nudge selection"),
         (cmd(&SC_CUT) + " " + &cmd(&SC_COPY) + " " + &cmd(&SC_PASTE), "Cut, copy, paste (images & files too)"),
@@ -670,6 +716,10 @@ pub fn shortcuts_window(app: &mut GlideDeckApp, ctx: &egui::Context) {
         ("Alt while dragging".into(), "Move without smart-guide snapping"),
         (cmd(&SC_DUPLICATE), "Duplicate"),
         ("Delete / Backspace".into(), "Delete selection"),
+        (cmd(&SC_BOLD) + " " + &cmd(&SC_ITALIC) + " " + &cmd(&SC_UNDERLINE), "Bold, italic, underline"),
+        (cmd(&SC_SMALLER) + " / " + &cmd(&SC_BIGGER), "Smaller / larger text"),
+        (cmd(&SC_CLEAR_FORMAT), "Clear text formatting"),
+        ("B / W (in the show)".into(), "Black / white screen"),
         (cmd(&SC_UNDO) + " / " + &cmd(&SC_REDO), "Undo / Redo"),
         ("G".into(), "Toggle grid"),
     ];

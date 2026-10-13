@@ -199,6 +199,54 @@ pub struct TextBlock {
     /// Bullets or numbering for each paragraph.
     #[serde(default, skip_serializing_if = "ListStyle::is_none")]
     pub list: ListStyle,
+    /// Formatting for parts of the text (bold words, a colored phrase…), as
+    /// sorted, non-overlapping byte ranges of `content`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spans: Vec<TextSpan>,
+}
+
+/// Character formatting that differs from the text box's own style. `None`
+/// (or `false`) means "as the text box".
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct SpanStyle {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bold: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub underline: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub strike: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<Color>,
+    /// Font size in local units.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<f64>,
+}
+
+impl SpanStyle {
+    pub fn is_plain(&self) -> bool {
+        *self == SpanStyle::default()
+    }
+}
+
+/// Length in bytes of the longest common prefix, on a character boundary.
+fn common_prefix(a: &str, b: &str) -> usize {
+    a.char_indices().zip(b.chars()).take_while(|((_, x), y)| x == y).map(|((i, x), _)| i + x.len_utf8()).last().unwrap_or(0)
+}
+
+/// Length in bytes of the longest common suffix, on a character boundary.
+fn common_suffix(a: &str, b: &str) -> usize {
+    a.chars().rev().zip(b.chars().rev()).take_while(|(x, y)| x == y).map(|(x, _)| x.len_utf8()).sum()
+}
+
+/// A formatted byte range of a text box's content.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TextSpan {
+    pub start: usize,
+    pub end: usize,
+    #[serde(flatten)]
+    pub style: SpanStyle,
 }
 
 impl TextBlock {
@@ -215,7 +263,160 @@ impl TextBlock {
             max_width: None,
             role: None,
             list: ListStyle::None,
+            spans: Vec::new(),
         }
+    }
+
+    /// Whether `style` renders bold in this text box.
+    pub fn is_bold(&self, style: &SpanStyle) -> bool {
+        style.bold.unwrap_or(self.weight >= 600)
+    }
+
+    pub fn is_italic(&self, style: &SpanStyle) -> bool {
+        style.italic.unwrap_or(self.italic)
+    }
+
+    /// The whole content as consecutive styled segments `(start, end, style)`,
+    /// with plain segments filling the gaps between spans.
+    pub fn segments(&self) -> Vec<(usize, usize, SpanStyle)> {
+        let len = self.content.len();
+        let mut out = Vec::new();
+        let mut at = 0;
+        for span in &self.spans {
+            let (a, b) = (span.start.min(len), span.end.min(len));
+            if a > at {
+                out.push((at, a, SpanStyle::default()));
+            }
+            if b > a.max(at) {
+                out.push((a.max(at), b, span.style.clone()));
+                at = b;
+            }
+        }
+        if at < len || out.is_empty() {
+            out.push((at, len, SpanStyle::default()));
+        }
+        out
+    }
+
+    /// The formatting of the character starting at byte `i`.
+    pub fn style_at(&self, i: usize) -> SpanStyle {
+        self.spans.iter().find(|s| s.start <= i && i < s.end).map(|s| s.style.clone()).unwrap_or_default()
+    }
+
+    /// True when every character in `range` satisfies `pred` (false for an empty range).
+    pub fn range_all(&self, range: std::ops::Range<usize>, pred: impl Fn(&SpanStyle) -> bool) -> bool {
+        let mut any = false;
+        for (a, b, style) in self.segments() {
+            if b > range.start && a < range.end && a < b {
+                any = true;
+                if !pred(&style) {
+                    return false;
+                }
+            }
+        }
+        any
+    }
+
+    /// Changes the formatting of a byte range.
+    pub fn format_range(&mut self, range: std::ops::Range<usize>, mut f: impl FnMut(&mut SpanStyle)) {
+        let (start, end) = (self.floor_char(range.start), self.floor_char(range.end));
+        if start >= end {
+            return;
+        }
+        let mut segs = Vec::new();
+        for (a, b, style) in self.segments() {
+            // Split at the range edges, then restyle the inside.
+            for (x, y) in [(a, b.min(start)), (a.max(start), b.min(end)), (a.max(end), b)] {
+                if x < y {
+                    let mut st = style.clone();
+                    if x >= start && y <= end {
+                        f(&mut st);
+                    }
+                    segs.push((x, y, st));
+                }
+            }
+        }
+        self.spans = segs.into_iter().map(|(start, end, style)| TextSpan { start, end, style }).collect();
+        self.normalize_spans();
+    }
+
+    /// Replaces the content, keeping formatting attached to the text that
+    /// didn't change. Text typed in place takes the formatting of the
+    /// character before it. Returns the byte range of the new text that changed.
+    pub fn set_content(&mut self, new: impl Into<String>) -> std::ops::Range<usize> {
+        let new = new.into();
+        let old = std::mem::take(&mut self.content);
+        let prefix = common_prefix(&old, &new);
+        let suffix = common_suffix(&old[prefix..], &new[prefix..]);
+        let (p, old_end, new_end) = (prefix, old.len() - suffix, new.len() - suffix);
+        let delta = new.len() as isize - old.len() as isize;
+        let shift = |x: usize| (x as isize + delta) as usize;
+        for span in &mut self.spans {
+            let (a, b) = (span.start, span.end);
+            span.start = if a < p || (a == p && p == 0) { a } else if a >= old_end && a > p { shift(a) } else { new_end };
+            span.end = if b < p {
+                b
+            } else if b == p {
+                // The span covers the character just before the change: it grows over the new text.
+                if p > 0 { new_end } else { b }
+            } else if b >= old_end {
+                shift(b)
+            } else {
+                new_end
+            };
+        }
+        self.content = new;
+        self.normalize_spans();
+        p..new_end
+    }
+
+    fn floor_char(&self, mut i: usize) -> usize {
+        i = i.min(self.content.len());
+        while i > 0 && !self.content.is_char_boundary(i) {
+            i -= 1;
+        }
+        i
+    }
+
+    /// Sorts, clamps and merges spans and drops formatting that matches the
+    /// text box itself.
+    pub fn normalize_spans(&mut self) {
+        let base_bold = self.weight >= 600;
+        let (base_italic, base_color, base_size) = (self.italic, self.color, self.font_size);
+        let mut spans = std::mem::take(&mut self.spans);
+        for s in &mut spans {
+            s.start = self.floor_char(s.start);
+            s.end = self.floor_char(s.end);
+            let st = &mut s.style;
+            if st.bold == Some(base_bold) {
+                st.bold = None;
+            }
+            if st.italic == Some(base_italic) {
+                st.italic = None;
+            }
+            if st.color == Some(base_color) {
+                st.color = None;
+            }
+            if st.size.is_some_and(|z| (z - base_size).abs() < 1e-9) {
+                st.size = None;
+            }
+        }
+        spans.retain(|s| s.start < s.end && !s.style.is_plain());
+        spans.sort_by_key(|s| s.start);
+        let mut out: Vec<TextSpan> = Vec::with_capacity(spans.len());
+        for s in spans {
+            match out.last_mut() {
+                Some(last) if last.end >= s.start && last.style == s.style => last.end = last.end.max(s.end),
+                Some(last) if last.end > s.start => {
+                    // Overlaps (shouldn't happen): the later span wins its part.
+                    last.end = s.start;
+                    out.push(s);
+                }
+                _ => out.push(s),
+            }
+        }
+        out.retain(|s| s.start < s.end);
+        self.spans = out;
     }
 }
 
@@ -519,5 +720,92 @@ mod tests {
         assert_eq!(el.transform, Transform::default());
         let ElementKind::Text(t) = &el.kind else { panic!() };
         assert_eq!(t.font_size, 64.0);
+    }
+
+    fn styled(t: &TextBlock) -> Vec<(String, SpanStyle)> {
+        t.spans.iter().map(|s| (t.content[s.start..s.end].to_owned(), s.style.clone())).collect()
+    }
+
+    fn bold() -> SpanStyle {
+        SpanStyle { bold: Some(true), ..Default::default() }
+    }
+
+    #[test]
+    fn formatting_ranges_splits_and_merges() {
+        let mut t = TextBlock::new("Hello brave new world");
+        t.format_range(6..11, |s| s.bold = Some(true));
+        assert_eq!(styled(&t), vec![("brave".to_owned(), bold())]);
+        // Overlapping change: underline "new world" and part of "brave".
+        t.format_range(9..21, |s| s.underline = true);
+        let got = styled(&t);
+        assert_eq!(got.len(), 3, "{got:?}");
+        assert_eq!(got[1].0, "ve");
+        assert!(got[1].1.underline && got[1].1.bold == Some(true));
+        // Removing the underline merges back into one bold span.
+        t.format_range(0..21, |s| s.underline = false);
+        assert_eq!(styled(&t), vec![("brave".to_owned(), bold())]);
+        assert!(t.range_all(6..11, |s| t.is_bold(s)));
+        assert!(!t.range_all(0..11, |s| t.is_bold(s)));
+        // Formatting that matches the box itself is dropped.
+        t.format_range(6..11, |s| s.bold = Some(false));
+        assert!(t.spans.is_empty());
+        let base = t.color;
+        t.format_range(0..5, |s| s.color = Some(base));
+        assert!(t.spans.is_empty());
+        // Byte ranges snap to character boundaries.
+        let mut h = TextBlock::new("שלום עולם");
+        h.format_range(1..5, |s| s.italic = Some(true));
+        assert_eq!(styled(&h)[0].0, "של");
+    }
+
+    #[test]
+    fn editing_keeps_formatting_with_its_text() {
+        let mut t = TextBlock::new("Hello brave world");
+        t.format_range(6..11, |s| s.bold = Some(true));
+        // Typing before the span shifts it.
+        let changed = t.set_content("Oh, hello brave world");
+        assert_eq!(changed, 0..5, "\"H\" became \"Oh, h\"");
+        assert_eq!(styled(&t)[0].0, "brave");
+        // Typing at the end of the span extends it (inherits the bold).
+        t.set_content("Oh, hello braver world");
+        assert_eq!(styled(&t)[0].0, "braver");
+        // Typing right after a space before the span does not.
+        t.set_content("Oh, hello X braver world");
+        assert_eq!(styled(&t)[0].0, "braver");
+        // Deleting inside the span shrinks it; deleting it all removes it.
+        t.set_content("Oh, hello X bver world");
+        assert_eq!(styled(&t)[0].0, "bver");
+        t.set_content("Oh, hello X  world");
+        assert!(t.spans.is_empty());
+        // Replacing a selection that starts inside a span keeps the span's style.
+        let mut t = TextBlock::new("abc def");
+        t.format_range(0..3, |s| s.italic = Some(true));
+        t.set_content("abXYZef");
+        assert_eq!(styled(&t)[0].0, "abXYZ");
+        // Inserting at the very start takes the first character's style.
+        let mut t = TextBlock::new("bold");
+        t.format_range(0..4, |s| s.bold = Some(true));
+        t.set_content("Xbold");
+        assert_eq!(styled(&t)[0].0, "Xbold");
+        // Multi-byte text.
+        let mut t = TextBlock::new("שלום עולם");
+        let at = "שלום ".len();
+        t.format_range(at..t.content.len(), |s| s.underline = true);
+        t.set_content("שלום רב עולם");
+        assert_eq!(styled(&t)[0].0, "עולם");
+    }
+
+    #[test]
+    fn spans_serialize_compactly_and_round_trip() {
+        let mut t = TextBlock::new("Big red word");
+        t.format_range(4..7, |s| {
+            s.color = Some(Color::rgb(255, 0, 0));
+            s.underline = true;
+        });
+        let json = serde_json::to_string(&t).unwrap();
+        assert!(json.contains(r##""spans":[{"start":4,"end":7,"underline":true,"color":"#ff0000"}]"##), "{json}");
+        assert_eq!(serde_json::from_str::<TextBlock>(&json).unwrap(), t);
+        // Plain text has no spans field at all.
+        assert!(!serde_json::to_string(&TextBlock::new("x")).unwrap().contains("spans"));
     }
 }

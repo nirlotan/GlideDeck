@@ -101,7 +101,16 @@ pub enum Action {
     MoveStep { from: usize, to: usize },
     DuplicateStep(usize),
     RemoveStep(usize),
+    ImportPptx,
+    ExportPdf,
+    OpenRecent(PathBuf),
+    ClearRecent,
+    /// Formats the text being edited, or the selected text boxes.
+    FormatText(crate::textformat::TextFormat),
+    /// Starts the show; presenter view is used automatically with a second display.
     Present { from_start: bool },
+    /// Starts the show with presenter view, even on a single display.
+    PresenterView { from_start: bool },
     FitAll,
     FitSelection,
     ResetView,
@@ -155,6 +164,21 @@ pub const SC_ZOOM_OUT: KeyboardShortcut = sc(Modifiers::COMMAND, Key::Minus);
 pub const SC_FRAME_VIEW: KeyboardShortcut = sc(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::F);
 pub const SC_PRESENT: KeyboardShortcut = sc(Modifiers::NONE, Key::F5);
 pub const SC_PRESENT_HERE: KeyboardShortcut = sc(Modifiers::SHIFT, Key::F5);
+/// A show to start as soon as the window opens.
+#[derive(Clone, Copy, Debug)]
+pub struct StartShow {
+    pub step: usize,
+    /// `Some(true)` forces presenter view; `None` decides by the number of displays.
+    pub presenter: Option<bool>,
+}
+
+pub const SC_PRESENTER: KeyboardShortcut = sc(Modifiers::ALT, Key::F5);
+pub const SC_BOLD: KeyboardShortcut = sc(Modifiers::COMMAND, Key::B);
+pub const SC_ITALIC: KeyboardShortcut = sc(Modifiers::COMMAND, Key::I);
+pub const SC_UNDERLINE: KeyboardShortcut = sc(Modifiers::COMMAND, Key::U);
+pub const SC_BIGGER: KeyboardShortcut = sc(Modifiers::COMMAND, Key::CloseBracket);
+pub const SC_SMALLER: KeyboardShortcut = sc(Modifiers::COMMAND, Key::OpenBracket);
+pub const SC_CLEAR_FORMAT: KeyboardShortcut = sc(Modifiers::COMMAND, Key::Backslash);
 pub const SC_INSERT_IMAGE: KeyboardShortcut = sc(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::I);
 pub const SC_CUT: KeyboardShortcut = sc(Modifiers::COMMAND, Key::X);
 pub const SC_COPY: KeyboardShortcut = sc(Modifiers::COMMAND, Key::C);
@@ -175,6 +199,8 @@ pub struct GlideDeckApp {
     pub renderer: CanvasRenderer,
     pub target: Option<RenderTarget>,
     pub texture_id: Option<egui::TextureId>,
+    /// Extra off-screen views (e.g. the presenter's next-slide preview).
+    snapshots: std::collections::HashMap<&'static str, (RenderTarget, egui::TextureId)>,
     pub show_grid: bool,
     /// Outline every frame (otherwise frames only show on hover/selection).
     pub show_frames: bool,
@@ -189,6 +215,12 @@ pub struct GlideDeckApp {
     pub hovered: Option<String>,
     pub focus_text_editor: bool,
     pub pending_fit: bool,
+    /// Start presenting on the first frame (`glidedeck present`).
+    pub start_show: Option<StartShow>,
+    /// A PowerPoint file given on the command line, imported on the first frame.
+    import_on_start: Option<PathBuf>,
+    /// File → Open recent.
+    pub recent: crate::recent::RecentFiles,
     /// The slide (path step) the editor is on.
     pub current_step: Option<usize>,
     pub thumbs: Thumbnails,
@@ -225,6 +257,13 @@ impl GlideDeckApp {
             .ok_or_else(|| anyhow::anyhow!("the wgpu renderer is not available"))?;
         let renderer = CanvasRenderer::new(&rs.device, &rs.queue);
 
+        let mut recent = crate::recent::RecentFiles::load();
+        let is_pptx = |p: &Path| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pptx"));
+        let import_on_start = file.clone().filter(|p| is_pptx(p) && p.exists());
+        let file = file.filter(|p| !is_pptx(p));
+        if let Some(p) = file.as_ref().filter(|p| p.exists()) {
+            recent.add(p);
+        }
         let (doc, path) = match file {
             Some(p) if p.exists() => (Document::load(&p)?, Some(p)),
             Some(p) => (Document::new(title_from_path(&p)), Some(p)),
@@ -245,6 +284,7 @@ impl GlideDeckApp {
             renderer,
             target: None,
             texture_id: None,
+            snapshots: Default::default(),
             show_grid: true,
             show_frames: false,
             scroll_pans: false,
@@ -257,6 +297,9 @@ impl GlideDeckApp {
             hovered: None,
             focus_text_editor: false,
             pending_fit: true,
+            start_show: None,
+            import_on_start,
+            recent,
             thumbs: Thumbnails::default(),
             presenting: None,
             frame_tags: Vec::new(),
@@ -534,9 +577,13 @@ impl GlideDeckApp {
             }
             Action::Open => {
                 if self.confirm_discard()
-                    && let Some(p) = rfd::FileDialog::new().add_filter("GlideDeck document", &["json"]).pick_file()
+                    && let Some(p) = rfd::FileDialog::new()
+                        .add_filter("GlideDeck or PowerPoint", &["json", "pptx"])
+                        .add_filter("GlideDeck document", &["json"])
+                        .add_filter("PowerPoint presentation", &["pptx"])
+                        .pick_file()
                 {
-                    self.open_path(&p);
+                    self.open_any(ctx, &p);
                 }
             }
             Action::Save => {
@@ -550,6 +597,23 @@ impl GlideDeckApp {
                 }
             }
             Action::ExportPptx => self.export_pptx(ctx),
+            Action::ExportPdf => self.export_pdf(ctx),
+            Action::ImportPptx => {
+                if self.confirm_discard()
+                    && let Some(p) = rfd::FileDialog::new().add_filter("PowerPoint presentation", &["pptx"]).pick_file()
+                {
+                    self.import_pptx(ctx, &p);
+                }
+            }
+            Action::OpenRecent(p) => {
+                if !p.exists() {
+                    self.recent.remove(&p);
+                    self.error_dialog(&format!("{} no longer exists. It was removed from the recent list.", p.display()));
+                } else if self.confirm_discard() {
+                    self.open_any(ctx, &p);
+                }
+            }
+            Action::ClearRecent => self.recent.clear(),
             Action::ExportPng => self.export_png(ctx),
             Action::Undo => {
                 if self.history.undo(&mut self.doc) {
@@ -641,7 +705,12 @@ impl GlideDeckApp {
             }
             Action::Present { from_start } => {
                 let start = if from_start { 0 } else { self.current_step.unwrap_or(0) };
-                self.start_presenting(ctx, start);
+                self.start_presenting(ctx, start, None);
+            }
+            Action::FormatText(f) => self.format_text(f),
+            Action::PresenterView { from_start } => {
+                let start = if from_start { 0 } else { self.current_step.unwrap_or(0) };
+                self.start_presenting(ctx, start, Some(true));
             }
             Action::FitAll => self.fit_all(true),
             Action::FitSelection => self.fit_selection(),
@@ -786,8 +855,52 @@ impl GlideDeckApp {
 
     pub fn open_path(&mut self, p: &Path) {
         match Document::load(p) {
-            Ok(doc) => self.replace_document(doc, Some(p.to_path_buf())),
+            Ok(doc) => {
+                self.replace_document(doc, Some(p.to_path_buf()));
+                self.recent.add(p);
+            }
             Err(e) => self.error_dialog(&e.to_string()),
+        }
+    }
+
+    /// Opens a GlideDeck document, or imports a PowerPoint file.
+    pub fn open_any(&mut self, ctx: &egui::Context, p: &Path) {
+        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pptx")) {
+            self.import_pptx(ctx, p);
+        } else {
+            self.open_path(p);
+        }
+    }
+
+    /// Imports a PowerPoint file as a new, unsaved presentation.
+    pub fn import_pptx(&mut self, ctx: &egui::Context, p: &Path) {
+        let bytes = match std::fs::read(p) {
+            Ok(b) => b,
+            Err(e) => {
+                self.error_dialog(&format!("Could not read {}: {e}", p.display()));
+                return;
+            }
+        };
+        let stem = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Presentation".into());
+        let text = &mut self.renderer.text;
+        match crate::pptx_import::import(&bytes, &stem, &mut |k| glide_render::local_size(text, k)) {
+            Ok(mut imported) => {
+                // Unsaved: pictures go to the session folder until Save As copies them.
+                self.path = None;
+                let base = self.base_dir();
+                crate::pptx_import::store_media(&mut imported.doc, &imported.media, &base);
+                let slides = imported.doc.path.len();
+                self.replace_document(imported.doc, None);
+                // Not saved yet: closing asks first.
+                self.saved = Document::default();
+                self.recent.add(p);
+                let mut msg = format!("Imported {slides} slides from {}", p.file_name().map(|n| n.to_string_lossy()).unwrap_or_default());
+                if !imported.skipped.is_empty() {
+                    msg.push_str(&format!(" · skipped {}", imported.skipped.join(", ")));
+                }
+                self.notify(ctx, msg);
+            }
+            Err(e) => self.error_dialog(&format!("Could not import {}: {e}", p.display())),
         }
     }
 
@@ -846,9 +959,13 @@ impl GlideDeckApp {
             }
             Ok(_) => {}
         }
-        self.path = Some(p);
+        self.path = Some(p.clone());
         self.sync_base_dir();
-        self.save()
+        let ok = self.save();
+        if ok {
+            self.recent.add(&p);
+        }
+        ok
     }
 
     fn export_pptx(&mut self, ctx: &egui::Context) {
@@ -873,6 +990,21 @@ impl GlideDeckApp {
         }
     }
 
+    fn export_pdf(&mut self, ctx: &egui::Context) {
+        if self.doc.path.is_empty() {
+            self.notify(ctx, "Add a frame first — every frame on the path is a page");
+            return;
+        }
+        let name = if self.doc.title.trim().is_empty() { "Presentation".to_owned() } else { self.doc.title.clone() };
+        let Some(out) = rfd::FileDialog::new().add_filter("PDF document", &["pdf"]).set_file_name(format!("{name}.pdf")).save_file() else {
+            return;
+        };
+        match crate::pdf::export(&mut self.renderer, &self.doc, &out, crate::pdf::PdfOptions::default()) {
+            Ok(r) => self.notify(ctx, format!("Exported {} pages to {}", r.pages, out.display())),
+            Err(e) => self.error_dialog(&format!("PDF export failed: {e}")),
+        }
+    }
+
     fn export_png(&mut self, ctx: &egui::Context) {
         let Some(out) = rfd::FileDialog::new().add_filter("PNG image", &["png"]).set_file_name("view.png").save_file()
         else {
@@ -893,7 +1025,7 @@ impl GlideDeckApp {
     }
 
     /// Returns true when it is fine to drop the current document.
-    fn confirm_discard(&mut self) -> bool {
+    pub(crate) fn confirm_discard(&mut self) -> bool {
         // Native dialogs would block headless UI tests.
         if !self.is_dirty() || cfg!(test) {
             return true;
@@ -931,7 +1063,7 @@ impl GlideDeckApp {
 
     fn collect_shortcuts(&mut self, ctx: &egui::Context) -> Vec<Action> {
         let mut actions = Vec::new();
-        let typing = ctx.egui_wants_keyboard_input() || self.text_edit.is_some();
+        let typing = ctx.text_edit_focused() || self.text_edit.is_some();
         ctx.input_mut(|i| {
             // File shortcuts work even while a text field has focus.
             for (s, a) in [
@@ -939,6 +1071,7 @@ impl GlideDeckApp {
                 (SC_SAVE, Action::Save),
                 (SC_OPEN, Action::Open),
                 (SC_NEW, Action::New),
+                (SC_PRESENTER, Action::PresenterView { from_start: false }),
                 (SC_PRESENT_HERE, Action::Present { from_start: false }),
                 (SC_PRESENT, Action::Present { from_start: true }),
             ] {
@@ -953,8 +1086,23 @@ impl GlideDeckApp {
             for ev in &i.events {
                 match ev {
                     egui::Event::Copy => actions.push(Action::Copy),
+                    // Ctrl/⌘+Shift+X arrives as a cut too: strikethrough.
+                    egui::Event::Cut if i.modifiers.shift => actions.push(Action::FormatText(crate::textformat::TextFormat::Strike)),
                     egui::Event::Cut => actions.push(Action::Cut),
                     _ => {}
+                }
+            }
+            use crate::textformat::TextFormat as F;
+            for (s, f) in [
+                (SC_BOLD, F::Bold),
+                (SC_ITALIC, F::Italic),
+                (SC_UNDERLINE, F::Underline),
+                (SC_BIGGER, F::Bigger),
+                (SC_SMALLER, F::Smaller),
+                (SC_CLEAR_FORMAT, F::Clear),
+            ] {
+                if i.consume_shortcut(&s) {
+                    actions.push(Action::FormatText(f));
                 }
             }
             let table = [
@@ -1082,6 +1230,30 @@ impl GlideDeckApp {
         }
         self.texture_id
     }
+
+    /// Renders the document from `camera` into a separate texture of `size`
+    /// points, for previews shown next to the main view.
+    pub fn render_snapshot(&mut self, ui: &egui::Ui, frame: &eframe::Frame, key: &'static str, size: egui::Vec2, camera: &Camera) -> Option<egui::TextureId> {
+        let rs = frame.wgpu_render_state()?;
+        let ppp = ui.ctx().pixels_per_point();
+        let px = [(size.x * ppp).round().max(1.0) as u32, (size.y * ppp).round().max(1.0) as u32];
+        if self.snapshots.get(key).is_none_or(|(t, _)| t.size != px) {
+            let target = RenderTarget::new(&rs.device, px);
+            let mut egui_renderer = rs.renderer.write();
+            let id = match self.snapshots.get(key) {
+                Some((_, id)) => {
+                    egui_renderer.update_egui_texture_from_wgpu_texture(&rs.device, &target.unorm_view, wgpu::FilterMode::Linear, *id);
+                    *id
+                }
+                None => egui_renderer.register_native_texture(&rs.device, &target.unorm_view, wgpu::FilterMode::Linear),
+            };
+            self.snapshots.insert(key, (target, id));
+        }
+        let (target, id) = self.snapshots.get(key)?;
+        let opts = glide_render::RenderOptions { show_grid: false, pixels_per_point: ppp as f64 };
+        self.renderer.render(target, &self.doc, camera, DVec2::new(size.x as f64, size.y as f64), &opts);
+        Some(*id)
+    }
 }
 
 impl eframe::App for GlideDeckApp {
@@ -1090,6 +1262,12 @@ impl eframe::App for GlideDeckApp {
         self.handle_close(&ctx);
         self.handle_dropped_files(&ctx);
 
+        if let Some(p) = self.import_on_start.take() {
+            self.import_pptx(&ctx, &p);
+        }
+        if let Some(show) = self.start_show.take() {
+            self.start_presenting(&ctx, show.step, show.presenter);
+        }
         if self.presenting.is_some() {
             crate::present::present_ui(self, ui, frame);
             self.update_title(&ctx);
@@ -1144,7 +1322,7 @@ impl eframe::App for GlideDeckApp {
             self.perform(&ctx, a);
         }
 
-        let busy = ctx.input(|i| i.pointer.any_down()) || ctx.egui_wants_keyboard_input() || self.text_edit.is_some();
+        let busy = ctx.input(|i| i.pointer.any_down()) || ctx.text_edit_focused() || self.text_edit.is_some();
         self.history.track(&self.doc, busy);
         self.update_title(&ctx);
         if self.toast.as_ref().is_some_and(|(_, until)| ctx.input(|i| i.time) < *until) {

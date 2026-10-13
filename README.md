@@ -88,6 +88,10 @@ GlideDeck follows the **ArtCraft philosophy**:
 - **Fullscreen presenting** with keyboard and clicker navigation, an auto-hiding control
   bar, free zooming mid-talk, and videos that start automatically when you arrive at
   their slide.
+- **Presenter view on a second display**: the show goes fullscreen on the projector while
+  your screen shows the live slide, the next slide, your speaker notes, a timer and the
+  clock, plus black/white screen (B/W). It turns on automatically with two displays; with
+  one, Alt+F5 opens the audience view in its own window.
 
 ### Design that looks good by default
 - **17 templates** in four groups, each a complete story with a theme and a path:
@@ -119,6 +123,10 @@ GlideDeck follows the **ArtCraft philosophy**:
   one-click fixes.
 
 ### Rich content
+- **Rich text**: bold, italic, underline, strikethrough, colour and size for any word or
+  phrase, from a floating format bar while you edit on the canvas or with the usual
+  shortcuts (Ctrl/⌘+B, I, U). Formatting exports to PowerPoint and survives pasting from
+  it. Drag a text box's **side handles** to change its wrap width without scaling the text.
 - **Images**: insert them, drag and drop, or paste screenshots, browser images, copied
   files and text straight from other apps.
 - **Paste from PowerPoint** (Windows): copied shapes arrive as editable text boxes, shapes
@@ -135,7 +143,21 @@ GlideDeck follows the **ArtCraft philosophy**:
 - **PowerPoint (.pptx)**: one slide per step. Every object keeps its identity (`!!<id>`)
   and slides are linked with **Morph**, so PowerPoint itself animates the zooms, pans and
   rotations. Icons export as vector shapes, SVGs natively, and videos embedded.
+- **PDF**: one page per slide, in show order, rendered exactly as presented.
 - **PNG** of any view at 2×. Headless rendering of any slide is available from the CLI.
+
+### Import
+- **PowerPoint (.pptx)**: File → Import PowerPoint (or open or drop a `.pptx`).
+  - **Each slide becomes a frame**, laid out in a grid and in order on the path, ready
+    to turn into a zooming story.
+  - **Content comes along**: text with its formatting, rectangles, ellipses and
+    pictures, slide backgrounds, logos and lines from the slide master, and speaker
+    notes.
+  - **Placeholder styles carry over**: titles and bullets take the positions, sizes and
+    bullets they inherit from the layout and master.
+  - **Not converted yet**: tables, charts and SmartArt are listed as skipped.
+- **Open recent**: File → Open recent lists the last 10 documents you opened, saved or
+  imported.
 
 ## Screenshots
 
@@ -242,13 +264,13 @@ VS Code, switch Copilot Chat to **Agent** mode and the GlideDeck tools appear. T
 > Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, check
 > every slide, and export a PowerPoint copy.
 
-The server has 15 tools:
+The server has 17 tools:
 - **Discover:** `catalog`, `search_icons`.
-- **Create and read:** `create_presentation`, `get_presentation`.
+- **Create and read:** `create_presentation`, `import_pptx`, `get_presentation`.
 - **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`,
   `remove_slide`, `edit_presentation`.
-- **Check and deliver:** `render_slide` (returns the PNG), `export_pptx`, `save_as`,
-  `open_in_editor`.
+- **Check and deliver:** `render_slide` (returns the PNG), `export_pptx`, `export_pdf`,
+  `save_as`, `open_in_editor`.
 
 It runs locally over stdio and makes no network calls.
 **Full guide** for each client (Claude Desktop, user-wide setup, troubleshooting):
@@ -272,6 +294,8 @@ glidedeck render talk.glide.json --step 3 --out slide3.png
 
 ```bash
 glidedeck export-pptx talk.glide.json --out talk.pptx
+glidedeck export-pdf talk.glide.json --out talk.pdf
+glidedeck import-pptx deck.pptx --out deck.glide.json
 ```
 
 Operations are plain tagged JSON and are applied **atomically** per batch:
@@ -316,7 +340,7 @@ Edit `packaging/windows/glidedeck.wxs` to change what it installs.
 To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
 
 ```bash
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.2-x64.msi
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.3-x64.msi
 ```
 
 ### Creating a macOS DMG
@@ -431,7 +455,6 @@ accounts, no telemetry and no update pings.
 
 ## Roadmap
 
-- Presenter view on a second display (timer, current/next, notes)
 - Audio-only clips, video trimming, and video/PDF export of the path
 - Grouping, more shape types and connectors
 

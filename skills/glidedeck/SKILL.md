@@ -16,8 +16,12 @@ the GlideDeck editor later to edit and present it, or export it to PowerPoint.
 If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
-`export_pptx`, `save_as`, `open_in_editor`, `search_icons` and
-`edit_presentation`. Prefer them.
+`export_pptx`, `export_pdf`, `import_pptx`, `save_as`, `open_in_editor`,
+`search_icons` and `edit_presentation`. Prefer them.
+
+**Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
+every slide into a frame with its text, pictures and notes. Then improve it:
+rewrite text, add layouts, and render each slide to check it.
 
 Follow this workflow:
 
@@ -37,7 +41,9 @@ Follow this workflow:
 4. **Replace every placeholder.** Use `update_elements` (batch many updates
    into one call). Templates ship with sample text such as "Your big idea",
    "Section title" or "Avery Chen", and none of it may remain. Use `\n` to
-   separate bullet paragraphs.
+   separate bullet paragraphs. To emphasise a word, pass `markdown: true` and
+   write `**bold**`, `*italic*`, `__underline__` or `~~strike~~`. Use emphasis
+   sparingly.
 5. **`add_slide` for anything more.** Choose a layout and fill its
    `text_fields` and `icon_slots` (names come from `catalog`; repeated names
    take an array). Good matches:
@@ -54,8 +60,12 @@ Follow this workflow:
 6. **Check your work.** Call `render_slide` for each slide (step 1..N) and look
    at the image. Fix overflowing or cramped text, leftover placeholders and
    off-topic icons. Shorten text rather than shrinking it.
-7. **Finish.** Tell the user where the project file is. Offer `export_pptx`
-   for PowerPoint and `open_in_editor` to open it in GlideDeck. Use `save_as`
+7. **Finish.** Tell the user where the project file is. Mention they can
+   present it with F5; with a second display, presenter view shows the speaker
+   notes. You can write notes with `edit_presentation`
+   (`{"op":"update_step","index":0,"notes":"…"}`; `index` is 0-based). Offer `export_pptx`
+   for PowerPoint, `export_pdf` for a PDF, and `open_in_editor` to open it in
+   GlideDeck. Use `save_as`
    to keep a separate copy or version.
 
 Notes:

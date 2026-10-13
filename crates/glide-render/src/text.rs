@@ -13,7 +13,7 @@ use lyon::path::Path;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use glide_core::{IconStyle, ListStyle, TextAlign, TextBlock};
+use glide_core::{Color, IconStyle, ListStyle, SpanStyle, TextAlign, TextBlock};
 
 /// All text is shaped at this size and the outlines scaled afterwards, which
 /// keeps shaping well-behaved for both microscopic and gigantic font sizes.
@@ -24,6 +24,18 @@ struct PlacedGlyph {
     /// Pen position (baseline) relative to the block's top-left, in reference units.
     x: f32,
     y: f32,
+    /// Formatted color, when it differs from the text box's.
+    color: Option<Color>,
+}
+
+/// An underline or strikethrough bar (reference units, block top-left origin).
+struct Decoration {
+    x0: f32,
+    x1: f32,
+    /// Top edge of the bar.
+    y: f32,
+    thickness: f32,
+    color: Option<Color>,
 }
 
 /// A shaped buffer plus the geometry needed to place it.
@@ -96,6 +108,7 @@ pub struct TextLayout {
     /// Block size in the element's local units.
     pub size: DVec2,
     glyphs: Vec<PlacedGlyph>,
+    decorations: Vec<Decoration>,
     /// Local units per reference unit.
     scale: f64,
 }
@@ -256,13 +269,54 @@ impl TextEngine {
             .cache_key_flags(CacheKeyFlags::DISABLE_HINTING)
     }
 
+    /// Attributes for a formatted span on top of the text box's own.
+    fn span_attrs<'a>(text: &'a TextBlock, style: &SpanStyle, line_height: f32) -> Attrs<'a> {
+        let mut a = Self::attrs(text);
+        if let Some(bold) = style.bold {
+            let w = match (bold, text.weight >= 600) {
+                (true, true) | (false, false) => text.weight,
+                (true, false) => 700,
+                (false, true) => 400,
+            };
+            a = a.weight(Weight(w.clamp(1, 1000)));
+        }
+        if let Some(italic) = style.italic {
+            a = a.style(if italic { Style::Italic } else { Style::Normal });
+        }
+        if let Some(c) = style.color {
+            a = a.color(cosmic_text::Color::rgba(c.r(), c.g(), c.b(), c.a()));
+        }
+        if style.underline {
+            a = a.underline(cosmic_text::UnderlineStyle::Single);
+        }
+        if style.strike {
+            a = a.strikethrough();
+        }
+        if let Some(size) = style.size {
+            let r = (size / text.font_size.abs().max(1e-12)).clamp(0.05, 50.0) as f32;
+            a = a.metrics(Metrics::new(REFERENCE_SIZE * r, line_height * r));
+        }
+        a
+    }
+
+    /// Puts the text (with its formatted spans) into a buffer.
+    fn set_buffer_text(b: &mut cosmic_text::BorrowedWithFontSystem<'_, Buffer>, text: &TextBlock, line_height: f32, align: Option<cosmic_text::Align>) {
+        let attrs = Self::attrs(text);
+        if text.spans.is_empty() {
+            b.set_text(&text.content, &attrs, Shaping::Advanced, align);
+        } else {
+            let segments = text.segments();
+            let spans = segments.iter().map(|(start, end, style)| (&text.content[*start..*end], Self::span_attrs(text, style, line_height)));
+            b.set_rich_text(spans, &attrs, Shaping::Advanced, align);
+        }
+    }
+
     /// Shapes `text` into a cosmic-text buffer exactly as it is drawn. Both
     /// rendering and in-place editing use this, so carets line up perfectly.
     fn build(&mut self, text: &TextBlock) -> Built {
         let font_size = text.font_size.abs().max(1e-12);
         let scale = font_size / REFERENCE_SIZE as f64;
         let line_height = REFERENCE_SIZE * text.line_height.max(0.1) as f32;
-        let attrs = Self::attrs(text);
         let indent = match text.list {
             ListStyle::None => 0.0,
             ListStyle::Bullet => REFERENCE_SIZE * 0.95,
@@ -275,7 +329,7 @@ impl TextEngine {
             let mut b = buffer.borrow_with(&mut self.fonts);
             b.set_wrap(if wrap_width.is_some() { Wrap::WordOrGlyph } else { Wrap::None });
             b.set_size(wrap_width, None);
-            b.set_text(&text.content, &attrs, Shaping::Advanced, None);
+            Self::set_buffer_text(&mut b, text, line_height, None);
             b.shape_until_scroll(false);
         }
         // Measure, then lay out once more so alignment is relative to the block width.
@@ -290,7 +344,7 @@ impl TextEngine {
         {
             let mut b = buffer.borrow_with(&mut self.fonts);
             b.set_size(Some(text_w + 0.01), None);
-            b.set_text(&text.content, &attrs, Shaping::Advanced, align);
+            Self::set_buffer_text(&mut b, text, line_height, align);
             b.shape_until_scroll(false);
         }
         let height = buffer
@@ -314,7 +368,7 @@ impl TextEngine {
             width = width.max(run.line_w);
             for g in run.glyphs {
                 let phys = g.physical((0.0, 0.0), 1.0);
-                glyphs.push(PlacedGlyph { key: phys.cache_key, x: g.x, y: g.y });
+                glyphs.push(PlacedGlyph { key: phys.cache_key, x: g.x, y: g.y, color: None });
             }
         }
         (glyphs, width)
@@ -323,6 +377,8 @@ impl TextEngine {
     fn shape(&mut self, text: &TextBlock) -> TextLayout {
         let built = self.build(text);
         let mut glyphs = Vec::new();
+        let mut decorations = Vec::new();
+        let to_color = |c: Option<cosmic_text::Color>| c.map(|c| Color::rgba(c.r(), c.g(), c.b(), c.a()));
         let mut markers: Vec<(f32, f32, bool, usize)> = Vec::new(); // (line_y, line start x, rtl, number)
         let mut last_line = usize::MAX;
         let mut number = 0usize;
@@ -334,7 +390,28 @@ impl TextEngine {
                     key: phys.cache_key,
                     x: dx + g.x + g.font_size * g.x_offset,
                     y: run.line_y + g.y - g.font_size * g.y_offset,
+                    color: to_color(g.color_opt),
                 });
+            }
+            // Underlines and strikethroughs, placed with the font's own metrics.
+            for span in run.decorations {
+                let Some(gs) = run.glyphs.get(span.glyph_range.clone()) else { continue };
+                let x0 = gs.iter().map(|g| g.x).fold(f32::INFINITY, f32::min);
+                let x1 = gs.iter().map(|g| g.x + g.w).fold(f32::NEG_INFINITY, f32::max);
+                if x1 <= x0 {
+                    continue;
+                }
+                let d = &span.data;
+                let fs = span.font_size;
+                let color = to_color(span.color_opt);
+                if d.text_decoration.underline != cosmic_text::UnderlineStyle::None {
+                    let thickness = (d.underline_metrics.thickness * fs).max(fs * 0.04);
+                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.underline_metrics.offset * fs, thickness, color });
+                }
+                if d.text_decoration.strikethrough {
+                    let thickness = (d.strikethrough_metrics.thickness * fs).max(fs * 0.04);
+                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.strikethrough_metrics.offset * fs, thickness, color });
+                }
             }
             if run.line_i != last_line {
                 last_line = run.line_i;
@@ -359,11 +436,12 @@ impl TextEngine {
             } else {
                 REFERENCE_SIZE * 0.2
             };
-            glyphs.extend(mg.into_iter().map(|g| PlacedGlyph { key: g.key, x: x0 + g.x, y: line_y + g.y }));
+            glyphs.extend(mg.into_iter().map(|g| PlacedGlyph { key: g.key, x: x0 + g.x, y: line_y + g.y, color: None }));
         }
         TextLayout {
             size: DVec2::new(built.box_w() as f64 * built.scale, built.height as f64 * built.scale),
             glyphs,
+            decorations,
             scale: built.scale,
         }
     }
@@ -499,10 +577,47 @@ impl TextEngine {
 
     /// Builds the glyph outlines as one path in local space, centered on the origin.
     pub fn outline(&mut self, layout: &TextLayout) -> Path {
+        self.colored_outlines(layout).into_iter().fold(Path::builder(), |mut b, (_, p)| {
+            b.extend_from_paths(&[p.as_slice()]);
+            b
+        })
+        .build()
+    }
+
+    /// Glyph outlines and decorations grouped by color (`None` = the text
+    /// box's color), in local space centered on the origin.
+    pub fn colored_outlines(&mut self, layout: &TextLayout) -> Vec<(Option<Color>, Path)> {
+        let mut colors: Vec<Option<Color>> = Vec::new();
+        for c in layout.glyphs.iter().map(|g| g.color).chain(layout.decorations.iter().map(|d| d.color)) {
+            if !colors.contains(&c) {
+                colors.push(c);
+            }
+        }
+        let k = layout.scale as f32;
+        let half = (layout.size * 0.5).as_vec2();
+        colors
+            .into_iter()
+            .map(|color| {
+                let mut b = self.glyph_path(layout, |g| g.color == color);
+                for d in layout.decorations.iter().filter(|d| d.color == color) {
+                    let (x0, x1) = (d.x0 * k - half.x, d.x1 * k - half.x);
+                    let (y0, y1) = (d.y * k - half.y, (d.y + d.thickness) * k - half.y);
+                    b.begin(point(x0, y0));
+                    b.line_to(point(x1, y0));
+                    b.line_to(point(x1, y1));
+                    b.line_to(point(x0, y1));
+                    b.end(true);
+                }
+                (color, b.build())
+            })
+            .collect()
+    }
+
+    fn glyph_path(&mut self, layout: &TextLayout, include: impl Fn(&PlacedGlyph) -> bool) -> lyon::path::path::Builder {
         let mut b = Path::builder();
         let k = layout.scale as f32;
         let half = (layout.size * 0.5).as_vec2();
-        for g in &layout.glyphs {
+        for g in layout.glyphs.iter().filter(|g| include(g)) {
             let Some(cmds) = self.swash.get_outline_commands(&mut self.fonts, g.key) else {
                 continue;
             };
@@ -537,7 +652,7 @@ impl TextEngine {
                 b.end(false);
             }
         }
-        b.build()
+        b
     }
 }
 
@@ -561,6 +676,10 @@ pub(crate) fn layout_hash(t: &TextBlock) -> u64 {
     t.line_height.to_bits().hash(&mut h);
     t.max_width.map(f64::to_bits).hash(&mut h);
     t.list.hash(&mut h);
+    for s in &t.spans {
+        (s.start, s.end, s.style.bold, s.style.italic, s.style.underline, s.style.strike, s.style.color).hash(&mut h);
+        s.style.size.map(f64::to_bits).hash(&mut h);
+    }
     h.finish()
 }
 
@@ -635,5 +754,37 @@ mod tests {
         let caret = r.caret.unwrap();
         let size = engine.layout(&t).size;
         assert!(caret[0].x < -size.x * 0.4, "RTL end-of-text caret is on the left: {caret:?}");
+    }
+
+    #[test]
+    fn formatted_spans_render_bold_color_decorations_and_size() {
+        let mut engine = TextEngine::new();
+        let plain = TextBlock::new("Make it bold");
+        let base = engine.layout(&plain);
+
+        let mut bold = plain.clone();
+        bold.format_range(8..12, |s| s.bold = Some(true));
+        let l = engine.layout(&bold);
+        assert!(l.size.x > base.size.x, "a bold word is wider: {} vs {}", l.size.x, base.size.x);
+
+        let mut colored = plain.clone();
+        colored.format_range(0..4, |s| s.color = Some(Color::rgb(220, 20, 60)));
+        colored.format_range(5..7, |s| s.underline = true);
+        let l = engine.layout(&colored);
+        let groups = engine.colored_outlines(&l);
+        assert_eq!(groups.len(), 2, "the box color plus one formatted color");
+        assert!(groups.iter().any(|(c, _)| *c == Some(Color::rgb(220, 20, 60))));
+        assert_eq!(l.decorations.len(), 1, "one underline");
+        let d = &l.decorations[0];
+        assert!(d.x1 > d.x0 && d.thickness > 0.0);
+
+        let mut big = plain.clone();
+        big.format_range(8..12, |s| s.size = Some(plain.font_size * 2.0));
+        assert!(engine.layout(&big).size.y > base.size.y * 1.5, "a larger word makes its line taller");
+
+        // Caret geometry follows the formatted layout.
+        let r = engine.edit(&big, EditState { cursor: Cursor::new(0, 12), anchor: None }, &[]);
+        let caret = r.caret.unwrap();
+        assert!((caret[1].y - caret[0].y) > base.size.y * 1.5);
     }
 }

@@ -540,7 +540,7 @@ fn readme_screenshots() {
     // 7. Presenting (fullscreen show, mid-path).
     let mut h = build(Some(crate::design::build_template(crate::design::Template::MindMap)));
     let ctx = h.ctx.clone();
-    h.state_mut().start_presenting(&ctx, 2);
+    h.state_mut().start_presenting(&ctx, 2, Some(false));
     settle(&mut h);
     shot(&mut h, "present");
 
@@ -553,4 +553,312 @@ fn readme_screenshots() {
     h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
     h.state_mut().design_check.open = true;
     shot(&mut h, "design-check");
+}
+
+#[test]
+fn delete_works_after_dragging_and_clicking_buttons() {
+    let rect = |w| ElementKind::Rect(glide_core::RectShape { width: w, height: 100.0, fill: Some(glide_core::Color::rgb(90, 80, 230)), ..Default::default() });
+    let mut doc = one_element(rect(100.0), "a");
+    let mut b = zui_el(rect(100.0));
+    b.id = "b".into();
+    b.transform.x = 300.0;
+    doc.add(b);
+    let mut h = harness(Some(doc));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.run_steps(2);
+    // Move an object by dragging it, then press Delete.
+    let a = screen_of(&h, glam::DVec2::ZERO);
+    drag(&mut h, a, a + egui::vec2(40.0, 0.0));
+    assert_eq!(h.state().selection, vec!["a".to_string()]);
+    h.key_press(Key::Delete);
+    h.run_steps(2);
+    assert!(h.state().doc.get("a").is_none(), "Delete removes the dragged object");
+    // Click a ribbon button (it keeps keyboard focus), select on the canvas, press Backspace.
+    h.get_by_label("Home").click();
+    h.run_steps(2);
+    let at = screen_of(&h, glam::DVec2::new(300.0, 0.0));
+    click(&mut h, at);
+    let button = h.get_by_label_contains("Bring to front").rect();
+    click(&mut h, button.center());
+    assert_eq!(h.state().selection, vec!["b".to_string()]);
+    h.key_press(Key::Backspace);
+    h.run_steps(2);
+    assert!(h.state().doc.get("b").is_none(), "Backspace removes it after a button click");
+
+    // Edit a field in Properties, then go back to the canvas and press Delete.
+    let mut c = zui_el(rect(100.0));
+    c.id = "c".into();
+    h.state_mut().doc.add(c);
+    let at = screen_of(&h, glam::DVec2::ZERO);
+    click(&mut h, at);
+    assert_eq!(h.state().selection, vec!["c".to_string()]);
+    let fields: Vec<_> = h.query_all(egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput)).map(|n| n.rect()).collect();
+    let field = fields[0];
+    click(&mut h, field.center());
+    h.event(Event::Text("x".into()));
+    h.run_steps(2);
+    let at = screen_of(&h, glam::DVec2::ZERO);
+    click(&mut h, at);
+    h.key_press(Key::Delete);
+    h.run_steps(2);
+    assert!(h.state().doc.get("c").is_none(), "Delete works after editing a Properties field");
+
+    // Edit text in place on the canvas, finish, then delete another object.
+    let mut t = zui_el(ElementKind::Text(glide_core::TextBlock::new("Hello")));
+    t.id = "t".into();
+    t.transform.y = 200.0;
+    h.state_mut().doc.add(t);
+    let mut d = zui_el(rect(100.0));
+    d.id = "d".into();
+    h.state_mut().doc.add(d);
+    h.run_steps(2);
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(2);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert!(h.state().text_edit.is_some(), "editing in place");
+    h.event(Event::Text("!".into()));
+    h.run_steps(2);
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+    assert!(h.state().text_edit.is_none());
+    let at = screen_of(&h, glam::DVec2::ZERO);
+    click(&mut h, at);
+    assert_eq!(h.state().selection, vec!["d".to_string()]);
+    h.key_press(Key::Delete);
+    h.run_steps(2);
+    assert!(h.state().doc.get("d").is_none(), "Delete works after editing text in place");
+}
+
+fn cursor_at(h: &mut Harness<'_, GlideDeckApp>, at: Pos2) -> egui::CursorIcon {
+    h.event(Event::PointerMoved(at));
+    h.run_steps(2);
+    h.output().platform_output.cursor_icon
+}
+
+#[test]
+fn resize_cursors_follow_each_corner_and_side() {
+    let rect = ElementKind::Rect(glide_core::RectShape { width: 200.0, height: 120.0, fill: Some(glide_core::Color::rgb(90, 80, 230)), ..Default::default() });
+    let mut h = harness(Some(one_element(rect, "r")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["r".into()];
+    h.run_steps(2);
+    let at = |h: &Harness<'_, GlideDeckApp>, x, y| screen_of(h, glam::DVec2::new(x, y));
+    use egui::CursorIcon as C;
+    let p = at(&h, -100.0, -60.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeNwSe, "top-left");
+    let p = at(&h, 100.0, -60.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeNeSw, "top-right");
+    let p = at(&h, 100.0, 60.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeNwSe, "bottom-right");
+    let p = at(&h, -100.0, 60.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeNeSw, "bottom-left");
+    let p = at(&h, 100.0, 0.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeHorizontal, "right side");
+    let p = at(&h, 0.0, 60.0);
+    assert_eq!(cursor_at(&mut h, p), C::ResizeVertical, "bottom side");
+
+    // Dragging the bottom side stretches the height only; the top edge stays.
+    let from = at(&h, 0.0, 60.0);
+    let to = at(&h, 0.0, 160.0);
+    drag(&mut h, from, to);
+    let el = h.state().doc.get("r").unwrap().clone();
+    let ElementKind::Rect(r) = &el.kind else { unreachable!() };
+    assert!((r.width - 200.0).abs() < 1e-6 && (r.height - 220.0).abs() < 1.0, "{} × {}", r.width, r.height);
+    assert!((el.transform.y - r.height / 2.0 - -60.0).abs() < 1.0, "top edge fixed at -60");
+}
+
+#[test]
+fn text_side_handles_change_the_wrap_width() {
+    let mut t = glide_core::TextBlock::new("A long sentence that will wrap onto several lines");
+    t.font_size = 30.0;
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(2);
+    let el0 = h.state().doc.get("t").unwrap().clone();
+    let size0 = h.state_mut().renderer.local_size(&el0);
+    let top0 = h.state().doc.get("t").unwrap().transform.y - size0.y / 2.0;
+    let left0 = h.state().doc.get("t").unwrap().transform.x - size0.x / 2.0;
+    // Drag the right side in to about a third of the width.
+    let from = screen_of(&h, glam::DVec2::new(left0 + size0.x, top0 + size0.y / 2.0));
+    let to = screen_of(&h, glam::DVec2::new(left0 + size0.x / 3.0, top0 + size0.y / 2.0));
+    assert_eq!(cursor_at(&mut h, from), egui::CursorIcon::ResizeHorizontal);
+    drag(&mut h, from, to);
+    let el = h.state().doc.get("t").unwrap().clone();
+    let ElementKind::Text(t) = &el.kind else { unreachable!() };
+    let w = t.max_width.expect("a wrap width is set");
+    assert!((w - size0.x / 3.0).abs() < 2.0, "width {w} vs {}", size0.x / 3.0);
+    assert!((t.font_size - 30.0).abs() < 1e-9 && (el.transform.scale - 1.0).abs() < 1e-9, "the font is not scaled");
+    let size1 = h.state_mut().renderer.local_size(&el);
+    assert!(size1.y > size0.y * 2.0, "text reflowed onto more lines: {} → {}", size0.y, size1.y);
+    assert!((el.transform.y - size1.y / 2.0 - top0).abs() < 1.0, "top edge stays put");
+    assert!((el.transform.x - size1.x / 2.0 - left0).abs() < 1.0, "left edge stays put");
+    snapshot(&mut h, "text-wrap-handles");
+}
+
+#[test]
+fn drawing_a_frame_keeps_its_start_corner() {
+    let mut h = harness(Some(Document::new("t")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().tool = Tool::Frame;
+    h.run_steps(2);
+    let start = screen_of(&h, glam::DVec2::new(-200.0, -100.0));
+    // A tall drag: the 16:9 frame must grow away from the start point, not around the middle.
+    let end = screen_of(&h, glam::DVec2::new(-150.0, 150.0));
+    drag(&mut h, start, end);
+    let f = h.state().doc.elements.iter().find(|e| e.kind.is_frame()).expect("a frame").clone();
+    let size = f.kind.intrinsic_size().unwrap() * f.transform.scale;
+    let top_left = f.transform.position() - size / 2.0;
+    assert!((top_left - glam::DVec2::new(-200.0, -100.0)).length() < 1.5, "start corner fixed: {top_left:?}");
+    assert!((size.x / size.y - 16.0 / 9.0).abs() < 1e-6);
+    // Dragging up and left grows the frame that way instead.
+    h.state_mut().tool = Tool::Frame;
+    h.run_steps(1);
+    let start = screen_of(&h, glam::DVec2::new(300.0, 300.0));
+    let end = screen_of(&h, glam::DVec2::new(100.0, 250.0));
+    drag(&mut h, start, end);
+    let f = h.state().doc.elements.iter().rfind(|e| e.kind.is_frame()).unwrap().clone();
+    let size = f.kind.intrinsic_size().unwrap() * f.transform.scale;
+    let bottom_right = f.transform.position() + size / 2.0;
+    assert!((bottom_right - glam::DVec2::new(300.0, 300.0)).length() < 1.5, "start corner fixed: {bottom_right:?}");
+}
+
+#[test]
+fn presenter_view_shows_notes_next_slide_and_controls() {
+    let mut doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    doc.path[1].notes = "# Open strong\n- Thank the hosts\n- **One** number to remember\n1. Pause for questions".into();
+    let mut h = harness(Some(doc));
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 1, Some(true));
+    h.run_steps(6);
+    assert!(h.state().presenting.as_ref().is_some_and(|p| p.console.is_some()), "presenter view is on");
+    h.get_by_label_contains("Presenter view");
+    h.get_by_label_contains("Slide 2 of");
+    h.get_by_label_contains("Open strong");
+    h.get_by_label_contains("Thank the hosts");
+    for _ in 0..60 {
+        h.step();
+    }
+    snapshot(&mut h, "presenter-view");
+
+    // Keys pressed on the console drive the show.
+    h.key_press(Key::ArrowRight);
+    h.run_steps(2);
+    assert_eq!(h.state().presenting.as_ref().unwrap().step, 2);
+    h.get_by_label_contains("Slide 3 of");
+    h.key_press(Key::B);
+    h.run_steps(2);
+    assert_eq!(h.state().presenting.as_ref().unwrap().blank, Some(egui::Color32::BLACK));
+    h.key_press(Key::ArrowRight);
+    h.run_steps(2);
+    let p = h.state().presenting.as_ref().unwrap();
+    assert_eq!((p.blank, p.step), (None, 2), "the first key after black just reveals the show");
+    // Buttons.
+    h.get_by_label_contains("Previous").click();
+    h.run_steps(2);
+    assert_eq!(h.state().presenting.as_ref().unwrap().step, 1);
+    h.get_by_label_contains("End show").click();
+    h.run_steps(3);
+    assert!(h.state().presenting.is_none());
+    assert_eq!(h.state().current_step, Some(1), "the editor returns to the last slide shown");
+}
+
+#[test]
+fn rich_text_formatting_while_editing_in_place() {
+    let mut t = glide_core::TextBlock::new("Make this bold");
+    t.font_size = 48.0;
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(2);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    // Select "bold" (the last word) with Shift+Ctrl+Left, then Ctrl+B.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::End);
+    h.key_press_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::ArrowLeft);
+    h.run_steps(2);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::B);
+    h.run_steps(2);
+    let text = |h: &Harness<'_, GlideDeckApp>| match &h.state().doc.get("t").unwrap().kind {
+        ElementKind::Text(t) => t.clone(),
+        _ => unreachable!(),
+    };
+    let t = text(&h);
+    assert_eq!(t.spans.len(), 1, "{:?}", t.spans);
+    assert_eq!(&t.content[t.spans[0].start..t.spans[0].end], "bold");
+    assert_eq!(t.spans[0].style.bold, Some(true));
+    // The floating format bar shows Bold as on.
+    assert!(h.state().current_format_state().unwrap().bold);
+    snapshot(&mut h, "format-bar");
+
+    // With no selection, Ctrl+U applies to what is typed next.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::End);
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::U);
+    h.event(Event::Text(" now".into()));
+    h.run_steps(2);
+    let t = text(&h);
+    assert_eq!(t.content, "Make this bold now");
+    let now = t.spans.iter().find(|s| &t.content[s.start..s.end] == " now").expect("typed text is formatted");
+    assert!(now.style.underline && now.style.bold == Some(true), "{:?}", t.spans);
+
+    // The floating bar's buttons work on a selection too.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.run_steps(2);
+    h.get_by_label_contains("Italic").click();
+    h.run_steps(2);
+    let t = text(&h);
+    assert!(t.range_all(0..t.content.len(), |s| t.is_italic(s)), "{:?}", t.spans);
+    assert!(h.state().text_edit.is_some(), "clicking the bar keeps editing");
+
+    // Properties edits keep formatting attached to its text.
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+    if let Some(ElementKind::Text(t)) = h.state_mut().doc.get_mut("t").map(|e| &mut e.kind) {
+        t.set_content("Please make this bold now");
+    }
+    let t = text(&h);
+    let bold: String = t.spans.iter().filter(|s| s.style.bold == Some(true)).map(|s| &t.content[s.start..s.end]).collect();
+    assert_eq!(bold, "bold now");
+}
+
+#[test]
+fn import_powerpoint_export_pdf_and_recent_files() {
+    let dir = std::env::temp_dir().join(format!("glidedeck-ui-import-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let pptx = dir.join("Quarterly.pptx");
+    std::fs::write(&pptx, include_bytes!("testdata/sample.pptx")).unwrap();
+
+    let mut h = harness(Some(Document::new("Before")));
+    let ctx = h.ctx.clone();
+    h.state_mut().import_pptx(&ctx, &pptx);
+    h.run_steps(4);
+    let app = h.state();
+    assert_eq!(app.doc.path.len(), 5);
+    assert!(app.is_dirty(), "an import is unsaved until you save it");
+    assert!(app.recent.paths.iter().any(|p| p.ends_with("Quarterly.pptx")), "imports are listed as recent");
+    let pic = app.doc.elements.iter().find_map(|e| match &e.kind {
+        ElementKind::Image(m) => Some(m.path.clone()),
+        _ => None,
+    });
+    let pic = pic.expect("the picture was imported");
+    assert!(glide_core::assets::resolve(Some(&app.base_dir()), &pic).exists(), "pictures are stored with the document: {pic}");
+
+    // File → Open recent lists it.
+    h.get_by_label("File").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Open recent").hover();
+    h.run_steps(3);
+    let entries = h.query_all(egui_kittest::kittest::By::new().label_contains("Quarterly.pptx").role(egui::accesskit::Role::Button)).count();
+    assert_eq!(entries, 1, "one recent-file entry");
+
+    // PDF export renders every slide with the editor's renderer.
+    let out = dir.join("deck.pdf");
+    let doc = h.state().doc.clone();
+    let report = crate::pdf::export(&mut h.state_mut().renderer, &doc, &out, crate::pdf::PdfOptions { width_px: 640, quality: 80 }).unwrap();
+    assert_eq!(report.pages, 5);
+    let bytes = std::fs::read(&out).unwrap();
+    assert!(bytes.starts_with(b"%PDF-1.7") && bytes.len() == report.bytes);
+    std::fs::remove_dir_all(&dir).ok();
 }

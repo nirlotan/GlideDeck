@@ -216,8 +216,9 @@ pub fn tessellate(text: &mut TextEngine, kind: &ElementKind, tolerance: f32) -> 
         }
         ElementKind::Text(t) => {
             let layout = text.layout(t);
-            let path = text.outline(&layout);
-            fill(&mut mesh, &path, t.color, tolerance, FillRule::NonZero);
+            for (color, path) in text.colored_outlines(&layout) {
+                fill(&mut mesh, &path, color.unwrap_or(t.color), tolerance, FillRule::NonZero);
+            }
         }
         ElementKind::Frame(fr) => {
             let path = rect_path(fr.width, fr.height, fr.corner_radius);
