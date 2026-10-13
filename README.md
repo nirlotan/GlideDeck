@@ -27,6 +27,7 @@
 - [Screenshots](#screenshots)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+- [Use with Claude and GitHub Copilot](#use-with-claude-and-github-copilot)
 - [Automation: CLI and JSON ops](#automation-cli-and-json-ops)
 - [Packaging](#packaging)
   - [Windows MSI installer](#windows-msi-installer)
@@ -52,8 +53,9 @@ GlideDeck follows the **ArtCraft philosophy**:
 - **Local-first and private.** No accounts, cloud, sync or telemetry. Your deck is one
   human-readable JSON file, with media in an `assets/` folder next to it.
 - **Single-player.** No collaboration features. It's a focused tool for one author.
-- **Agent-ready.** Every edit is a JSON operation. Scripts and AI agents can build,
-  restyle, render and export decks from the command line.
+- **Agent-ready.** A built-in MCP server and an agent skill let Claude and GitHub
+  Copilot build decks for you. Every edit is also a JSON operation, so scripts can
+  build, restyle, render and export decks from the command line.
 
 ## Features
 
@@ -207,6 +209,39 @@ every shortcut, and the complete CLI and JSON reference.
 | Present | F5 (from start) · Shift+F5 (from current slide) |
 | Everything else | F1 shows the full shortcut sheet |
 
+## Use with Claude and GitHub Copilot
+
+GlideDeck includes an **MCP server** (`glidedeck mcp`) and an **agent skill**, so Claude
+Code, Claude Desktop, and GitHub Copilot (VS Code and CLI) can create presentations for
+you. The assistant picks a template, writes each slide, renders every slide to check it,
+and saves a regular GlideDeck project (`.glide.json`) that you can open and keep editing,
+or export to PowerPoint.
+
+To set it up, run this in the folder where you want your presentations:
+
+```bash
+glidedeck agent-setup
+```
+
+This installs the skill (`.claude/skills` and `.github/skills`) and registers the server
+for Claude Code and Copilot CLI (`.mcp.json`) and for VS Code (`.vscode/mcp.json`). In
+VS Code, switch Copilot Chat to **Agent** mode and the GlideDeck tools appear. Then ask:
+
+> Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, check
+> every slide, and export a PowerPoint copy.
+
+The server has 15 tools:
+- **Discover:** `catalog`, `search_icons`.
+- **Create and read:** `create_presentation`, `get_presentation`.
+- **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`,
+  `remove_slide`, `edit_presentation`.
+- **Check and deliver:** `render_slide` (returns the PNG), `export_pptx`, `save_as`,
+  `open_in_editor`.
+
+It runs locally over stdio and makes no network calls.
+**Full guide** for each client (Claude Desktop, user-wide setup, troubleshooting):
+[docs/AI.md](docs/AI.md).
+
 ## Automation: CLI and JSON ops
 
 The same binary is also a headless tool:
@@ -269,7 +304,7 @@ Edit `packaging/windows/glidedeck.wxs` to change what it installs.
 To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
 
 ```bash
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.1-x64.msi
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.2-x64.msi
 ```
 
 ### Creating a macOS DMG
@@ -384,7 +419,6 @@ accounts, no telemetry and no update pings.
 
 ## Roadmap
 
-- MCP server exposing the JSON op channel to AI agents
 - Presenter view on a second display (timer, current/next, notes)
 - Audio-only clips, video trimming, and video/PDF export of the path
 - Grouping, more shape types and connectors

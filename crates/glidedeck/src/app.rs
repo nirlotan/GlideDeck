@@ -319,32 +319,15 @@ impl GlideDeckApp {
     pub fn insert_layout(&mut self, kind: LayoutKind) {
         let theme = self.theme();
         let anchor = self.current_step.and_then(|i| self.doc.step_frame(i)).cloned();
-        let (mut center, width, rotation) = match &anchor {
-            Some(f) => {
-                let size = f.kind.intrinsic_size().unwrap_or_default() * f.transform.scale.abs();
-                let dir = DVec2::from_angle(f.transform.rotation.to_radians());
-                (f.transform.position() + dir * size.x * 1.15, size.x, f.transform.rotation)
-            }
+        let (center, width, rotation) = match &anchor {
+            Some(f) => crate::layouts::slot_after(&self.doc, f),
             None => {
                 let vp = self.viewport();
                 let w = vp.x.min(vp.y * 16.0 / 9.0) * 0.86 / self.camera.zoom;
-                (self.camera.center, w, self.camera.rotation.to_degrees())
+                let rotation = self.camera.rotation.to_degrees();
+                (crate::layouts::free_spot(&self.doc, self.camera.center, w, rotation), w, rotation)
             }
         };
-        // Step right until the new slide doesn't overlap an existing frame.
-        let step = DVec2::from_angle(rotation.to_radians()) * width * 1.15;
-        let half = DVec2::new(width, width * 9.0 / 16.0) * 0.5;
-        for _ in 0..40 {
-            let candidate = Aabb::from_center_half(center, half);
-            let overlaps = self.doc.elements.iter().filter(|e| e.kind.is_frame()).any(|f| {
-                let size = f.kind.intrinsic_size().unwrap_or_default();
-                f.world_aabb(size).intersects(&candidate) && f.world_aabb(size).size().x < width * 4.0
-            });
-            if !overlaps {
-                break;
-            }
-            center += step;
-        }
         let id = crate::design::place_layout(&mut self.doc, kind, &theme, center, width, rotation);
         self.insert_step(&id);
         if let Some(i) = self.current_step {

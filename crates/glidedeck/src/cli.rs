@@ -63,6 +63,32 @@ pub enum Command {
         #[arg(short, long)]
         out: PathBuf,
     },
+    /// Run the MCP server on stdio, so AI assistants (Claude, GitHub Copilot, …)
+    /// can create and edit presentations.
+    Mcp {
+        /// Folder that relative project paths resolve against (default: the current folder).
+        #[arg(long)]
+        root: Option<PathBuf>,
+    },
+    /// Install the GlideDeck skill and MCP server for Claude Code and GitHub Copilot.
+    ///
+    /// By default sets up the current folder: the skill in `.claude/skills` (Claude
+    /// Code) and `.github/skills` (Copilot), `.mcp.json` (Claude Code, Copilot CLI)
+    /// and `.vscode/mcp.json` (Copilot in VS Code). Existing entries are kept.
+    AgentSetup {
+        /// Project folder to set up (default: the current folder).
+        #[arg(long)]
+        project: Option<PathBuf>,
+        /// Set up for your user account (all projects) instead of one project.
+        #[arg(long, conflicts_with = "project")]
+        user: bool,
+        /// Only install the skill.
+        #[arg(long, conflicts_with = "no_skill")]
+        no_mcp: bool,
+        /// Only register the MCP server.
+        #[arg(long)]
+        no_skill: bool,
+    },
     /// Render a view of the canvas to a PNG (offscreen, no window).
     ///
     /// Frames the whole document by default; pass --center/--zoom to choose a view,
@@ -104,6 +130,37 @@ fn parse_point(s: &str) -> Result<DVec2, String> {
 pub fn run(cmd: Command) -> Result<()> {
     match cmd {
         Command::Open { .. } => unreachable!("handled by main"),
+        Command::Mcp { root } => {
+            let root = match root {
+                Some(r) => r,
+                None => std::env::current_dir()?,
+            };
+            std::fs::create_dir_all(&root).with_context(|| format!("creating {}", root.display()))?;
+            crate::mcp::serve(root)?;
+        }
+        Command::AgentSetup { project, user, no_mcp, no_skill } => {
+            let outcomes = if user {
+                crate::agents::setup_user(!no_skill, !no_mcp)?
+            } else {
+                let dir = match project {
+                    Some(p) => p,
+                    None => std::env::current_dir()?,
+                };
+                crate::agents::setup_project(&dir, !no_skill, !no_mcp)?
+            };
+            for o in &outcomes {
+                println!("{}: {}", o.path.display(), o.note);
+            }
+            if user && !no_mcp {
+                println!("
+To register the MCP server with the other assistants:
+
+{}", crate::agents::user_hints());
+            } else if !no_mcp {
+                println!("
+Reload VS Code (or restart Claude Code / Copilot CLI) and approve the \"glidedeck\" MCP server when asked.");
+            }
+        }
         Command::New { file, title, demo, template, force } => {
             if file.exists() && !force {
                 bail!("{} already exists (use --force to overwrite)", file.display());

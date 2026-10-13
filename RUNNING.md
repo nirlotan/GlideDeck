@@ -302,6 +302,11 @@ glidedeck export-pptx talk.glide.json --out talk.pptx
   canvas. Use `--step N` to render slide N exactly as presented, `--element ID` to frame one
   element, or `--center=x,y --zoom Z --rotation DEG` for an explicit camera.
 - `export-pptx` writes the Morph deck described above.
+- `mcp [--root DIR]` runs the MCP server on stdio for AI assistants. Relative project paths
+  resolve against `--root`, which defaults to the current folder.
+- `agent-setup [--project DIR | --user] [--no-mcp | --no-skill]` installs the GlideDeck
+  skill and registers the MCP server for Claude Code and GitHub Copilot. See
+  [docs/AI.md](docs/AI.md).
 
 ### Operation reference
 

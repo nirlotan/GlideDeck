@@ -1,5 +1,6 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
+mod agents;
 mod app;
 mod canvas;
 mod cli;
@@ -9,6 +10,7 @@ mod galleries;
 mod history;
 mod inspector;
 mod layouts;
+mod mcp;
 mod media;
 mod office;
 mod present;
@@ -27,6 +29,9 @@ fn main() -> anyhow::Result<()> {
     let file = match cli.command {
         None => cli.file,
         Some(cli::Command::Open { file }) => file,
+        // The MCP server talks JSON over the pipes its client gives it, so it
+        // must not attach to a console.
+        Some(cmd @ cli::Command::Mcp { .. }) => return cli::run(cmd),
         Some(cmd) => {
             attach_console();
             return cli::run(cmd);

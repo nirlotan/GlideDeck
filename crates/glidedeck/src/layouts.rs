@@ -4,7 +4,7 @@
 
 use glam::DVec2;
 use glide_core::{
-    Color, Document, Element, ElementKind, EllipseShape, Frame, Icon, IconStyle, ListStyle, RectShape, Shadow, Stroke, TextAlign,
+    Aabb, Color, Document, Element, ElementKind, EllipseShape, Frame, Icon, IconStyle, ListStyle, RectShape, Shadow, Stroke, TextAlign,
     TextRole, Theme, Transform,
 };
 
@@ -579,4 +579,33 @@ pub(crate) fn place_local(doc: &mut Document, elements: Vec<Element>, center: DV
         el.transform = Transform { x: world.x, y: world.y, scale: el.transform.scale * s, rotation: el.transform.rotation + rotation };
         doc.add(el);
     }
+}
+
+/// Where a new slide goes after `anchor`: the same size and rotation, one
+/// slide-width further along, skipping past frames already there.
+/// Returns (center, width, rotation in degrees).
+pub fn slot_after(doc: &Document, anchor: &Element) -> (DVec2, f64, f64) {
+    let size = anchor.kind.intrinsic_size().unwrap_or_default() * anchor.transform.scale.abs();
+    let rotation = anchor.transform.rotation;
+    let dir = DVec2::from_angle(rotation.to_radians());
+    (free_spot(doc, anchor.transform.position() + dir * size.x * 1.15, size.x, rotation), size.x, rotation)
+}
+
+/// Steps a 16:9 slide of `width` along its rotation from `center` until it no
+/// longer overlaps a frame of similar size.
+pub fn free_spot(doc: &Document, mut center: DVec2, width: f64, rotation: f64) -> DVec2 {
+    let step = DVec2::from_angle(rotation.to_radians()) * width * 1.15;
+    let half = DVec2::new(width, width * 9.0 / 16.0) * 0.5;
+    for _ in 0..40 {
+        let candidate = Aabb::from_center_half(center, half);
+        let overlaps = doc.elements.iter().filter(|e| e.kind.is_frame()).any(|f| {
+            let b = f.world_aabb(f.kind.intrinsic_size().unwrap_or_default());
+            b.intersects(&candidate) && b.size().x < width * 4.0
+        });
+        if !overlaps {
+            break;
+        }
+        center += step;
+    }
+    center
 }
