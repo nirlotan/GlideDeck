@@ -3,7 +3,7 @@
 **Let Claude and GitHub Copilot build your presentations.**
 
 ### Install (Windows 10/11, x64)
-1. Download **`GlideDeck-0.1.2-x64.msi`** below and run it. It upgrades earlier versions in place.
+1. Download **`GlideDeck-0.1.2-x64.msi`** below and run it. It upgrades earlier versions in place. `GlideDeck-x64.msi` is the same file; the README's download button always points to the latest one.
 2. Open a terminal in the folder where you want your presentations and run `glidedeck agent-setup`.
 3. Ask your assistant for a presentation. The full guide is in [docs/AI.md](https://github.com/nirlotan/GlideDeck/blob/main/docs/AI.md).
 

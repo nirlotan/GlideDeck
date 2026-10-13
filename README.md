@@ -16,6 +16,12 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
+<p align="center">
+  <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%20installer%20(.msi)-4f46e5?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <br>
+  <sub>Windows 10/11 x64 · includes the MCP server for Claude and GitHub Copilot · <a href="https://github.com/nirlotan/GlideDeck/releases">all releases</a></sub>
+</p>
+
 ![GlideDeck editor](docs/screenshots/editor.png)
 
 ---
@@ -147,7 +153,9 @@ GlideDeck follows the **ArtCraft philosophy**:
 
 ### Windows: installer
 
-1. Download `GlideDeck-<version>-x64.msi` from the repository's **Releases** page, or
+1. **[Download the latest installer (GlideDeck-x64.msi)](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi)**.
+   Versioned installers and SHA-256 checksums are on the
+   [Releases page](https://github.com/nirlotan/GlideDeck/releases). You can also
    [build it yourself](#windows-msi-installer).
 2. Run it. GlideDeck installs to `Program Files\GlideDeck`, adds a Start-menu entry and a
    desktop shortcut (optional), and puts the `glidedeck` CLI on your `PATH`.
@@ -157,7 +165,11 @@ GlideDeck follows the **ArtCraft philosophy**:
 winget install Gyan.FFmpeg
 ```
 
-Uninstall from **Settings → Apps**.
+The installer isn't code-signed yet, so Windows SmartScreen may warn: choose
+**More info → Run anyway**. Uninstall from **Settings → Apps**.
+
+To let Claude or GitHub Copilot build presentations, run `glidedeck agent-setup` next
+(see [Use with Claude and GitHub Copilot](#use-with-claude-and-github-copilot)).
 
 ### macOS
 
