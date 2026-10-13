@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%20installer%20(.msi)-4f46e5?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/nirlotan/GlideDeck/raw/main/dist/GlideDeck-0.1.3.dmg"><img alt="Download for macOS (Apple Silicon)" src="https://img.shields.io/badge/Download-macOS%20Apple%20Silicon%20(.dmg)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
   <br>
   <sub>Windows 10/11 x64 · includes the MCP server for Claude and GitHub Copilot · <a href="https://github.com/nirlotan/GlideDeck/releases">all releases</a></sub>
 </p>
@@ -195,8 +196,11 @@ To let Claude or GitHub Copilot build presentations, run `glidedeck agent-setup`
 
 ### macOS
 
-Use a DMG built with the [macOS packaging guide](#creating-a-macos-dmg), or run from
-source as below. For video, install FFmpeg:
+**[Download the latest macOS installer for Apple Silicon (GlideDeck-0.1.3.dmg)](https://github.com/nirlotan/GlideDeck/raw/main/dist/GlideDeck-0.1.3.dmg)**
+and drag GlideDeck to Applications. This build is ad-hoc signed; on another Mac,
+right-click the app and choose **Open** to confirm the first launch. You can also
+[build a DMG for Intel or Apple Silicon](#creating-a-macos-dmg) or run from source as below. For video,
+install FFmpeg:
 
 ```bash
 brew install ffmpeg
