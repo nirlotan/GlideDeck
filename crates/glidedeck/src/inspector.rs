@@ -18,7 +18,7 @@ const SWATCHES: [Color; 8] = [
     Color::rgb(0x2A, 0x1F, 0x3D),
 ];
 
-fn card(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
+pub(crate) fn card(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     let p = theme::palette(ui.ctx());
     egui::Frame::new()
         .fill(p.surface_alt)
@@ -584,6 +584,9 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
     }
     if let Some(&first) = steps.first() {
         slide_card(app, ui, first, &steps);
+        crate::anim_ui::slide_card(app, ui, first, actions);
+    } else if app.doc.get(&id).is_some_and(|e| !e.kind.is_frame()) {
+        crate::anim_ui::element_card(app, ui, &id, actions);
     }
     if replace_image {
         replace_image_file(app, ui.ctx(), &id);
@@ -651,17 +654,11 @@ fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, index: usize, all: &[us
     card(ui, &title, |ui| {
         grid(ui, "slide", |ui| {
             label(ui, "Transition");
-            egui::ComboBox::from_id_salt("tstyle")
-                .selected_text(match step.transition.style {
-                    TransitionStyle::Smooth => "Smooth zoom",
-                    TransitionStyle::Direct => "Direct",
-                    TransitionStyle::Cut => "Cut",
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut step.transition.style, TransitionStyle::Smooth, "Smooth zoom");
-                    ui.selectable_value(&mut step.transition.style, TransitionStyle::Direct, "Direct");
-                    ui.selectable_value(&mut step.transition.style, TransitionStyle::Cut, "Cut");
-                });
+            egui::ComboBox::from_id_salt("tstyle").selected_text(step.transition.style.label()).show_ui(ui, |ui| {
+                for style in TransitionStyle::ALL {
+                    ui.selectable_value(&mut step.transition.style, style, style.label()).on_hover_text(style.description());
+                }
+            });
             ui.end_row();
             label(ui, "Duration");
             ui.add(egui::Slider::new(&mut step.transition.duration, 0.2..=5.0).suffix(" s").fixed_decimals(1));

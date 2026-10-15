@@ -109,8 +109,18 @@ pub struct TextLayout {
     pub size: DVec2,
     glyphs: Vec<PlacedGlyph>,
     decorations: Vec<Decoration>,
+    /// Ink extent of each laid-out line: x0, top, x1, bottom (reference units).
+    lines: Vec<[f32; 4]>,
     /// Local units per reference unit.
     scale: f64,
+}
+
+impl TextLayout {
+    /// Each laid-out line's box (x0, top, x1, bottom) in local units from the
+    /// block's top-left: as wide as its glyphs, as tall as the line.
+    pub fn line_boxes(&self) -> Vec<[f64; 4]> {
+        self.lines.iter().map(|l| l.map(|v| v as f64 * self.scale)).collect()
+    }
 }
 
 /// A resolution-independent path command (local units, y down).
@@ -378,12 +388,19 @@ impl TextEngine {
         let built = self.build(text);
         let mut glyphs = Vec::new();
         let mut decorations = Vec::new();
+        let mut lines: Vec<[f32; 4]> = Vec::new();
         let to_color = |c: Option<cosmic_text::Color>| c.map(|c| Color::rgba(c.r(), c.g(), c.b(), c.a()));
         let mut markers: Vec<(f32, f32, bool, usize)> = Vec::new(); // (line_y, line start x, rtl, number)
         let mut last_line = usize::MAX;
         let mut number = 0usize;
         for run in built.buffer.layout_runs() {
             let dx = built.offset(run.rtl);
+            let ink: Vec<&cosmic_text::LayoutGlyph> = run.glyphs.iter().filter(|g| run.text.get(g.start..g.end).is_some_and(|s| !s.trim().is_empty())).collect();
+            if !ink.is_empty() {
+                let x0 = ink.iter().map(|g| g.x).fold(f32::INFINITY, f32::min);
+                let x1 = ink.iter().map(|g| g.x + g.w).fold(f32::NEG_INFINITY, f32::max);
+                lines.push([dx + x0, run.line_top, dx + x1, run.line_top + run.line_height]);
+            }
             for g in run.glyphs {
                 let phys = g.physical((0.0, 0.0), 1.0);
                 glyphs.push(PlacedGlyph {
@@ -442,6 +459,7 @@ impl TextEngine {
             size: DVec2::new(built.box_w() as f64 * built.scale, built.height as f64 * built.scale),
             glyphs,
             decorations,
+            lines,
             scale: built.scale,
         }
     }

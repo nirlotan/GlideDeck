@@ -158,6 +158,10 @@ MCP server also tells the assistant the workflow when it connects.
 | `export_pdf` | PDF, one page per slide |
 | `import_pptx` | Converts a PowerPoint file into a GlideDeck project (slides, text, pictures, notes) |
 | `arrange_slides` | Rearranges every slide into a spiral, orbits, tree, zoom tunnel… with a matching path |
+| `set_transitions` | Camera moves per slide: smooth, swoop, spin, punch, fade, direct or cut (or a cycle of them) |
+| `auto_animate` | Gives slides an entrance cascade in reading order that plays on arrival |
+| `animate` | Adds appear, emphasis (spotlight, highlight, count up…) and disappear animations by element id |
+| `clear_animations` | Removes slides' animations |
 | `save_as` | Saves a copy or version of the project (media included) |
 | `open_in_editor` | Opens the project in the GlideDeck editor |
 | `search_icons` | Finds names among ~1,500 Phosphor icons |
@@ -165,6 +169,21 @@ MCP server also tells the assistant the workflow when it connects.
 
 Paths are absolute or relative to the server's folder (the workspace, or
 `--root`). `.glide.json` is added when there is no extension.
+
+## Outstanding by default
+
+The server's instructions and the skill tell the assistant to finish every deck with
+GlideDeck's motion features, unless you ask for a plain one:
+
+1. **A path with a shape.** `arrange_slides` with a layout that mirrors the story: orbits
+   or a tree for a hub and its topics, a spiral or staircase for growth, a zoom tunnel for
+   drilling down.
+2. **Varied camera moves.** `set_transitions`, e.g. cycling smooth, swoop and punch.
+3. **Builds.** `auto_animate` on every slide, then `animate` for the key moments: a
+   spotlight on the number that matters, a highlight on a phrase, count-up metrics, a
+   quote revealed word by word.
+
+To get a quieter deck, say so in your request ("no animations", "simple transitions").
 
 ## Editing afterwards
 

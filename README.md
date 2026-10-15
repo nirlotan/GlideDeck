@@ -91,8 +91,16 @@ GlideDeck follows the **ArtCraft philosophy**:
 
 ### Cinematic motion
 - **Smooth zoom** transitions follow the van Wijk–Nuij optimal path: the camera pulls back
-  just enough for context, then dives in. **Direct** and **Cut** styles are also
-  available, with per-slide duration and easing.
+  just enough for context, then dives in. Six more camera moves give each slide its own
+  entrance: **Swoop** (a sideways arc with a roll), **Spin** (a barrel roll), **Punch**
+  (overshoot and settle), **Fade** (a dip through the background), **Direct** and **Cut**,
+  with per-slide duration and easing.
+- **In-slide animations** (the **Animate** tab): objects can *appear* (Fade, Rise, Focus,
+  Zoom, Pop, Drop, Fly in, Spin, Typewriter, Word by word, Count up), be *emphasised*
+  (Spotlight, Highlight marker, Underline, Color pop, Pulse, Glow, Wiggle) and *disappear*
+  (Fade out, Sink, Zoom out, Fly out, Shrink), on a click, with the previous one or after
+  it. **Auto-animate** gives a slide a tasteful entrance cascade in one click. Numbered
+  badges show the click order on the canvas, and **Preview** plays it in the editor.
 - **Fullscreen presenting** with keyboard and clicker navigation, an auto-hiding control
   bar, free zooming mid-talk, and videos that start automatically when you arrive at
   their slide.
@@ -241,7 +249,8 @@ every shortcut, and the complete CLI and JSON reference.
    a ready-made slide.
 4. Add text (**T**), shapes (**R**, **O**), icons (**Ctrl/⌘+Shift+K**), images, SVGs and
    video, or simply paste and drop.
-5. Set transitions on the **Transitions** tab and run **Design check**.
+5. Set transitions on the **Transitions** tab, bring slides to life on the **Animate** tab
+   (try **Auto-animate**), and run **Design check**.
 6. **Present** (F5), or **Present → PowerPoint** to hand off a Morph-animated deck.
 
 | Action | Input |
@@ -275,15 +284,18 @@ VS Code, switch Copilot Chat to **Agent** mode and the GlideDeck tools appear. T
 > Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, check
 > every slide, and export a PowerPoint copy.
 
-The server has 18 tools:
+The server has 22 tools:
 - **Discover:** `catalog`, `search_icons`.
 - **Create and read:** `create_presentation`, `import_pptx`, `get_presentation`.
 - **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`,
   `remove_slide`, `arrange_slides`, `edit_presentation`.
+- **Bring it to life:** `animate`, `auto_animate`, `set_transitions`, `clear_animations`.
 - **Check and deliver:** `render_slide` (returns the PNG), `export_pptx`, `export_pdf`,
   `save_as`, `open_in_editor`.
 
-It runs locally over stdio and makes no network calls.
+The assistant is told to make every deck stand out: shape the path with `arrange_slides`,
+vary the camera moves, auto-animate each slide and add a spotlight or highlight on the key
+moments. It runs locally over stdio and makes no network calls.
 **Full guide** for each client (Claude Desktop, user-wide setup, troubleshooting):
 [docs/AI.md](docs/AI.md).
 
@@ -352,7 +364,7 @@ Edit `packaging/windows/glidedeck.wxs` to change what it installs.
 To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
 
 ```bash
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.4-x64.msi
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.5-x64.msi
 ```
 
 ### Creating a macOS DMG

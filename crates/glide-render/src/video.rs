@@ -271,16 +271,18 @@ fn video_thread(ffmpeg: &Path, file: &Path, info: &VideoInfo, size: (u32, u32), 
             }
             // Pace to the frame rate (the first frame is shown immediately as the poster).
             let target = Duration::from_secs_f64(n as f64 / info.fps);
-            while n > 0 {
-                let now = Instant::now();
-                if s.playing.load(Ordering::Relaxed) {
-                    clock += now - last;
+            if n > 0 {
+                loop {
+                    let now = Instant::now();
+                    if s.playing.load(Ordering::Relaxed) {
+                        clock += now - last;
+                    }
+                    last = now;
+                    if clock >= target || s.stop.load(Ordering::Relaxed) || s.generation.load(Ordering::Relaxed) != generation {
+                        break;
+                    }
+                    std::thread::sleep((target - clock).min(Duration::from_millis(8)));
                 }
-                last = now;
-                if clock >= target || s.stop.load(Ordering::Relaxed) || s.generation.load(Ordering::Relaxed) != generation {
-                    break;
-                }
-                std::thread::sleep((target - clock).min(Duration::from_millis(8)));
             }
             n += 1;
             seq += 1;

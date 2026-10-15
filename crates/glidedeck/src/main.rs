@@ -1,6 +1,8 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod agents;
+mod anim;
+mod anim_ui;
 mod app;
 mod arrange;
 mod arrange_ui;

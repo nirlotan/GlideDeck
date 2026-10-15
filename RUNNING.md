@@ -92,7 +92,7 @@ double-clicked); CLI subcommands still print to the terminal that launched them.
 ## 3. Using the editor
 
 The window has a PowerPoint-style **ribbon** (File · Home · Insert · Design · Transitions ·
-Present · View), the **Slides** strip on the left, the canvas in the middle and **Properties** on the
+Animate · Present · View), the **Slides** strip on the left, the canvas in the middle and **Properties** on the
 right. The app follows your system's light/dark setting; the sun/moon button switches it.
 
 ### Slides are frames
@@ -109,8 +109,40 @@ right. The app follows your system's light/dark setting; the sun/moon button swi
 - Moving a frame moves everything inside it, so a frame works as a logical group.
   Select several objects and choose **Frame them** to wrap them in a new slide.
 - The **Transitions** tab (or Properties → Slide) sets how the camera enters each slide:
-  **Smooth zoom** (a cinematic zoom-out-and-dive arc), **Direct** or **Cut**, plus the
-  duration and easing. Speaker notes (Markdown) go in Properties → Slide.
+  **Smooth zoom** (a cinematic zoom-out-and-dive arc), **Direct**, **Swoop** (a sideways
+  arc with a gentle roll), **Spin** (a barrel roll), **Punch** (overshoots the zoom, then
+  settles), **Fade** (dips through the background color) or **Cut**, plus the duration and
+  easing. Speaker notes (Markdown) go in Properties → Slide.
+
+### Animating objects on a slide
+
+The **Animate** tab adds in-slide animations ("builds") to the selected objects:
+
+| Kind | Effects |
+|---|---|
+| **Appear**: hidden until it plays | Fade · Rise · Focus · Zoom · Pop · Drop · Fly in · Spin · Typewriter · Word by word · Count up |
+| **Emphasis**: draws attention | Pulse · Wiggle · Glow · Spotlight (dims the rest) · Highlight (a marker sweeps behind) · Underline · Color pop |
+| **Disappear**: hidden once played | Fade out · Sink · Zoom out · Fly out · Shrink |
+
+- **Start** sets how new animations begin: *On click*, *With previous* (together with the
+  one before) or *After previous* (when it ends). With several objects selected, *One by
+  one* gives each its own turn and *All together* plays them at once.
+- **Auto-animate** builds an entrance cascade for the current slide in reading order:
+  titles focus, text rises, short numbers count up, icons pop and pictures zoom. It plays
+  as soon as the camera arrives. **Auto-animate all slides** does every slide.
+- An object animates on the slide that shows it (the smallest one, so an overview doesn't
+  take it). On the canvas, numbered badges show each object's click (green appear, amber
+  emphasis, red disappear); **Preview** plays the slide's animations on the canvas.
+- **Properties → Animation** (an object selected) edits each animation: effect, start,
+  duration, delay and the direction for Fly in/out. **Properties → Slide N animations** (the
+  frame selected) lists them in order, with ↑ ↓ to reorder and ✕ to remove.
+- The slide strip shows ☆ and the number of animated objects on each slide.
+
+In the show, → / click plays the next animation before moving on (a second press finishes
+a running one at once); ← takes back the last one, then goes to the previous slide, which
+shows fully built. The presenter console counts the animations still to go. Number effects
+keep the format (`$12,400`, `87.5%`). Exports (PowerPoint, PDF and renders) show every object,
+as the editor does.
 
 ### Design tools
 
@@ -433,8 +465,17 @@ glidedeck arrange deck.glide.json --layout spiral
   "transition": {"style": "smooth", "duration": 1.4, "easing": "ease_in_out_cubic"}}
 {"op": "remove_step", "index": 2}
 {"op": "move_step", "from": 2, "to": 0}
-{"op": "update_step", "index": 1, "notes": "...", "transition": {"style": "direct"}}
+{"op": "update_step", "index": 1, "notes": "...", "transition": {"style": "direct"},
+  "builds": [{"element": "text-1", "effect": "rise", "duration": 0.6},
+             {"element": "text-2", "effect": "spotlight", "trigger": "after_previous", "delay": 0.2}]}
 ```
+
+`builds` replaces the slide's animations. Effects: `fade`, `rise`, `focus`, `zoom`, `pop`,
+`drop`, `fly`, `spin`, `typewriter`, `words`, `count_up` (appear); `pulse`, `wiggle`,
+`glow`, `spotlight`, `highlight`, `underline`, `color_pop` (emphasis); `fade_out`, `sink`,
+`zoom_out`, `fly_out`, `shrink` (disappear). `trigger` is `on_click` (default),
+`with_previous` or `after_previous`; `direction` (for `fly` / `fly_out`) is `left`,
+`right`, `up` or `down`.
 
 Element kinds:
 - `rect`, `ellipse` and `text`.
@@ -454,7 +495,7 @@ Element kinds:
   `true`), `looping` and `muted`.
 - `text` also accepts `list`: `none`, `bullet` or `numbered`.
 
-Transition styles are `smooth`, `direct` and `cut`. Easings are `linear`,
+Transition styles are `smooth`, `direct`, `swoop`, `spin`, `punch`, `fade` and `cut`. Easings are `linear`,
 `ease_in_out_sine`, `ease_in_out_cubic`, `ease_in_out_quint` and `ease_out_expo`. Colours
 are `#RRGGBB` or `#RRGGBBAA`.
 

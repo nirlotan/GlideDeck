@@ -234,6 +234,7 @@ impl GlideDeckApp {
         ui.painter().rect_stroke(rect, 10, egui::Stroke::new(1.0, p.border), StrokeKind::Inside);
         let painter = ui.painter_at(rect);
         self.paint_overlays(&painter, rect, response.hover_pos());
+        crate::anim_ui::paint_badges(self, &painter, rect);
         self.format_bar(ui, rect);
         self.floating_controls(ui, rect, &mut actions);
         actions

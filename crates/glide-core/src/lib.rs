@@ -5,6 +5,7 @@
 //! and scripts can manipulate presentations headlessly.
 
 pub mod assets;
+pub mod build;
 pub mod camera;
 pub mod color;
 pub mod document;
@@ -14,6 +15,7 @@ pub mod geom;
 pub mod ops;
 pub mod theme;
 
+pub use build::{Build, BuildKind, Direction, Effect, Trigger};
 pub use camera::{Camera, CameraTween};
 pub use color::Color;
 pub use document::{Document, DocumentError, Step, Transition, TransitionStyle, FORMAT_ID};

@@ -25,6 +25,10 @@ pub struct Presenting {
     pub blank: Option<Color32>,
     /// The presenter console, when presenting with presenter view.
     pub console: Option<Console>,
+    /// Which of the current slide's animations have played.
+    pub builds: crate::anim::BuildClock,
+    /// The show clock (egui time) as of this frame.
+    now: f64,
 }
 
 pub struct Console {
@@ -133,6 +137,8 @@ impl GlideDeckApp {
             was_fullscreen,
             blank: None,
             console,
+            builds: crate::anim::BuildClock::fresh(&self.doc, step),
+            now,
         });
         self.nav.stop();
         self.drag = crate::canvas::Drag::None;
@@ -192,10 +198,33 @@ impl GlideDeckApp {
         let t = self.doc.path[index.max(from)].transition;
         self.nav.tween = Some(CameraTween::new(self.camera, target, t.duration, t.easing).with_style(t.style, self.viewport()));
         self.nav.clear_pending();
+        let builds = if index < from { crate::anim::BuildClock::finished(&self.doc, index) } else { crate::anim::BuildClock::fresh(&self.doc, index) };
         if let Some(p) = &mut self.presenting {
+            if index != from {
+                p.builds = builds;
+            }
             p.step = index;
             p.blank = None;
         }
+    }
+
+    /// Starts the slide's animations that play by themselves on arrival.
+    fn start_arrival_builds(&mut self) {
+        let Some(p) = &mut self.presenting else { return };
+        if p.builds.next_is_automatic(&self.doc)
+            && let Some(g) = p.builds.next_group(&self.doc)
+        {
+            p.builds.start(&self.doc, g, p.now);
+        }
+    }
+
+    /// The document as the audience sees it right now (animations applied).
+    pub fn show_scene(&mut self) -> Option<glide_core::Document> {
+        let p = self.presenting.as_ref()?;
+        if self.doc.path.iter().all(|s| s.builds.is_empty()) {
+            return None;
+        }
+        Some(crate::anim::scene(&self.doc, &p.builds, p.now, &mut self.renderer))
     }
 
     /// Applies navigation from any input source. Returns true to end the show.
@@ -216,6 +245,29 @@ impl GlideDeckApp {
         }
         let step = p.step;
         let n = self.doc.path.len();
+        let now = p.now;
+        // Animations on the slide come before moving on: "next" finishes the
+        // running ones or plays the next group; "prev" takes back the last one.
+        if nav.next {
+            if p.builds.running(&self.doc, now) {
+                p.builds.finish_running();
+                return false;
+            }
+            if let Some(g) = p.builds.next_group(&self.doc) {
+                p.builds.start(&self.doc, g, now);
+                return false;
+            }
+        }
+        if nav.prev {
+            let builds = &self.doc.path[step].builds;
+            let groups = glide_core::build::click_groups(builds);
+            let last = groups.iter().rev().find(|g| p.builds.starts.get(g.start).is_some_and(Option::is_some));
+            // The group that played on arrival belongs to the slide itself.
+            if last.is_some_and(|g| builds[g.start].trigger == glide_core::Trigger::OnClick) {
+                p.builds.undo_last(&self.doc);
+                return false;
+            }
+        }
         if nav.next && step + 1 < n {
             self.present_go(step + 1);
         } else if nav.prev && step > 0 {
@@ -242,6 +294,7 @@ fn show_view(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &eframe::Frame, r
     let viewport = app.viewport();
     let now = ctx.input(|i| i.time);
     let Some(state) = &mut app.presenting else { return true };
+    state.now = now;
     let step = state.step;
 
     // Snap to the current frame on entry and whenever the window resizes.
@@ -308,12 +361,36 @@ fn show_view(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &eframe::Frame, r
         ctx.request_repaint();
         ctx.request_repaint_of(egui::ViewportId::ROOT);
     }
-    // Arriving at a slide: start its autoplay videos, pause everything else.
+    // Arriving at a slide: start its autoplay videos and its opening
+    // animations, pause everything else.
     if was_moving && !app.nav.is_animating() {
         app.autoplay_step_videos();
+        app.start_arrival_builds();
     }
-    if let Some(tex) = app.render_canvas(ui, frame, rect, false) {
+    // Render the animated scene in place of the document.
+    let scene = app.show_scene();
+    let animating = app.presenting.as_ref().is_some_and(|p| p.builds.running(&app.doc, now));
+    let tex = match scene {
+        Some(scene) => {
+            let doc = std::mem::replace(&mut app.doc, scene);
+            let tex = app.render_canvas(ui, frame, rect, false);
+            app.doc = doc;
+            tex
+        }
+        None => app.render_canvas(ui, frame, rect, false),
+    };
+    if let Some(tex) = tex {
         ui.painter().image(tex, rect, egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), Color32::WHITE);
+    }
+    if animating {
+        ctx.request_repaint();
+        ctx.request_repaint_of(egui::ViewportId::ROOT);
+    }
+    // The Fade transition dips through the background color.
+    let fade = app.nav.tween.as_ref().map_or(0.0, |t| t.fade_amount());
+    if fade > 0.0 {
+        let bg = app.doc.background;
+        ui.painter().rect_filled(rect, 0, Color32::from_rgba_unmultiplied(bg.r(), bg.g(), bg.b(), (fade * 255.0).round() as u8));
     }
     if let Some(color) = app.presenting.as_ref().and_then(|p| p.blank) {
         ui.painter().rect_filled(rect, 0, color);
@@ -390,10 +467,8 @@ fn hud(app: &mut GlideDeckApp, ui: &mut egui::Ui, rect: egui::Rect, now: f64) {
         let ctx = ui.ctx().clone();
         app.stop_presenting(&ctx);
     } else if let Some(d) = go {
-        let target = (step as isize + d).clamp(0, n as isize - 1) as usize;
-        if target != step {
-            app.present_go(target);
-        }
+        // Same as the keys, so animations play before the slide changes.
+        app.apply_nav(&Nav { next: d > 0, prev: d < 0, ..Default::default() });
     }
 }
 
@@ -414,6 +489,9 @@ mod ink {
 fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
     let ctx = ui.ctx().clone();
     let now = ctx.input(|i| i.time);
+    if let Some(p) = &mut app.presenting {
+        p.now = now;
+    }
 
     // Keys pressed while the console has focus drive the show too.
     let console_nav = Nav::from_keys(&ctx);
@@ -475,6 +553,12 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
     let name = |app: &GlideDeckApp, i: usize| app.doc.step_frame(i).map(|f| f.display_name()).unwrap_or_default();
     let current_name = name(app, step);
     let next_name = (step + 1 < n).then(|| name(app, step + 1));
+    // Animations still to play on this slide (each is one click).
+    let builds_left = {
+        let groups = glide_core::build::click_groups(&app.doc.path[step].builds);
+        let started = groups.iter().filter(|g| state.builds.starts.get(g.start).is_some_and(Option::is_some)).count();
+        (groups.len() - started, groups.len())
+    };
 
     #[derive(PartialEq)]
     enum Click {
@@ -500,6 +584,15 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
         bar.label(RichText::new(format!("{}  Presenter view", icon::PRESENTATION_CHART)).font(theme::semibold(15.0)).color(ink::MUTED));
         bar.add_space(18.0);
         bar.label(RichText::new(format!("Slide {} of {n}", step + 1)).font(theme::semibold(15.0)).color(ink::TEXT));
+        if builds_left.1 > 0 {
+            bar.add_space(14.0);
+            let text = match builds_left.0 {
+                0 => format!("{}  All animations played", icon::SPARKLE),
+                1 => format!("{}  1 animation to go", icon::SPARKLE),
+                k => format!("{}  {k} animations to go", icon::SPARKLE),
+            };
+            bar.label(RichText::new(text).font(theme::semibold(13.5)).color(if builds_left.0 > 0 { ink::ACCENT } else { ink::MUTED }));
+        }
         bar.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if let Some((h, m)) = local_clock() {
                 ui.label(RichText::new(format!("{h:02}:{m:02}")).font(theme::semibold(22.0)).color(ink::MUTED));
@@ -524,7 +617,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
         if wide_button(&mut bar, &format!("{}  Previous", icon::CARET_LEFT), step > 0).clicked() {
             clicked = Some(Click::Prev);
         }
-        if wide_button(&mut bar, &format!("Next  {}", icon::CARET_RIGHT), step + 1 < n).clicked() {
+        if wide_button(&mut bar, &format!("Next  {}", icon::CARET_RIGHT), step + 1 < n || builds_left.0 > 0).clicked() {
             clicked = Some(Click::Next);
         }
         bar.add_space(16.0);
@@ -589,19 +682,31 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
         painter.rect_filled(egui::Rect::from_min_size(progress.min, egui::vec2(done, 4.0)), 2, ink::ACCENT);
 
         // Next slide.
-        caption(right.min, match &next_name {
-            Some(name) => format!("NEXT  ·  {name}"),
-            None => "NEXT".into(),
+        caption(right.min, match (&next_name, builds_left.0) {
+            (Some(_), k) if k > 0 => format!("NEXT  ·  slide {} after {k} more click{}", step + 2, if k == 1 { "" } else { "s" }),
+            (Some(name), _) => format!("NEXT  ·  {name}"),
+            (None, _) => "NEXT".into(),
         });
         let next_area = egui::Rect::from_min_size(right.min + egui::vec2(0.0, 22.0), egui::vec2(right.width(), (right.height() * 0.42).min(right.width() * 9.0 / 16.0)));
         let next_rect = fit_aspect(next_area, 16.0 / 9.0);
         match next_name {
             Some(_) => {
                 painter.rect_filled(next_rect, 8, fill);
-                if let Some(cam) = app.doc.step_frame(step + 1).and_then(|f| Camera::for_frame(f, crate::canvas::dvec(next_rect.size()), 0.0))
-                    && let Some(tex) = app.render_snapshot(ui, frame, "presenter-next", next_rect.size(), &cam)
-                {
-                    egui::Image::new(egui::load::SizedTexture::new(tex, next_rect.size())).corner_radius(8).paint_at(ui, next_rect);
+                if let Some(cam) = app.doc.step_frame(step + 1).and_then(|f| Camera::for_frame(f, crate::canvas::dvec(next_rect.size()), 0.0)) {
+                    // The next slide as it looks once its animations have played.
+                    let tex = if app.doc.path.iter().any(|s| !s.builds.is_empty()) {
+                        let built = crate::anim::BuildClock::finished(&app.doc, step + 1);
+                        let scene = crate::anim::scene(&app.doc, &built, now, &mut app.renderer);
+                        let doc = std::mem::replace(&mut app.doc, scene);
+                        let tex = app.render_snapshot(ui, frame, "presenter-next", next_rect.size(), &cam);
+                        app.doc = doc;
+                        tex
+                    } else {
+                        app.render_snapshot(ui, frame, "presenter-next", next_rect.size(), &cam)
+                    };
+                    if let Some(tex) = tex {
+                        egui::Image::new(egui::load::SizedTexture::new(tex, next_rect.size())).corner_radius(8).paint_at(ui, next_rect);
+                    }
                 }
             }
             None => {

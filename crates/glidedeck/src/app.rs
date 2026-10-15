@@ -68,6 +68,7 @@ pub enum RibbonTab {
     Insert,
     Design,
     Transitions,
+    Animate,
     Present,
     View,
 }
@@ -141,6 +142,13 @@ pub enum Action {
     ToggleGradient,
     /// Edit the selected text box in place.
     EditText,
+    // In-slide animations.
+    AddAnimation(glide_core::Effect),
+    AutoAnimate { all: bool },
+    ClearAnimations { all: bool },
+    RemoveSelectionAnimations,
+    /// Plays the current slide's animations on the canvas.
+    PreviewAnimations,
 }
 
 const fn sc(modifiers: Modifiers, key: Key) -> KeyboardShortcut {
@@ -247,6 +255,12 @@ pub struct GlideDeckApp {
     pub video_buttons: Vec<(egui::Rect, String)>,
     /// In-place text editing on the canvas.
     pub text_edit: Option<crate::textedit::TextEditSession>,
+    /// How new animations start (Animate tab).
+    pub anim_trigger: glide_core::Trigger,
+    /// Several selected objects animate together instead of one by one.
+    pub anim_together: bool,
+    /// An animation preview playing on the canvas.
+    pub anim_preview: Option<crate::anim_ui::AnimPreview>,
     toast: Option<(String, f64)>,
     title_shown: String,
     allow_close: bool,
@@ -319,6 +333,9 @@ impl GlideDeckApp {
             guides: Vec::new(),
             video_buttons: Vec::new(),
             text_edit: None,
+            anim_trigger: glide_core::Trigger::OnClick,
+            anim_together: false,
+            anim_preview: None,
             toast: None,
             title_shown: String::new(),
             allow_close: false,
@@ -620,6 +637,15 @@ impl GlideDeckApp {
             }
             Action::ClearRecent => self.recent.clear(),
             Action::ShowArrange => self.arrange_dialog = Some(crate::arrange_ui::ArrangeDialog::default()),
+            Action::AddAnimation(effect) => self.add_animation(ctx, effect),
+            Action::AutoAnimate { all } => self.auto_animate(ctx, all),
+            Action::ClearAnimations { all } => self.clear_animations(all),
+            Action::RemoveSelectionAnimations => self.remove_selection_animations(),
+            Action::PreviewAnimations => {
+                if let Some(step) = self.current_step {
+                    self.preview_animations(ctx, step, 0);
+                }
+            }
             Action::ExportPng => self.export_png(ctx),
             Action::Undo => {
                 if self.history.undo(&mut self.doc) {
@@ -1229,9 +1255,10 @@ impl GlideDeckApp {
             }
             self.target = Some(target);
         }
+        let preview = if editor { self.preview_scene(ui.ctx()) } else { None };
         let target = self.target.as_ref().expect("target ensured above");
         let opts = glide_render::RenderOptions { show_grid: editor && self.show_grid, pixels_per_point: ppp as f64 };
-        self.stats = self.renderer.render(target, &self.doc, &self.camera, self.viewport(), &opts);
+        self.stats = self.renderer.render(target, preview.as_ref().unwrap_or(&self.doc), &self.camera, self.viewport(), &opts);
         if self.renderer.any_video_playing() {
             ui.ctx().request_repaint();
         } else if self.renderer.poll_images() {
@@ -1333,6 +1360,8 @@ impl eframe::App for GlideDeckApp {
         }
 
         let busy = ctx.input(|i| i.pointer.any_down()) || ctx.text_edit_focused() || self.text_edit.is_some();
+        // Animations of deleted objects go with them.
+        crate::anim::prune(&mut self.doc);
         self.history.track(&self.doc, busy);
         self.update_title(&ctx);
         if self.toast.as_ref().is_some_and(|(_, until)| ctx.input(|i| i.time) < *until) {

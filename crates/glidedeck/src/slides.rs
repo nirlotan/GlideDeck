@@ -186,14 +186,19 @@ pub fn slides_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &eframe::F
                 // Transition badge.
                 if i > 0 {
                     let t = app.doc.path[i].transition;
-                    let glyph = match t.style {
-                        glide_core::TransitionStyle::Smooth => icon::WAVE_SINE,
-                        glide_core::TransitionStyle::Direct => icon::ARROW_RIGHT,
-                        glide_core::TransitionStyle::Cut => icon::LIGHTNING,
-                    };
+                    let glyph = theme::transition_icon(t.style);
                     let badge = egui::Rect::from_min_size(rect.right_top() + egui::vec2(-26.0, 6.0), egui::vec2(20.0, 18.0));
                     ui.painter().rect_filled(badge, 5, Color32::from_black_alpha(140));
                     ui.painter().text(badge.center(), egui::Align2::CENTER_CENTER, glyph, egui::FontId::proportional(11.0), Color32::WHITE);
+                }
+                // Animation badge: how many objects animate on the slide.
+                let builds = app.doc.path[i].builds.len();
+                if builds > 0 {
+                    let text = format!("{} {builds}", icon::STAR);
+                    let w = 14.0 + 7.0 * builds.to_string().len() as f32;
+                    let badge = egui::Rect::from_min_size(rect.left_bottom() + egui::vec2(6.0, -24.0), egui::vec2(w + 6.0, 18.0));
+                    ui.painter().rect_filled(badge, 5, Color32::from_black_alpha(140));
+                    ui.painter().text(badge.center(), egui::Align2::CENTER_CENTER, text, egui::FontId::proportional(11.0), Color32::WHITE);
                 }
 
                 if resp.clicked() {

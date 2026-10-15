@@ -61,6 +61,9 @@ pub enum Op {
         transition: Option<Transition>,
         #[serde(default)]
         notes: Option<String>,
+        /// Replaces the step's in-slide animations.
+        #[serde(default)]
+        builds: Option<Vec<crate::build::Build>>,
     },
 }
 
@@ -184,7 +187,7 @@ impl Op {
                 doc.path.insert(to, step);
                 Ok(OpOutcome::Updated)
             }
-            Op::UpdateStep { index, transition, notes } => {
+            Op::UpdateStep { index, transition, notes, builds } => {
                 step_index(doc, index)?;
                 let step = &mut doc.path[index];
                 if let Some(t) = transition {
@@ -192,6 +195,9 @@ impl Op {
                 }
                 if let Some(n) = notes {
                     step.notes = n;
+                }
+                if let Some(b) = builds {
+                    step.builds = b;
                 }
                 Ok(OpOutcome::Updated)
             }

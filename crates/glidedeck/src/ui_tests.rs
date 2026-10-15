@@ -896,3 +896,89 @@ fn arrange_slides_dialog_rearranges_an_imported_deck() {
     assert_eq!(h.state().doc, before);
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn animate_tab_adds_builds_previews_and_the_show_plays_them() {
+    let doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    let mut h = harness(Some(doc));
+    h.state_mut().go_to_step(1);
+    h.run_steps(90);
+    h.get_by_label("Animate").click();
+    h.run_steps(2);
+    h.get_by_label("Auto-animate").click();
+    h.run_steps(3);
+    let auto = h.state().doc.path[1].builds.clone();
+    assert!(auto.len() >= 2, "the slide's content cascades in: {auto:?}");
+    assert_eq!(auto[0].trigger, glide_core::Trigger::AfterPrevious, "and plays on arrival");
+    assert!(h.state().anim_preview.is_some(), "auto-animate previews the slide on the canvas");
+    snapshot(&mut h, "animate-preview");
+    for _ in 0..600 {
+        if h.state().anim_preview.is_none() {
+            break;
+        }
+        h.step();
+    }
+    assert!(h.state().anim_preview.is_none(), "the preview ends by itself");
+
+    // Spotlight the first object on a click, from the ribbon menu.
+    let target = auto[0].element.clone();
+    h.state_mut().selection = vec![target.clone()];
+    h.run_steps(2);
+    h.get_by_label("Emphasis").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Spotlight").click();
+    h.run_steps(3);
+    let builds = h.state().doc.path[1].builds.clone();
+    let last = builds.last().unwrap();
+    assert_eq!((last.element.as_str(), last.effect, last.trigger), (target.as_str(), glide_core::Effect::Spotlight, glide_core::Trigger::OnClick));
+    h.get_by_label_contains("Slide 2 · click 2");
+    for _ in 0..600 {
+        if h.state().anim_preview.is_none() {
+            break;
+        }
+        h.step();
+    }
+    snapshot(&mut h, "animate-tab");
+
+    // The show: the cascade plays on arrival, a click plays the spotlight,
+    // the next click moves on; going back undoes the spotlight first.
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 1, Some(false));
+    let settle = |h: &mut Harness<'_, GlideDeckApp>| {
+        for _ in 0..600 {
+            h.step();
+            let app = h.state();
+            let p = app.presenting.as_ref().unwrap();
+            if !app.nav.is_animating() && !p.builds.running(&app.doc, h.ctx.input(|i| i.time)) {
+                break;
+            }
+        }
+    };
+    settle(&mut h);
+    let starts = |h: &Harness<'_, GlideDeckApp>| h.state().presenting.as_ref().unwrap().builds.starts.clone();
+    let s = starts(&h);
+    assert!(s[0].is_some() && s.last().unwrap().is_none(), "arrived: cascade played, spotlight waiting: {s:?}");
+    h.key_press(Key::ArrowRight);
+    h.run_steps(4);
+    snapshot(&mut h, "show-spotlight");
+    settle(&mut h);
+    assert_eq!(h.state().presenting.as_ref().unwrap().step, 1, "the click played the spotlight instead of moving on");
+    assert!(starts(&h).iter().all(Option::is_some));
+    h.key_press(Key::ArrowLeft);
+    h.run_steps(2);
+    assert_eq!(h.state().presenting.as_ref().unwrap().step, 1);
+    assert!(starts(&h).last().unwrap().is_none(), "back takes the spotlight back");
+    h.key_press(Key::ArrowRight);
+    h.run_steps(2);
+    settle(&mut h);
+    h.key_press(Key::ArrowRight);
+    h.run_steps(2);
+    assert_eq!(h.state().presenting.as_ref().unwrap().step, 2, "then the next click moves on");
+    h.key_press(Key::ArrowLeft);
+    h.run_steps(2);
+    let p = h.state().presenting.as_ref().unwrap();
+    assert_eq!(p.step, 1);
+    assert!(p.builds.starts.iter().all(Option::is_some), "coming back shows the slide fully built");
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+}

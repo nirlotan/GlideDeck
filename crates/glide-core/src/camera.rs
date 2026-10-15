@@ -189,7 +189,47 @@ impl CameraTween {
             TransitionStyle::Cut => self.to,
             TransitionStyle::Smooth => self.sample_smooth(u),
             TransitionStyle::Direct => self.sample_direct(u),
+            TransitionStyle::Swoop => {
+                // A sideways bow (a fifth of the distance) plus a gentle roll.
+                let mut c = self.sample_direct(u);
+                let delta = self.to.center - self.from.center;
+                let bow = (std::f64::consts::PI * u).sin();
+                c.center += delta.perp() * 0.2 * bow;
+                c.rotation += 0.12 * bow;
+                c
+            }
+            TransitionStyle::Spin => {
+                let mut c = self.sample_smooth(u);
+                c.rotation += TAU * u;
+                c
+            }
+            // Holds the old view, then the new one; the show dips to the
+            // background in between (see `fade_amount`).
+            TransitionStyle::Fade => {
+                if t < 0.5 {
+                    self.from
+                } else {
+                    self.to
+                }
+            }
+            TransitionStyle::Punch => {
+                // Ease-out-back on the zoom: past the target, then settle.
+                let mut c = self.sample_direct(u);
+                let over = 1.0 + 0.09 * (std::f64::consts::PI * t).sin() * t;
+                c.zoom = (c.zoom * over).clamp(MIN_ZOOM, MAX_ZOOM);
+                c
+            }
         }
+    }
+
+    /// How much of the background covers the view during a Fade transition
+    /// (0 = none, 1 = fully covered at the midpoint).
+    pub fn fade_amount(&self) -> f64 {
+        if self.style != TransitionStyle::Fade || self.finished() {
+            return 0.0;
+        }
+        let t = (self.elapsed / self.duration).clamp(0.0, 1.0);
+        1.0 - (2.0 * t - 1.0).abs()
     }
 
     /// van Wijk & Nuij, "Smooth and efficient zooming and panning" (2003).
@@ -244,6 +284,29 @@ mod tests {
 
     fn approx(a: DVec2, b: DVec2) -> bool {
         (a - b).length() < 1e-6
+    }
+
+    #[test]
+    fn every_transition_style_lands_on_its_target() {
+        let from = Camera { center: DVec2::ZERO, zoom: 1.0, rotation: 0.0 };
+        let to = Camera { center: DVec2::new(4000.0, 1000.0), zoom: 0.5, rotation: 0.3 };
+        let vp = DVec2::new(1280.0, 720.0);
+        for style in TransitionStyle::ALL {
+            let tw = CameraTween::new(from, to, 1.0, Easing::EaseInOutCubic).with_style(style, vp);
+            assert_eq!(tw.sample(1.0), to, "{style:?}");
+            assert_eq!(TransitionStyle::from_id(style.id()), Some(style));
+        }
+        // Swoop bows off the straight line; Spin rolls; Fade holds, then cuts, under a dip.
+        let mid = |style| CameraTween::new(from, to, 1.0, Easing::Linear).with_style(style, vp).sample(0.5);
+        let straight = mid(TransitionStyle::Direct);
+        assert!((mid(TransitionStyle::Swoop).center - straight.center).length() > 100.0);
+        assert!((mid(TransitionStyle::Spin).rotation - mid(TransitionStyle::Smooth).rotation).abs() > 1.0);
+        let mut fade = CameraTween::new(from, to, 1.0, Easing::Linear).with_style(TransitionStyle::Fade, vp);
+        assert_eq!(fade.step(0.4), from);
+        assert!(fade.fade_amount() > 0.7);
+        assert_eq!(fade.step(0.2), to);
+        fade.step(1.0);
+        assert_eq!(fade.fade_amount(), 0.0);
     }
 
     #[test]

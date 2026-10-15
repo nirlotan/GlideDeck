@@ -16,8 +16,9 @@ the GlideDeck editor later to edit and present it, or export it to PowerPoint.
 If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
-`export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `save_as`, `open_in_editor`,
-`search_icons` and `edit_presentation`. Prefer them.
+`export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `animate`,
+`auto_animate`, `set_transitions`, `clear_animations`, `save_as`,
+`open_in_editor`, `search_icons` and `edit_presentation`. Prefer them.
 
 **Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
 every slide into a frame with its text, pictures and notes, laid out as a plain
@@ -64,16 +65,85 @@ Follow this workflow:
    - `big-number` and `quote` for emphasis.
 
    Use `search_icons` for icon names.
-6. **Check your work.** Call `render_slide` for each slide (step 1..N) and look
+6. **Make it outstanding: path, motion and builds.** This step is what makes a
+   GlideDeck talk memorable instead of a slideshow. Do all three unless the
+   user asks for a plain deck (see "Making it outstanding" below):
+   - `arrange_slides` with a layout that fits the story;
+   - `set_transitions` with a varied mix of camera moves;
+   - `auto_animate`, then `animate` the two or three key moments.
+7. **Check your work.** Call `render_slide` for each slide (step 1..N) and look
    at the image. Fix overflowing or cramped text, leftover placeholders and
-   off-topic icons. Shorten text rather than shrinking it.
-7. **Finish.** Tell the user where the project file is. Mention they can
+   off-topic icons. Shorten text rather than shrinking it. (Renders show each
+   slide fully built: animations don't hide anything there.)
+8. **Finish.** Tell the user where the project file is. Mention they can
    present it with F5; with a second display, presenter view shows the speaker
    notes. You can write notes with `edit_presentation`
    (`{"op":"update_step","index":0,"notes":"…"}`; `index` is 0-based). Offer `export_pptx`
    for PowerPoint, `export_pdf` for a PDF, and `open_in_editor` to open it in
    GlideDeck. Use `save_as`
    to keep a separate copy or version.
+
+## Making it outstanding
+
+Use the layout features and in-slide animations generously and with intent.
+Every choice should support the story.
+
+**1. Shape the journey with `arrange_slides`.** A straight row of slides wastes
+the zooming canvas. Pick the arrangement that mirrors the structure of the talk:
+
+| Story | Arrangement |
+|---|---|
+| One central idea and its parts | `orbits`, `sunflower` |
+| A hierarchy or agenda with sub-topics | `tree` |
+| A narrative from A to B | `journey`, `wave`, `spiral` |
+| Growth, progress, levelling up | `staircase`, `spiral` |
+| Drilling down / "going deeper" | `zoom-tunnel` |
+| A cyclical process | `ring` |
+| A dense catalogue of items | `honeycomb`, `snake` |
+
+Keep `overview: true` so the talk opens and closes on the big picture, and
+`trail: true` so the audience sees the road. Render step 1 to check.
+
+**2. Vary the camera with `set_transitions`.** Mix moves instead of using one
+everywhere, e.g. `styles: ["smooth", "swoop", "punch"]` cycles them:
+- `smooth`: zoom out, travel, zoom in; best into and out of overviews;
+- `swoop`: a sideways arc with a gentle roll, for moving between neighbours;
+- `punch`: overshoots and settles, for a bold statement or big number;
+- `spin`: a barrel roll, for a change of topic (use once or twice);
+- `fade`: a dip through the background, for a new chapter;
+- `direct` / `cut`: plain moves.
+
+**3. Animate inside the slides.** Builds play in the show in order. `on_click`
+waits for a click; `with_previous` starts together with the one before;
+`after_previous` starts when it ends. A slide whose first build isn't on
+click plays it as soon as the camera arrives.
+- Start with `auto_animate` (all slides). Each slide's content cascades in, in
+  reading order: titles `focus`, text `rise`, numbers `count_up`, icons `pop`,
+  pictures `zoom`.
+- Then `animate` the key moments with ids from `get_presentation`:
+  - `spotlight` dims everything but the one number, chart or phrase that
+    matters; `highlight` sweeps a marker behind a phrase; `underline` draws a
+    line under it; `color_pop` turns it the accent color; `pulse`, `glow` and
+    `wiggle` give a brief nudge.
+  - `count_up` makes metrics ("$4.2M", "87%") count up from zero.
+  - `words` or `typewriter` reveal a quote or a key sentence.
+  - Use on-click `rise` or `fly` (with `direction`) to reveal list items one by
+    one as the speaker talks about them.
+  - `fade_out`, `sink`, `zoom_out`, `fly_out` or `shrink` clear an object
+    before the punchline replaces it in the same spot.
+- Taste: one or two emphasis effects per slide, entrances under a second, and
+  not every slide needs clicks. Call `get_presentation` to review each slide's
+  `animations` and `transition`.
+
+Example: spotlight the KPI on a click after the slide's cascade, then count it
+up:
+
+```json
+{"path": "q3.glide.json", "animations": [
+  {"id": "text-kpi", "effect": "spotlight"},
+  {"id": "text-kpi", "effect": "count_up", "trigger": "with_previous"}
+]}
+```
 
 Notes:
 - Slide coordinates for `add_text` and `add_image` are 1600 × 900 units with
@@ -94,6 +164,11 @@ glidedeck apply talk.glide.json ops.json             # atomic batch of JSON edit
 glidedeck render talk.glide.json -o s1.png --step 1  # render a slide to check it
 glidedeck export-pptx talk.glide.json -o talk.pptx   # PowerPoint with Morph transitions
 ```
+
+Animations live on each path step as `builds`. With `apply`, set them with
+`{"op":"update_step","index":0,"builds":[{"element":"text-1","effect":"rise","duration":0.6}]}`
+(`trigger`: `on_click` (default), `with_previous` or `after_previous`; optional
+`delay` and `direction`).
 
 To change text with `apply`, use a `set_kind` operation with the element's
 full kind. `show` lists the ids. The operation schema is documented in

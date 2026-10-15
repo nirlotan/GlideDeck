@@ -28,7 +28,16 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide.";
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
+(1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
+spiral or sunflower for growth, staircase for progress, zoom-tunnel for drilling down, journey or wave for a story) \
+instead of a flat row. (2) Vary the camera: `set_transitions` (swoop, spin, punch and fade next to smooth; e.g. \
+styles [\"smooth\", \"swoop\", \"punch\"] cycles them), with smooth for zooming out to an overview. (3) Animate inside the \
+slides: `auto_animate` gives every slide a polished entrance cascade (titles focus, text rises, icons pop, numbers \
+count up), then `animate` the key moments: `spotlight` or `highlight` on the one number or phrase that matters, \
+`count_up` on metrics, `words` or `typewriter` on a quote, on-click `rise` to reveal points as the speaker talks, \
+`fade_out` / `fly_out` to clear a slide before its punchline. Use at most one or two emphasis effects per slide.";
 
 /// Runs the server until stdin closes.
 pub fn serve(root: PathBuf) -> Result<()> {
@@ -230,6 +239,59 @@ impl Server {
                     .map_err(|e| anyhow::anyhow!(e))?;
                 Ok(vec![text_json(&json!({ "written": out, "pages": report.pages, "bytes": report.bytes }))])
             }
+            "animate" => self.animate(args),
+            "auto_animate" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let steps = step_list(&doc, args)?;
+                let text = self.text.get_or_insert_with(TextEngine::new);
+                let mut report = Vec::new();
+                for &i in &steps {
+                    let builds = crate::anim::auto_builds(&doc, i, text);
+                    report.push(json!({ "step": i + 1, "animated": builds.len() }));
+                    doc.path[i].builds = builds;
+                }
+                save(&doc, &path)?;
+                Ok(vec![text_json(&json!({
+                    "ok": true, "slides": report,
+                    "next": "Add emphasis on the key moments with `animate` (spotlight, highlight, count_up, …).",
+                }))])
+            }
+            "set_transitions" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let steps = step_list(&doc, args)?;
+                let styles: Vec<glide_core::TransitionStyle> = match (args.get("style").and_then(Value::as_str), args.get("styles").and_then(Value::as_array)) {
+                    (_, Some(list)) => list.iter().map(|v| v.as_str().unwrap_or_default()).map(|n| glide_core::TransitionStyle::from_id(n).with_context(|| format!("unknown transition {n:?}; see `catalog`"))).collect::<Result<_>>()?,
+                    (Some(n), None) => vec![glide_core::TransitionStyle::from_id(n).with_context(|| format!("unknown transition {n:?}; see `catalog`"))?],
+                    (None, None) => bail!("pass `style` or `styles`"),
+                };
+                if styles.is_empty() {
+                    bail!("`styles` is empty");
+                }
+                let duration = args.get("duration").and_then(Value::as_f64);
+                for (k, &i) in steps.iter().enumerate() {
+                    let t = &mut doc.path[i].transition;
+                    t.style = styles[k % styles.len()];
+                    if let Some(d) = duration {
+                        t.duration = d.clamp(0.1, 10.0);
+                    }
+                }
+                save(&doc, &path)?;
+                Ok(vec![text(format!("Set the transition of {} slides.", steps.len()))])
+            }
+            "clear_animations" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let steps = step_list(&doc, args)?;
+                let mut n = 0;
+                for &i in &steps {
+                    n += doc.path[i].builds.len();
+                    doc.path[i].builds.clear();
+                }
+                save(&doc, &path)?;
+                Ok(vec![text(format!("Removed {n} animations."))])
+            }
             "open_in_editor" => {
                 let path = self.project_path(args, "path")?;
                 if !path.exists() {
@@ -247,6 +309,63 @@ impl Server {
             }
             _ => bail!("unknown tool {name:?}"),
         }
+    }
+
+    fn animate(&mut self, args: &Value) -> Result<Vec<Value>> {
+        let path = self.project_path(args, "path")?;
+        let mut doc = load(&path)?;
+        let list = args.get("animations").and_then(Value::as_array).context("`animations` must be an array")?;
+        let fixed_step = match args.get("step").and_then(Value::as_u64) {
+            Some(n) if n == 0 || n as usize > doc.path.len() => bail!("slide {n} does not exist ({} slides)", doc.path.len()),
+            Some(n) => Some(n as usize - 1),
+            None => None,
+        };
+        let mut planned: Vec<(usize, glide_core::Build)> = Vec::new();
+        for (k, a) in list.iter().enumerate() {
+            let id = a.get("id").and_then(Value::as_str).with_context(|| format!("animation {k}: missing `id`"))?;
+            if doc.get(id).is_none() {
+                bail!("animation {k}: no element {id:?}; see get_presentation");
+            }
+            let name = a.get("effect").and_then(Value::as_str).with_context(|| format!("animation {k}: missing `effect`"))?;
+            let effect = glide_core::Effect::from_id(name).with_context(|| format!("animation {k}: unknown effect {name:?}; see `catalog` (effects)"))?;
+            let mut b = glide_core::Build::new(id, effect);
+            if let Some(t) = a.get("trigger").and_then(Value::as_str) {
+                b.trigger = parse_trigger(t)?;
+            }
+            if let Some(d) = a.get("duration").and_then(Value::as_f64) {
+                b.duration = d.clamp(0.05, 20.0);
+            }
+            if let Some(d) = a.get("delay").and_then(Value::as_f64) {
+                b.delay = d.clamp(0.0, 60.0);
+            }
+            if let Some(d) = a.get("direction").and_then(Value::as_str) {
+                b.direction = parse_direction(d)?;
+            } else if effect == glide_core::Effect::FlyOut {
+                b.direction = glide_core::Direction::Right;
+            }
+            let step = match fixed_step {
+                Some(s) => s,
+                None => crate::anim::owner_step(&doc, id, None).with_context(|| format!("animation {k}: {id:?} is not on any slide; pass `step`"))?,
+            };
+            planned.push((step, b));
+        }
+        if args.get("replace").and_then(Value::as_bool).unwrap_or(false) {
+            for (step, _) in &planned {
+                doc.path[*step].builds.clear();
+            }
+        }
+        for (step, b) in planned {
+            doc.path[step].builds.push(b);
+        }
+        save(&doc, &path)?;
+        let slides: Vec<Value> = doc
+            .path
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| !s.builds.is_empty())
+            .map(|(i, s)| json!({ "step": i + 1, "animations": s.builds.len(), "clicks": glide_core::build::click_groups(&s.builds).len() }))
+            .collect();
+        Ok(vec![text_json(&json!({ "ok": true, "slides": slides }))])
     }
 
     fn create(&mut self, args: &Value) -> Result<Vec<Value>> {
@@ -508,12 +627,24 @@ impl Server {
             .enumerate()
             .map(|(i, step)| {
                 let name = doc.get(&step.frame).map(|f| f.name.clone()).unwrap_or_default();
+                let groups = glide_core::build::click_groups(&step.builds);
+                let animations: Vec<Value> = step
+                    .builds
+                    .iter()
+                    .enumerate()
+                    .map(|(k, b)| {
+                        let click = groups.iter().position(|g| g.contains(&k)).unwrap_or(0) + 1;
+                        json!({ "id": b.element, "effect": b.effect.id(), "trigger": serde_json::to_value(b.trigger).unwrap_or_default(), "click": click })
+                    })
+                    .collect();
                 json!({
                     "step": i + 1,
                     "frame_id": step.frame,
                     "name": name,
+                    "transition": step.transition.style.id(),
                     "elements": per_frame.get(&step.frame).cloned().unwrap_or_default(),
                     "decorative_shapes": shapes.get(&step.frame).copied().unwrap_or(0),
+                    "animations": animations,
                 })
             })
             .collect();
@@ -547,7 +678,50 @@ fn load(path: &Path) -> Result<Document> {
 }
 
 fn save(doc: &Document, path: &Path) -> Result<()> {
+    // Animations of removed objects go with them.
+    let mut doc = doc.clone();
+    crate::anim::prune(&mut doc);
     doc.save(path).with_context(|| format!("saving {}", path.display()))
+}
+
+/// 1-based slide numbers from `args.steps` (all slides when absent).
+fn step_list(doc: &Document, args: &Value) -> Result<Vec<usize>> {
+    match args.get("steps") {
+        None | Some(Value::Null) => Ok((0..doc.path.len()).collect()),
+        Some(Value::String(s)) if s == "all" => Ok((0..doc.path.len()).collect()),
+        Some(Value::Array(a)) => a
+            .iter()
+            .map(|v| {
+                let n = v.as_u64().context("`steps` must be 1-based slide numbers")? as usize;
+                if n == 0 || n > doc.path.len() {
+                    bail!("slide {n} does not exist ({} slides)", doc.path.len());
+                }
+                Ok(n - 1)
+            })
+            .collect(),
+        Some(_) => bail!("`steps` must be an array of 1-based slide numbers, or \"all\""),
+    }
+}
+
+fn parse_trigger(s: &str) -> Result<glide_core::Trigger> {
+    use glide_core::Trigger::*;
+    Ok(match s.trim().to_lowercase().replace([' ', '-'], "_").as_str() {
+        "on_click" | "click" => OnClick,
+        "with_previous" | "with" => WithPrevious,
+        "after_previous" | "after" => AfterPrevious,
+        other => bail!("unknown trigger {other:?}: use on_click, with_previous or after_previous"),
+    })
+}
+
+fn parse_direction(s: &str) -> Result<glide_core::Direction> {
+    use glide_core::Direction::*;
+    Ok(match s.trim().to_lowercase().as_str() {
+        "left" => Left,
+        "right" => Right,
+        "up" | "top" => Up,
+        "down" | "bottom" => Down,
+        other => bail!("unknown direction {other:?}: use left, right, up or down"),
+    })
 }
 
 fn base_dir(path: &Path) -> PathBuf {
@@ -644,11 +818,28 @@ fn catalog() -> Value {
         .into_iter()
         .map(|a| json!({ "id": a.id(), "name": a.label(), "description": a.blurb() }))
         .collect();
+    let effects: Vec<Value> = glide_core::Effect::all()
+        .map(|e| {
+            let kind = match e.kind() {
+                glide_core::BuildKind::Appear => "appear",
+                glide_core::BuildKind::Emphasis => "emphasis",
+                glide_core::BuildKind::Disappear => "disappear",
+            };
+            json!({ "id": e.id(), "name": e.label(), "kind": kind, "description": e.description(), "default_duration": e.default_duration(), "has_direction": e.has_direction() })
+        })
+        .collect();
+    let transitions: Vec<Value> = glide_core::TransitionStyle::ALL
+        .into_iter()
+        .map(|t| json!({ "id": t.id(), "name": t.label(), "description": t.description() }))
+        .collect();
     json!({
         "templates": templates,
         "layouts": layouts,
         "themes": themes,
         "arrangements": arrangements,
+        "effects": effects,
+        "transitions": transitions,
+        "triggers": ["on_click", "with_previous", "after_previous"],
         "notes": "Layout text_fields/icon_slots map an element name to how many there are; pass a string for one, or an \
                   array to fill several in order. Slide coordinates for add_text/add_image: the slide is 1600 × 900 \
                   units with (0, 0) at its center. Icons are Phosphor names (search_icons).",
@@ -932,6 +1123,36 @@ fn tool_definitions() -> Vec<Value> {
                 "trail": { "type": "boolean", "default": true, "description": "Draw a dotted trail between slides." },
                 "overview": { "type": "boolean", "default": true, "description": "Overview of everything at the start and end." },
             }), &["path", "layout"], false),
+        tool("animate", "Animate objects on a slide",
+            "Adds in-slide animations (builds) to objects, played in order during the show: each `on_click` animation waits for the next click; `with_previous` starts together with the one before; `after_previous` starts when it ends. Kinds: appear (object hidden until it plays: fade, rise, focus, zoom, pop, drop, fly, spin, typewriter, words, count_up), emphasis (pulse, wiggle, glow, spotlight, highlight, underline, color_pop) and disappear (fade_out, sink, zoom_out, fly_out, shrink). Each object animates on the slide that shows it (or `step`). The first animation of a slide set to with/after_previous plays as soon as the camera arrives.",
+            json!({
+                "path": path_prop(),
+                "animations": { "type": "array", "items": { "type": "object", "properties": {
+                    "id": { "type": "string", "description": "Element id from get_presentation." },
+                    "effect": { "type": "string", "description": "Effect id from `catalog` (effects)." },
+                    "trigger": { "type": "string", "enum": ["on_click", "with_previous", "after_previous"], "default": "on_click" },
+                    "duration": { "type": "number", "description": "Seconds (default per effect)." },
+                    "delay": { "type": "number", "description": "Seconds after the trigger." },
+                    "direction": { "type": "string", "enum": ["left", "right", "up", "down"], "description": "For fly / fly_out." },
+                }, "required": ["id", "effect"] } },
+                "step": { "type": "integer", "description": "1-based slide to put them on (default: the slide showing each object)." },
+                "replace": { "type": "boolean", "default": false, "description": "Replace the existing animations of those slides." },
+            }), &["path", "animations"], false),
+        tool("auto_animate", "Auto-animate slides",
+            "Gives slides a polished entrance cascade in reading order that plays as the camera arrives: titles focus, text rises, numbers count up, icons pop, pictures zoom. Replaces those slides' animations. Then add key-moment emphasis with `animate`.",
+            json!({ "path": path_prop(), "steps": { "type": "array", "items": { "type": "integer" }, "description": "1-based slides (default: all)." } }), &["path"], false),
+        tool("set_transitions", "Set slide transitions",
+            "Sets how the camera travels into slides: smooth (zoom out, then in), direct, swoop (sideways arc with a roll), spin (barrel roll), punch (overshoot and settle), fade (dip through the background) or cut. `styles` cycles a list over the slides for variety.",
+            json!({
+                "path": path_prop(),
+                "style": { "type": "string", "description": "One transition id from `catalog`." },
+                "styles": { "type": "array", "items": { "type": "string" }, "description": "Transition ids to cycle over the slides." },
+                "duration": { "type": "number", "description": "Seconds (default unchanged)." },
+                "steps": { "type": "array", "items": { "type": "integer" }, "description": "1-based slides (default: all)." },
+            }), &["path"], false),
+        tool("clear_animations", "Remove animations",
+            "Removes the in-slide animations of the given slides (default: all).",
+            json!({ "path": path_prop(), "steps": { "type": "array", "items": { "type": "integer" } } }), &["path"], false),
         tool("export_pdf", "Export to PDF",
             "Exports the presentation to PDF: one page per slide on the path, rendered exactly as in the show. Defaults to the project's name with .pdf.",
             json!({ "path": path_prop(), "out": { "type": "string" }, "width": { "type": "integer", "default": 2560, "description": "Rendered slide width in pixels." } }), &["path"], false),
@@ -966,7 +1187,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "clear_animations", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
@@ -1025,6 +1246,30 @@ mod tests {
 
         tool_text(&tools(&mut s, 8, "save_as", json!({ "path": "deck", "new_path": "copies/deck-v2" })));
         assert!(dir.join("copies/deck-v2.glide.json").exists());
+
+        // Animations and transitions.
+        let anim = tools(&mut s, 20, "animate", json!({ "path": "deck", "animations": [
+            { "id": title_id, "effect": "rise" },
+            { "id": title_id, "effect": "spotlight", "trigger": "after_previous" },
+        ] }));
+        let anim: Value = serde_json::from_str(&tool_text(&anim)).unwrap();
+        assert_eq!(anim["slides"][0]["animations"], 2);
+        assert_eq!(anim["slides"][0]["clicks"], 1);
+        let bad = tools(&mut s, 21, "animate", json!({ "path": "deck", "animations": [{ "id": title_id, "effect": "explode" }] }));
+        assert_eq!(bad["result"]["isError"], true);
+        tool_text(&tools(&mut s, 22, "auto_animate", json!({ "path": "deck", "steps": [2] })));
+        tool_text(&tools(&mut s, 23, "set_transitions", json!({ "path": "deck", "styles": ["swoop", "punch"] })));
+        let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
+        assert_eq!(doc.path[0].builds.len(), 2);
+        assert!(doc.path[1].builds.len() >= 3, "the three-points slide cascades in: {:?}", doc.path[1].builds);
+        assert_eq!(doc.path[1].builds[0].trigger, glide_core::Trigger::AfterPrevious, "plays on arrival");
+        assert_eq!((doc.path[0].transition.style, doc.path[1].transition.style), (glide_core::TransitionStyle::Swoop, glide_core::TransitionStyle::Punch));
+        let read: Value = serde_json::from_str(&tool_text(&tools(&mut s, 24, "get_presentation", json!({ "path": "deck" })))).unwrap();
+        assert_eq!(read["slides"][0]["animations"][1]["effect"], "spotlight");
+        assert_eq!(read["slides"][1]["transition"], "punch");
+        let cat: Value = serde_json::from_str(&tool_text(&tools(&mut s, 25, "catalog", json!({})))).unwrap();
+        assert_eq!(cat["effects"].as_array().unwrap().len(), 23);
+        assert_eq!(cat["transitions"].as_array().unwrap().len(), 7);
 
         tool_text(&tools(&mut s, 9, "remove_slide", json!({ "path": "deck", "step": 2 })));
         let doc = Document::load(&dir.join("deck.glide.json")).unwrap();

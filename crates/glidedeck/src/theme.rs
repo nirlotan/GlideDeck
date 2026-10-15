@@ -12,6 +12,20 @@ use std::sync::Arc;
 
 pub use egui_phosphor::regular as icon;
 
+/// The icon for a slide transition style.
+pub fn transition_icon(style: glide_core::TransitionStyle) -> &'static str {
+    use glide_core::TransitionStyle as T;
+    match style {
+        T::Smooth => icon::WAVE_SINE,
+        T::Direct => icon::ARROW_RIGHT,
+        T::Cut => icon::LIGHTNING,
+        T::Swoop => icon::ARROW_ARC_RIGHT,
+        T::Spin => icon::ARROWS_CLOCKWISE,
+        T::Fade => icon::CIRCLE_HALF,
+        T::Punch => icon::TARGET,
+    }
+}
+
 pub const SEMIBOLD: &str = "ui-semibold";
 
 /// Semantic colors for one theme.

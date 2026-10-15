@@ -31,6 +31,61 @@ pub enum TransitionStyle {
     Direct,
     /// Jump without animation.
     Cut,
+    /// A sideways arc with a slight roll, like a camera on a crane.
+    Swoop,
+    /// The smooth zoom plus a full barrel roll on the way.
+    Spin,
+    /// Dips through the background color to the next slide.
+    Fade,
+    /// Zooms slightly past the slide, then settles.
+    Punch,
+}
+
+impl TransitionStyle {
+    pub const ALL: [TransitionStyle; 7] =
+        [TransitionStyle::Smooth, TransitionStyle::Direct, TransitionStyle::Swoop, TransitionStyle::Spin, TransitionStyle::Punch, TransitionStyle::Fade, TransitionStyle::Cut];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            TransitionStyle::Smooth => "Smooth zoom",
+            TransitionStyle::Direct => "Direct",
+            TransitionStyle::Cut => "Cut",
+            TransitionStyle::Swoop => "Swoop",
+            TransitionStyle::Spin => "Spin",
+            TransitionStyle::Fade => "Fade",
+            TransitionStyle::Punch => "Punch",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            TransitionStyle::Smooth => "Cinematic arc: zoom out for context, then dive in",
+            TransitionStyle::Direct => "Straight pan, zoom and rotate",
+            TransitionStyle::Cut => "Jump without animation",
+            TransitionStyle::Swoop => "A sideways arc with a gentle roll",
+            TransitionStyle::Spin => "Smooth zoom with a full barrel roll",
+            TransitionStyle::Fade => "Dip through the background to the next slide",
+            TransitionStyle::Punch => "Overshoot the zoom a little, then settle",
+        }
+    }
+
+    /// Stable id for the CLI and MCP.
+    pub fn id(self) -> &'static str {
+        match self {
+            TransitionStyle::Smooth => "smooth",
+            TransitionStyle::Direct => "direct",
+            TransitionStyle::Cut => "cut",
+            TransitionStyle::Swoop => "swoop",
+            TransitionStyle::Spin => "spin",
+            TransitionStyle::Fade => "fade",
+            TransitionStyle::Punch => "punch",
+        }
+    }
+
+    pub fn from_id(s: &str) -> Option<TransitionStyle> {
+        let want = s.trim().to_lowercase();
+        Self::ALL.into_iter().find(|t| t.id() == want || t.label().to_lowercase() == want)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -58,11 +113,14 @@ pub struct Step {
     /// Speaker notes (Markdown).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    /// In-slide animations, in play order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub builds: Vec<crate::build::Build>,
 }
 
 impl Step {
     pub fn new(frame: impl Into<String>) -> Self {
-        Step { frame: frame.into(), transition: Transition::default(), notes: String::new() }
+        Step { frame: frame.into(), transition: Transition::default(), notes: String::new(), builds: Vec::new() }
     }
 }
 

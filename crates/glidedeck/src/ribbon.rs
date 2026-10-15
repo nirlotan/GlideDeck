@@ -11,7 +11,7 @@ const BIG_H: f32 = 64.0;
 const BODY_H: f32 = BIG_H + 22.0;
 
 /// A large icon-over-label button.
-fn big(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: bool) -> egui::Response {
+pub(crate) fn big(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: bool) -> egui::Response {
     let p = theme::palette(ui.ctx());
     let font = egui::FontId::proportional(12.0);
     let text_w = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), font.clone(), Color32::WHITE).size().x);
@@ -43,7 +43,7 @@ fn big(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: bool)
 }
 
 /// A compact icon + label button for stacked columns.
-fn small(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: bool) -> egui::Response {
+pub(crate) fn small(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: bool) -> egui::Response {
     let p = theme::palette(ui.ctx());
     let text = RichText::new(format!("{glyph}  {label}")).size(12.5).color(if !enabled {
         p.text_muted.gamma_multiply(0.55)
@@ -59,7 +59,7 @@ fn small(ui: &mut egui::Ui, glyph: &str, label: &str, active: bool, enabled: boo
     ui.add_enabled(enabled, b)
 }
 
-fn group(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
+pub(crate) fn group(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     let p = theme::palette(ui.ctx());
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
@@ -78,7 +78,7 @@ fn group(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     ui.painter().vline(rect.center().x, rect.y_range().shrink(6.0), egui::Stroke::new(1.0, p.border));
 }
 
-fn column(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
+pub(crate) fn column(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing.y = 1.0;
         ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
@@ -104,6 +104,7 @@ pub fn ribbon(app: &mut GlideDeckApp, ui: &mut egui::Ui) -> Vec<Action> {
             (RibbonTab::Insert, "Insert"),
             (RibbonTab::Design, "Design"),
             (RibbonTab::Transitions, "Transitions"),
+            (RibbonTab::Animate, "Animate"),
             (RibbonTab::Present, "Present"),
             (RibbonTab::View, "View"),
         ] {
@@ -156,6 +157,7 @@ pub fn ribbon(app: &mut GlideDeckApp, ui: &mut egui::Ui) -> Vec<Action> {
                     RibbonTab::Insert => insert_tab(app, ui, &mut out),
                     RibbonTab::Design => design_tab(app, ui, &mut out),
                     RibbonTab::Transitions => transitions_tab(app, ui),
+                    RibbonTab::Animate => crate::anim_ui::animate_tab(app, ui, &mut out),
                     RibbonTab::Present => present_tab(app, ui, &mut out),
                     RibbonTab::View => view_tab(app, ui, &mut out),
                 }
@@ -530,12 +532,8 @@ fn transitions_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
     let mut t = app.doc.path[index].transition;
     let mut apply_all = false;
     group(ui, "Camera move", |ui| {
-        for (style, glyph, label, tip) in [
-            (TransitionStyle::Smooth, icon::WAVE_SINE, "Smooth zoom", "Cinematic arc: zoom out for context, then dive in"),
-            (TransitionStyle::Direct, icon::ARROW_RIGHT, "Direct", "Straight pan, zoom and rotate"),
-            (TransitionStyle::Cut, icon::LIGHTNING, "Cut", "Jump without animation"),
-        ] {
-            if big(ui, glyph, label, t.style == style, true).on_hover_text(tip).clicked() {
+        for style in TransitionStyle::ALL {
+            if big(ui, theme::transition_icon(style), style.label(), t.style == style, true).on_hover_text(style.description()).clicked() {
                 t.style = style;
             }
         }
