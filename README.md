@@ -81,6 +81,13 @@ GlideDeck follows the **ArtCraft philosophy**:
   camera, show only a faint outline on hover in the editor, and never appear in the show
   unless you give them a border or fill.
 - Moving a frame carries its contents. **Frame them** wraps any selection into a new slide.
+- **Arrange slides** (Design → Arrange) moves every slide into a new layout and path:
+  - **Layouts:** spiral, orbits, sunflower, ring, honeycomb, journey, wave, staircase,
+    tree, zoom tunnel, snake or grid;
+  - **Options:** slides can turn along the path, with a dotted trail and an overview
+    at the start and end;
+  - **Any number of slides:** every layout is computed, not hand-placed;
+  - **Main use:** turning an imported PowerPoint grid into a story.
 
 ### Cinematic motion
 - **Smooth zoom** transitions follow the van Wijk–Nuij optimal path: the camera pulls back
@@ -268,11 +275,11 @@ VS Code, switch Copilot Chat to **Agent** mode and the GlideDeck tools appear. T
 > Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, check
 > every slide, and export a PowerPoint copy.
 
-The server has 17 tools:
+The server has 18 tools:
 - **Discover:** `catalog`, `search_icons`.
 - **Create and read:** `create_presentation`, `import_pptx`, `get_presentation`.
 - **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`,
-  `remove_slide`, `edit_presentation`.
+  `remove_slide`, `arrange_slides`, `edit_presentation`.
 - **Check and deliver:** `render_slide` (returns the PNG), `export_pptx`, `export_pdf`,
   `save_as`, `open_in_editor`.
 
@@ -300,6 +307,7 @@ glidedeck render talk.glide.json --step 3 --out slide3.png
 glidedeck export-pptx talk.glide.json --out talk.pptx
 glidedeck export-pdf talk.glide.json --out talk.pdf
 glidedeck import-pptx deck.pptx --out deck.glide.json
+glidedeck arrange deck.glide.json --layout spiral
 ```
 
 Operations are plain tagged JSON and are applied **atomically** per batch:
@@ -344,7 +352,7 @@ Edit `packaging/windows/glidedeck.wxs` to change what it installs.
 To publish it, sign the MSI with your code-signing certificate so SmartScreen trusts it:
 
 ```bash
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.3-x64.msi
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a dist\GlideDeck-0.1.4-x64.msi
 ```
 
 ### Creating a macOS DMG

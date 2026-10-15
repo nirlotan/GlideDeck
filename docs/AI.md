@@ -157,6 +157,7 @@ MCP server also tells the assistant the workflow when it connects.
 | `export_pptx` | PowerPoint export with Morph transitions |
 | `export_pdf` | PDF, one page per slide |
 | `import_pptx` | Converts a PowerPoint file into a GlideDeck project (slides, text, pictures, notes) |
+| `arrange_slides` | Rearranges every slide into a spiral, orbits, tree, zoom tunnel… with a matching path |
 | `save_as` | Saves a copy or version of the project (media included) |
 | `open_in_editor` | Opens the project in the GlideDeck editor |
 | `search_icons` | Finds names among ~1,500 Phosphor icons |

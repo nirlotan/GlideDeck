@@ -2,6 +2,8 @@
 
 mod agents;
 mod app;
+mod arrange;
+mod arrange_ui;
 mod canvas;
 mod cli;
 mod demo;

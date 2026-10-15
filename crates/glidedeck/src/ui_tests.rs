@@ -862,3 +862,37 @@ fn import_powerpoint_export_pdf_and_recent_files() {
     assert!(bytes.starts_with(b"%PDF-1.7") && bytes.len() == report.bytes);
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn arrange_slides_dialog_rearranges_an_imported_deck() {
+    let dir = std::env::temp_dir().join(format!("glidedeck-ui-arrange-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let pptx = dir.join("deck.pptx");
+    std::fs::write(&pptx, include_bytes!("testdata/sample.pptx")).unwrap();
+    let mut h = harness(Some(Document::new("x")));
+    let ctx = h.ctx.clone();
+    h.state_mut().import_pptx(&ctx, &pptx);
+    h.run_steps(3);
+    let before = h.state().doc.clone();
+
+    h.get_by_label("Design").click();
+    h.run_steps(2);
+    h.get_by_label("Arrange").click();
+    h.run_steps(3);
+    assert!(h.state().arrange_dialog.is_some());
+    h.get_by_label("Arrange as Orbits").click();
+    h.run_steps(3);
+    snapshot(&mut h, "arrange-dialog");
+    h.get_by_label_contains("Arrange 5 slides").click();
+    h.run_steps(4);
+    let app = h.state();
+    assert!(app.arrange_dialog.is_none());
+    assert_eq!(app.doc.path.len(), 7, "five slides plus an overview at each end");
+    let first = app.doc.step_frame(1).unwrap().transform.position();
+    assert!(first.length() < 1.0, "Orbits puts the first slide at the center: {first:?}");
+    // One undo restores the import.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::Z);
+    h.run_steps(3);
+    assert_eq!(h.state().doc, before);
+    std::fs::remove_dir_all(&dir).ok();
+}

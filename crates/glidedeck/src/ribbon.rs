@@ -445,6 +445,14 @@ fn design_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) 
             out.push(Action::ShowTemplates);
         }
     });
+    group(ui, "Slides", |ui| {
+        if big(ui, icon::PATH, "Arrange", app.arrange_dialog.is_some(), !app.doc.path.is_empty())
+            .on_hover_text("Rearrange all slides into a spiral, orbits, a tree, a zoom tunnel…")
+            .clicked()
+        {
+            out.push(Action::ShowArrange);
+        }
+    });
     group(ui, "Themes", |ui| {
         crate::galleries::themes_row(app, ui, out);
     });

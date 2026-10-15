@@ -103,6 +103,8 @@ pub enum Action {
     RemoveStep(usize),
     ImportPptx,
     ExportPdf,
+    /// Opens the "Arrange slides" dialog.
+    ShowArrange,
     OpenRecent(PathBuf),
     ClearRecent,
     /// Formats the text being edited, or the selected text boxes.
@@ -221,6 +223,8 @@ pub struct GlideDeckApp {
     import_on_start: Option<PathBuf>,
     /// File → Open recent.
     pub recent: crate::recent::RecentFiles,
+    /// The "Arrange slides" dialog, while open.
+    pub arrange_dialog: Option<crate::arrange_ui::ArrangeDialog>,
     /// The slide (path step) the editor is on.
     pub current_step: Option<usize>,
     pub thumbs: Thumbnails,
@@ -300,6 +304,7 @@ impl GlideDeckApp {
             start_show: None,
             import_on_start,
             recent,
+            arrange_dialog: None,
             thumbs: Thumbnails::default(),
             presenting: None,
             frame_tags: Vec::new(),
@@ -614,6 +619,7 @@ impl GlideDeckApp {
                 }
             }
             Action::ClearRecent => self.recent.clear(),
+            Action::ShowArrange => self.arrange_dialog = Some(crate::arrange_ui::ArrangeDialog::default()),
             Action::ExportPng => self.export_png(ctx),
             Action::Undo => {
                 if self.history.undo(&mut self.doc) {
@@ -897,6 +903,9 @@ impl GlideDeckApp {
                 let mut msg = format!("Imported {slides} slides from {}", p.file_name().map(|n| n.to_string_lossy()).unwrap_or_default());
                 if !imported.skipped.is_empty() {
                     msg.push_str(&format!(" · skipped {}", imported.skipped.join(", ")));
+                }
+                if slides > 2 {
+                    msg.push_str(" · Try Design → Arrange slides for a zooming path");
                 }
                 self.notify(ctx, msg);
             }
@@ -1315,6 +1324,7 @@ impl eframe::App for GlideDeckApp {
             crate::ribbon::shortcuts_window(self, &ctx);
         }
         crate::galleries::icon_picker(self, &ctx);
+        crate::arrange_ui::arrange_window(self, &ctx);
         crate::galleries::design_check_window(self, &ctx);
         let mut more = crate::galleries::template_gallery(self, &ctx, frame);
         more.extend(crate::galleries::layout_gallery(self, &ctx, frame));

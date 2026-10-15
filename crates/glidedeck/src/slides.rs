@@ -99,6 +99,13 @@ pub fn slides_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &eframe::F
             {
                 out.push(Action::FrameFromView);
             }
+            if ui
+                .add_enabled(!app.doc.path.is_empty(), egui::Button::new(RichText::new(icon::PATH).size(15.0)).min_size(egui::vec2(28.0, 26.0)))
+                .on_hover_text("Arrange slides: spiral, orbits, tree, zoom tunnel…")
+                .clicked()
+            {
+                out.push(Action::ShowArrange);
+            }
         });
     });
     ui.add_space(6.0);

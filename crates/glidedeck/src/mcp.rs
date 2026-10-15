@@ -28,7 +28,7 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`. Keep slide text short: one idea per slide.";
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide.";
 
 /// Runs the server until stdin closes.
 pub fn serve(root: PathBuf) -> Result<()> {
@@ -191,6 +191,27 @@ impl Server {
                 let mut summary = self.summary(&doc, &path);
                 summary["skipped"] = json!(skipped);
                 Ok(vec![text_json(&summary)])
+            }
+            "arrange_slides" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let name = str_arg(args, "layout")?;
+                let kind = crate::arrange::Arrangement::from_id(name).with_context(|| format!("unknown layout {name:?}; see `catalog` (arrangements)"))?;
+                let flag = |k: &str, default: bool| args.get(k).and_then(Value::as_bool).unwrap_or(default);
+                let opts = crate::arrange::ArrangeOptions {
+                    spacing: args.get("spacing").and_then(Value::as_f64).unwrap_or(0.25),
+                    tilt: flag("tilt", kind.default_tilt()),
+                    trail: flag("trail", true),
+                    overview: flag("overview", true),
+                };
+                let report = crate::arrange::arrange(&mut doc, kind, &opts).map_err(|e| anyhow::anyhow!(e))?;
+                save(&doc, &path)?;
+                Ok(vec![text(format!(
+                    "Arranged {} slides as {} ({} steps on the path). Render a few slides and step 0 to check the result.",
+                    report.slides,
+                    kind.label(),
+                    doc.path.len()
+                ))])
             }
             "export_pdf" => {
                 let path = self.project_path(args, "path")?;
@@ -619,10 +640,15 @@ fn catalog() -> Value {
         .into_iter()
         .map(|t| json!({ "name": t.name, "dark": t.is_dark(), "heading_font": t.heading_font, "body_font": t.body_font }))
         .collect();
+    let arrangements: Vec<Value> = crate::arrange::Arrangement::ALL
+        .into_iter()
+        .map(|a| json!({ "id": a.id(), "name": a.label(), "description": a.blurb() }))
+        .collect();
     json!({
         "templates": templates,
         "layouts": layouts,
         "themes": themes,
+        "arrangements": arrangements,
         "notes": "Layout text_fields/icon_slots map an element name to how many there are; pass a string for one, or an \
                   array to fill several in order. Slide coordinates for add_text/add_image: the slide is 1600 × 900 \
                   units with (0, 0) at its center. Icons are Phosphor names (search_icons).",
@@ -896,6 +922,16 @@ fn tool_definitions() -> Vec<Value> {
                 "path": { "type": "string", "description": "Project file to create (default: next to the .pptx, as .glide.json)." },
                 "overwrite": { "type": "boolean", "default": false },
             }), &["pptx"], false),
+        tool("arrange_slides", "Arrange all slides",
+            "Moves every slide on the path into a new layout and path (each slide's content moves with it; the order is kept). Great after import_pptx, which arrives as a plain grid. Layouts: spiral, orbits, sunflower, ring, honeycomb, journey, wave, staircase, tree, zoom-tunnel, snake, grid.",
+            json!({
+                "path": path_prop(),
+                "layout": { "type": "string", "description": "Arrangement id from `catalog`." },
+                "spacing": { "type": "number", "default": 0.25, "description": "Gap between slides as a fraction of the slide size." },
+                "tilt": { "type": "boolean", "description": "Turn slides along the path (default depends on the layout)." },
+                "trail": { "type": "boolean", "default": true, "description": "Draw a dotted trail between slides." },
+                "overview": { "type": "boolean", "default": true, "description": "Overview of everything at the start and end." },
+            }), &["path", "layout"], false),
         tool("export_pdf", "Export to PDF",
             "Exports the presentation to PDF: one page per slide on the path, rendered exactly as in the show. Defaults to the project's name with .pdf.",
             json!({ "path": path_prop(), "out": { "type": "string" }, "width": { "type": "integer", "default": 2560, "description": "Rendered slide width in pixels." } }), &["path"], false),
@@ -930,7 +966,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));

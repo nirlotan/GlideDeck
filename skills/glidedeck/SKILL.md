@@ -16,12 +16,19 @@ the GlideDeck editor later to edit and present it, or export it to PowerPoint.
 If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
-`export_pptx`, `export_pdf`, `import_pptx`, `save_as`, `open_in_editor`,
+`export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `save_as`, `open_in_editor`,
 `search_icons` and `edit_presentation`. Prefer them.
 
 **Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
-every slide into a frame with its text, pictures and notes. Then improve it:
-rewrite text, add layouts, and render each slide to check it.
+every slide into a frame with its text, pictures and notes, laid out as a plain
+grid. Then call `arrange_slides` to give it a zooming path that suits the story:
+- `spiral` or `journey` for a narrative;
+- `orbits` or `sunflower` for one central idea;
+- `tree` for a hierarchy;
+- `staircase` for growth;
+- `zoom-tunnel` for "going deeper".
+
+Render step 1 (the overview) to check it, then improve the content.
 
 Follow this workflow:
 

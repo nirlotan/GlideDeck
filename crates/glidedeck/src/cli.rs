@@ -86,6 +86,27 @@ pub enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Rearrange every slide into a new layout and path (spiral, orbits, tree…).
+    ///
+    /// Layouts: spiral, orbits, sunflower, ring, honeycomb, journey, wave,
+    /// staircase, tree, zoom-tunnel, snake, grid.
+    Arrange {
+        file: PathBuf,
+        #[arg(long)]
+        layout: String,
+        /// Gap between slides, as a fraction of the slide size.
+        #[arg(long, default_value_t = 0.25)]
+        spacing: f64,
+        /// Keep slides upright instead of turning them along the path.
+        #[arg(long)]
+        no_tilt: bool,
+        /// Don't draw a dotted trail between slides.
+        #[arg(long)]
+        no_trail: bool,
+        /// Don't keep an overview at the start and end of the path.
+        #[arg(long)]
+        no_overview: bool,
+    },
     /// Export the presentation to PDF: one page per slide on the path.
     ExportPdf {
         file: PathBuf,
@@ -169,6 +190,17 @@ pub fn run(cmd: Command) -> Result<()> {
             let mut text = glide_render::TextEngine::new();
             let (doc, skipped) = crate::pptx_import::import_to_project(&file, &out, &mut text).map_err(|e| anyhow::anyhow!(e))?;
             println!("{}", json!({ "written": out, "slides": doc.path.len(), "skipped": skipped }));
+        }
+        Command::Arrange { file, layout, spacing, no_tilt, no_trail, no_overview } => {
+            let kind = crate::arrange::Arrangement::from_id(&layout).with_context(|| {
+                let ids: Vec<String> = crate::arrange::Arrangement::ALL.iter().map(|a| a.id()).collect();
+                format!("unknown layout {layout:?} (try {})", ids.join(", "))
+            })?;
+            let mut doc = Document::load(&file)?;
+            let opts = crate::arrange::ArrangeOptions { spacing, tilt: !no_tilt && kind.default_tilt(), trail: !no_trail, overview: !no_overview };
+            let report = crate::arrange::arrange(&mut doc, kind, &opts).map_err(|e| anyhow::anyhow!(e))?;
+            doc.save(&file)?;
+            println!("{}", json!({ "arranged": report.slides, "layout": kind.id(), "steps": doc.path.len() }));
         }
         Command::ExportPdf { file, out, width } => {
             let doc = Document::load(&file)?;

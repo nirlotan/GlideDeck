@@ -321,6 +321,42 @@ PowerPoint presentation into a new GlideDeck document.
 
 The import is unsaved until you save it; Save As stores its pictures next to the document.
 
+### Arranging slides
+
+**Design → Arrange** (or the path button at the top of the slide list) moves every slide on
+the path into a new layout. Each slide's content moves and turns with it, and the order of
+the path stays the same. The dialog draws each arrangement live for your number of slides:
+
+| Arrangement | What the path does |
+|---|---|
+| Spiral | Winds outward from the first slide; slides turn with the curve |
+| Orbits | First slide at the center, the rest on rings around it |
+| Sunflower | Golden-angle seeds: every step swings ~137° around the center |
+| Ring | One circle, the camera spinning around it |
+| Honeycomb | Hex rings spiralling out from the center |
+| Journey | A meandering road with tilted slides, wrapping into rows |
+| Wave | A sine-wave road, wrapping into rows |
+| Staircase | Climbs upward in switchback flights |
+| Tree | Branches like an org chart, visited branch by branch |
+| Zoom tunnel | Each slide inside the previous one; every 10 levels a new tunnel starts |
+| Snake | Rows that turn back at each end |
+| Grid | Rows, left to right |
+
+Options:
+- **Spacing** sets the gap between slides.
+- **Turn slides along the path** tilts the slides; in the show, the camera turns with them.
+- **Draw the path** adds a dotted trail between slides (lines for Tree). Arranging again
+  replaces it.
+- **Overview at start and end** adds a view of everything at both ends of the path.
+
+Every arrangement is a formula, so it works for any number of slides. It's one step to
+undo (Ctrl/⌘+Z). Objects that aren't on any slide stay where they are. From the command
+line:
+
+```bash
+glidedeck arrange deck.glide.json --layout orbits
+```
+
 ### Recent files
 
 **File → Open recent** lists the last 10 documents (and PowerPoint files) you opened, saved
@@ -358,6 +394,7 @@ glidedeck render talk.glide.json --out slide3.png --step 3
 glidedeck export-pptx talk.glide.json --out talk.pptx
 glidedeck export-pdf talk.glide.json --out talk.pdf
 glidedeck import-pptx deck.pptx --out deck.glide.json
+glidedeck arrange deck.glide.json --layout spiral
 ```
 
 - `new [--demo | --template NAME] [--force]` creates an empty document, the welcome canvas, or
