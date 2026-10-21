@@ -212,8 +212,8 @@ To let Claude or GitHub Copilot build presentations, run `glidedeck agent-setup`
 ### macOS
 
 **[Download the latest macOS installer for Apple Silicon (GlideDeck-0.1.5.dmg)](https://github.com/nirlotan/GlideDeck/releases/download/v0.1.5/GlideDeck-0.1.5.dmg)**
-and drag GlideDeck to Applications. This build is ad-hoc signed; on another Mac,
-right-click the app and choose **Open** to confirm the first launch. You can also
+and drag GlideDeck to Applications. The app and DMG are Developer ID signed, and
+the DMG is notarized by Apple with a stapled notarization ticket. You can also
 [build a DMG for Intel or Apple Silicon](#creating-a-macos-dmg) or run from source as below. For video,
 install FFmpeg:
 
