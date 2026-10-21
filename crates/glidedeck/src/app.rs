@@ -125,8 +125,11 @@ pub enum Action {
     ToggleFrameOutlines,
     ToggleSlides,
     ToggleInspector,
+    ToggleNotes,
     SetTheme(ThemePreference),
     ToggleShortcuts,
+    ShowAbout,
+    CheckForUpdates,
     // Design features.
     ShowIcons,
     ShowTemplates,
@@ -218,6 +221,10 @@ pub struct GlideDeckApp {
     pub scroll_pans: bool,
     pub show_slides: bool,
     pub show_inspector: bool,
+    /// The speaker notes panel under the canvas.
+    pub show_notes: bool,
+    /// About GlideDeck and the update check.
+    pub updater: crate::update::Updater,
     pub ribbon_tab: RibbonTab,
     pub stats: RenderStats,
     pub canvas_rect: egui::Rect,
@@ -308,6 +315,8 @@ impl GlideDeckApp {
             scroll_pans: false,
             show_slides: true,
             show_inspector: true,
+            show_notes: true,
+            updater: Default::default(),
             ribbon_tab: RibbonTab::Home,
             stats: RenderStats::default(),
             canvas_rect: egui::Rect::NOTHING,
@@ -763,8 +772,14 @@ impl GlideDeckApp {
             Action::ToggleFrameOutlines => self.show_frames = !self.show_frames,
             Action::ToggleSlides => self.show_slides = !self.show_slides,
             Action::ToggleInspector => self.show_inspector = !self.show_inspector,
+            Action::ToggleNotes => self.show_notes = !self.show_notes,
             Action::SetTheme(t) => ctx.set_theme(t),
             Action::ToggleShortcuts => self.show_shortcuts = !self.show_shortcuts,
+            Action::ShowAbout => self.updater.open = true,
+            Action::CheckForUpdates => {
+                self.updater.open = true;
+                self.updater.check(ctx);
+            }
             Action::ShowIcons => {
                 self.icon_picker.open = true;
                 self.icon_picker.replace = None;
@@ -1340,6 +1355,7 @@ impl eframe::App for GlideDeckApp {
                 .size_range(260.0..=440.0)
                 .show(ui, |ui| actions.extend(crate::inspector::inspector(self, ui)));
         }
+        crate::notes::notes_panel(self, ui);
         egui::CentralPanel::no_frame()
             .frame(egui::Frame::new().fill(p.app_bg).inner_margin(egui::Margin::same(8)))
             .show(ui, |ui| actions.extend(self.canvas_ui(ui, frame)));
@@ -1352,6 +1368,7 @@ impl eframe::App for GlideDeckApp {
         }
         crate::galleries::icon_picker(self, &ctx);
         crate::arrange_ui::arrange_window(self, &ctx);
+        crate::update::about_window(self, &ctx);
         crate::galleries::design_check_window(self, &ctx);
         let mut more = crate::galleries::template_gallery(self, &ctx, frame);
         more.extend(crate::galleries::layout_gallery(self, &ctx, frame));

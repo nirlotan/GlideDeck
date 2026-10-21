@@ -16,6 +16,7 @@ mod history;
 mod inspector;
 mod layouts;
 mod mcp;
+mod notes;
 mod media;
 mod office;
 mod pdf;
@@ -28,6 +29,7 @@ mod templates;
 mod textedit;
 mod textformat;
 mod theme;
+mod update;
 #[cfg(test)]
 mod ui_tests;
 

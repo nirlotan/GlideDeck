@@ -17,12 +17,13 @@ If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
 `export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `animate`,
-`auto_animate`, `set_transitions`, `clear_animations`, `save_as`,
+`auto_animate`, `set_transitions`, `set_notes`, `clear_animations`, `save_as`,
 `open_in_editor`, `search_icons` and `edit_presentation`. Prefer them.
 
 **Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
 every slide into a frame with its text, pictures and notes, laid out as a plain
 grid. Then call `arrange_slides` to give it a zooming path that suits the story:
+- `carousel` to keep it linear but sleek: slides glide past over a parallax backdrop;
 - `spiral` or `journey` for a narrative;
 - `orbits` or `sunflower` for one central idea;
 - `tree` for a hierarchy;
@@ -36,7 +37,8 @@ Follow this workflow:
 1. **Plan the story first.** Decide the 5–12 slides: one idea per slide, short
    titles, at most about 30 words of body text per slide.
 2. **`catalog`.** Pick the template whose structure fits the story:
-   - `pitch-deck`, `roadmap`, `showcase` or `branches` for business;
+   - `carousel`, `pitch-deck`, `roadmap`, `showcase` or `branches` for business
+     (`carousel` comes with glass cards, a parallax backdrop and animations built in);
    - `journey`, `summit`, `spiral` or `deep-dive` for a narrative;
    - `big-picture`, `hive`, `orbit` or `mood-board` for ideas;
    - `lecture`, `chapters`, `workshop` or `cycle` for teaching;
@@ -71,14 +73,15 @@ Follow this workflow:
    - `arrange_slides` with a layout that fits the story;
    - `set_transitions` with a varied mix of camera moves;
    - `auto_animate`, then `animate` the two or three key moments.
+   Then write **speaker notes** for every slide with `set_notes`: what to say, the
+   number to stress, where to pause. The presenter sees them in presenter view.
 7. **Check your work.** Call `render_slide` for each slide (step 1..N) and look
    at the image. Fix overflowing or cramped text, leftover placeholders and
    off-topic icons. Shorten text rather than shrinking it. (Renders show each
    slide fully built: animations don't hide anything there.)
 8. **Finish.** Tell the user where the project file is. Mention they can
    present it with F5; with a second display, presenter view shows the speaker
-   notes. You can write notes with `edit_presentation`
-   (`{"op":"update_step","index":0,"notes":"…"}`; `index` is 0-based). Offer `export_pptx`
+   notes (Alt+F5 rehearses with them on one screen). Offer `export_pptx`
    for PowerPoint, `export_pdf` for a PDF, and `open_in_editor` to open it in
    GlideDeck. Use `save_as`
    to keep a separate copy or version.
@@ -96,6 +99,7 @@ the zooming canvas. Pick the arrangement that mirrors the structure of the talk:
 | One central idea and its parts | `orbits`, `sunflower` |
 | A hierarchy or agenda with sub-topics | `tree` |
 | A narrative from A to B | `journey`, `wave`, `spiral` |
+| A sleek linear deck, e.g. an imported PowerPoint | `carousel` |
 | Growth, progress, levelling up | `staircase`, `spiral` |
 | Drilling down / "going deeper" | `zoom-tunnel` |
 | A cyclical process | `ring` |
@@ -144,6 +148,10 @@ up:
   {"id": "text-kpi", "effect": "count_up", "trigger": "with_previous"}
 ]}
 ```
+
+**Parallax.** `update_elements` with `parallax` gives any object depth in the show:
+0.3–0.7 for a far backdrop that drifts slower than the slides, negative for near objects
+that move faster. Keep parallax objects decorative (glows, shapes), never text to read.
 
 Notes:
 - Slide coordinates for `add_text` and `add_image` are 1600 × 900 units with

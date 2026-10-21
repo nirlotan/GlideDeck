@@ -538,6 +538,36 @@ pub fn scene(doc: &Document, clock: &BuildClock, now: f64, measure: &mut dyn Mea
     out
 }
 
+/// Moves objects with a parallax depth for a camera looking at `cam`: far
+/// objects drift toward the camera's center (so they move slower than the
+/// canvas), near ones away from it. The effect fades out as the camera zooms
+/// out well past slide size, so overviews show the layout as designed.
+pub fn apply_parallax(doc: &mut Document, cam: &glide_core::Camera, viewport: DVec2) {
+    if doc.elements.iter().all(|e| e.parallax == 0.0) || viewport.x <= 0.0 {
+        return;
+    }
+    // A typical slide's width on screen, relative to the view.
+    let mut widths: Vec<f64> = (0..doc.path.len())
+        .filter_map(|i| doc.step_frame(i))
+        .filter_map(|f| f.kind.intrinsic_size().map(|s| s.x * f.transform.scale.abs()))
+        .collect();
+    widths.sort_by(f64::total_cmp);
+    let Some(&slide_w) = widths.get(widths.len() / 2) else { return };
+    let ratio = slide_w * cam.zoom / viewport.x;
+    let t = ((ratio - 0.25) / (0.8 - 0.25)).clamp(0.0, 1.0);
+    let strength = t * t * (3.0 - 2.0 * t);
+    if strength <= 0.0 {
+        return;
+    }
+    for el in &mut doc.elements {
+        if el.parallax != 0.0 {
+            let p = el.transform.position();
+            let depth = el.parallax.clamp(-2.0, 1.0) * strength;
+            el.transform.set_position(p + (cam.center - p) * depth);
+        }
+    }
+}
+
 /// A tasteful cascade for a whole slide: titles rise, icons pop, pictures and
 /// cards zoom, in reading order, flowing in one after another on arrival.
 pub fn auto_builds(doc: &Document, step: usize, measure: &mut dyn Measure) -> Vec<Build> {

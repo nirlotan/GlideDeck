@@ -11,6 +11,8 @@ use std::f64::consts::{PI, TAU};
 /// Name given to the trail dots and tree lines this module draws, so a later
 /// arrangement can replace them.
 pub const TRAIL: &str = "Path trail";
+/// Name of the parallax backdrop the carousel draws, replaced the same way.
+pub const PARALLAX: &str = "Parallax layer";
 const OVERVIEW: &str = "Overview";
 /// Zoom tunnel: each slide is this fraction of its parent's width…
 const TUNNEL_SCALE: f64 = 0.2;
@@ -31,10 +33,12 @@ pub enum Arrangement {
     Sunflower,
     Tree,
     Tunnel,
+    Carousel,
 }
 
 impl Arrangement {
-    pub const ALL: [Arrangement; 12] = [
+    pub const ALL: [Arrangement; 13] = [
+        Arrangement::Carousel,
         Arrangement::Spiral,
         Arrangement::Orbits,
         Arrangement::Sunflower,
@@ -63,6 +67,7 @@ impl Arrangement {
             Arrangement::Sunflower => "Sunflower",
             Arrangement::Tree => "Tree",
             Arrangement::Tunnel => "Zoom tunnel",
+            Arrangement::Carousel => "Carousel",
         }
     }
 
@@ -80,6 +85,7 @@ impl Arrangement {
             Arrangement::Sunflower => "Golden-angle seeds: every step swings around the center.",
             Arrangement::Tree => "Branches like an org chart, visited branch by branch.",
             Arrangement::Tunnel => "Each slide inside the previous one: zoom ever deeper.",
+            Arrangement::Carousel => "Slides glide past side by side over a parallax backdrop of glowing layers.",
         }
     }
 
@@ -336,6 +342,7 @@ pub fn placements(kind: Arrangement, n: usize, cell: DVec2, opts: &ArrangeOption
             };
             preorder(n).into_iter().map(|hix| at(heap_pos(hix), 0.0)).collect()
         }
+        Arrangement::Carousel => (0..n).map(|i| at(DVec2::new((i as f64 - (n - 1) as f64 / 2.0) * pw, 0.0), 0.0)).collect(),
         Arrangement::Tunnel => {
             // Each slide sits in a corner of the previous one, at a fifth of its size.
             let corners = [DVec2::new(1.0, 1.0), DVec2::new(-1.0, 1.0), DVec2::new(-1.0, -1.0), DVec2::new(1.0, -1.0)];
@@ -399,7 +406,7 @@ pub fn arrange(doc: &mut Document, kind: Arrangement, opts: &ArrangeOptions) -> 
     if slides.is_empty() {
         return Err("there are no slides on the path to arrange".into());
     }
-    doc.elements.retain(|e| e.name != TRAIL);
+    doc.elements.retain(|e| e.name != TRAIL && e.name != PARALLAX);
 
     // Each element belongs to the smallest slide containing its center.
     let frames: Vec<(String, glam::DAffine2, DVec2, f64)> = slides
@@ -468,7 +475,19 @@ pub fn arrange(doc: &mut Document, kind: Arrangement, opts: &ArrangeOptions) -> 
     // The tunnel nests and the sunflower's path swings across the center on
     // purpose: a straight trail would only add clutter.
     if opts.trail && kind.has_trail() {
-        draw_trail(doc, &slides, kind);
+        if kind == Arrangement::Carousel {
+            draw_parallax(doc, &slides);
+        } else {
+            draw_trail(doc, &slides, kind);
+        }
+    }
+    // The carousel glides sideways from slide to slide.
+    if kind == Arrangement::Carousel {
+        for step in doc.path.iter_mut().filter(|s| slides.contains(&s.frame)) {
+            step.transition.style = glide_core::TransitionStyle::Direct;
+            step.transition.duration = 1.2;
+            step.transition.easing = glide_core::Easing::EaseInOutCubic;
+        }
     }
     if opts.overview {
         let bounds = slides.iter().filter_map(|id| doc.get(id)).fold(Aabb::EMPTY, |b, f| b.union(f.world_aabb(f.kind.intrinsic_size().unwrap_or_default())));
@@ -508,6 +527,74 @@ pub fn arrange(doc: &mut Document, kind: Arrangement, opts: &ArrangeOptions) -> 
         doc.elements.retain(|e| !(overviews.contains(&e.id) && e.name == OVERVIEW));
     }
     Ok(ArrangeReport { slides: slides.len() })
+}
+
+/// The carousel's backdrop: three layers at different depths that drift at
+/// different speeds as the camera glides along (see `Element::parallax`):
+/// big soft orbs far behind, rings in the middle, and sparks up close.
+fn draw_parallax(doc: &mut Document, slides: &[String]) {
+    let frames: Vec<Element> = slides.iter().filter_map(|id| doc.get(id).cloned()).collect();
+    let Some(first) = frames.first() else { return };
+    let size = first.kind.intrinsic_size().unwrap_or_default() * first.transform.scale.abs();
+    let (w, h) = (size.x, size.y);
+    let (x0, x1) = frames.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), f| (lo.min(f.transform.x), hi.max(f.transform.x)));
+    let y = frames.iter().map(|f| f.transform.y).sum::<f64>() / frames.len() as f64;
+    let accents = doc.theme.as_ref().map(|t| t.accents).unwrap_or([Color::rgb(0x8F, 0x7B, 0xFF), Color::rgb(0x2E, 0xE6, 0xC5), Color::rgb(0xFF, 0x7A, 0x5C), Color::rgb(0xE4, 0xFF, 0x6B)]);
+    let tint = |c: Color, a: u8| Color::rgba(c.r(), c.g(), c.b(), a);
+    let mut seed: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut rnd = move || {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        (seed >> 33) as f64 / (1u64 << 31) as f64
+    };
+    let mut add: Vec<Element> = Vec::new();
+    let mut put = |kind: ElementKind, at: DVec2, depth: f64| {
+        let mut el = Element::new(kind).with_transform(Transform { x: at.x, y: at.y, scale: 1.0, rotation: 0.0 });
+        el.name = PARALLAX.into();
+        el.parallax = depth;
+        add.push(el);
+    };
+    let span = (x0 - w, x1 + w);
+    // Far: glowing orbs, alternating above and below the track.
+    let mut x = span.0;
+    let mut k = 0;
+    while x <= span.1 {
+        let d = h * (0.55 + 0.4 * rnd());
+        let c = accents[k % 4];
+        let side = if k % 2 == 0 { -1.0 } else { 1.0 };
+        let fill = Some(tint(c, 0x46));
+        let gradient = Some(glide_core::Gradient { to: tint(accents[(k + 1) % 4], 0x00), angle: 90.0 });
+        put(ElementKind::Ellipse(EllipseShape { width: d, height: d, fill, gradient, stroke: None }), DVec2::new(x + w * 0.3 * (rnd() - 0.5), y + side * h * (0.3 + 0.25 * rnd())), 0.5);
+        x += w * (0.85 + 0.3 * rnd());
+        k += 1;
+    }
+    // Middle: thin rings.
+    let mut x = span.0 + w * 0.45;
+    while x <= span.1 {
+        let d = h * (0.22 + 0.22 * rnd());
+        let c = accents[(k + 2) % 4];
+        let side = if k % 2 == 0 { 1.0 } else { -1.0 };
+        put(ElementKind::Ellipse(EllipseShape { width: d, height: d, fill: None, gradient: None, stroke: Some(glide_core::Stroke { color: tint(c, 0x70), width: h * 0.006 }) }), DVec2::new(x, y + side * h * (0.62 + 0.12 * rnd())), 0.25);
+        x += w * (0.9 + 0.4 * rnd());
+        k += 1;
+    }
+    // Near: small sparks in the margins, moving faster than the slides.
+    let mut x = span.0;
+    while x <= span.1 {
+        let d = h * (0.012 + 0.02 * rnd());
+        let c = accents[k % 4];
+        let side = if rnd() < 0.5 { -1.0 } else { 1.0 };
+        put(ElementKind::Ellipse(EllipseShape { width: d, height: d, fill: Some(tint(c, 0xC0)), gradient: None, stroke: None }), DVec2::new(x, y + side * h * (0.56 + 0.18 * rnd())), -0.3);
+        x += w * (0.18 + 0.25 * rnd());
+        k += 1;
+    }
+    // Under everything (and under the trail).
+    for (i, el) in add.into_iter().enumerate() {
+        let id = doc.add(el);
+        if let Some(at) = doc.index_of(&id) {
+            let el = doc.elements.remove(at);
+            doc.elements.insert(i.min(doc.elements.len()), el);
+        }
+    }
 }
 
 /// Dots between consecutive slides (lines between parent and child for Tree).
@@ -633,6 +720,28 @@ mod tests {
             let child = cell * c.scale / 2.0;
             assert!(local.x.abs() + child.x <= half.x * 1.001 && local.y.abs() + child.y <= half.y * 1.001, "level {i} sticks out");
         }
+    }
+
+    #[test]
+    fn carousel_glides_over_a_parallax_backdrop() {
+        let mut doc = deck(5);
+        let report = arrange(&mut doc, Arrangement::Carousel, &ArrangeOptions::default()).unwrap();
+        assert_eq!(report.slides, 5);
+        let (slides, _) = path_frames(&doc);
+        let ys: Vec<f64> = slides.iter().map(|id| doc.get(id).unwrap().transform.y).collect();
+        assert!(ys.windows(2).all(|w| (w[0] - w[1]).abs() < 1e-6), "one row");
+        let layers: Vec<&Element> = doc.elements.iter().filter(|e| e.name == PARALLAX).collect();
+        assert!(layers.len() > 10);
+        assert!(layers.iter().any(|e| e.parallax > 0.4) && layers.iter().any(|e| e.parallax < 0.0), "far and near layers");
+        let count = layers.len();
+        let first_slide = doc.index_of(&slides[0]).unwrap();
+        assert!(doc.elements.iter().position(|e| e.name == PARALLAX).unwrap() < first_slide, "the backdrop is behind");
+        assert!(doc.path.iter().filter(|s| slides.contains(&s.frame)).all(|s| s.transition.style == glide_core::TransitionStyle::Direct));
+        // Arranging again replaces the backdrop instead of stacking it.
+        arrange(&mut doc, Arrangement::Carousel, &ArrangeOptions::default()).unwrap();
+        assert_eq!(doc.elements.iter().filter(|e| e.name == PARALLAX).count(), count);
+        arrange(&mut doc, Arrangement::Grid, &ArrangeOptions::default()).unwrap();
+        assert_eq!(doc.elements.iter().filter(|e| e.name == PARALLAX).count(), 0);
     }
 
     #[test]

@@ -1,19 +1,21 @@
 {
   "format": "glidedeck/1",
   "title": "Welcome to GlideDeck",
-  "background": "#f7f6f2",
+  "background": "#0e0b1f",
+  "background_to": "#1e1646",
   "theme": {
-    "name": "Paper",
-    "background": "#f7f6f2",
-    "surface": "#ffffff",
-    "heading": "#1f232b",
-    "text": "#2e3440",
-    "muted": "#5b6478",
+    "name": "Dusk",
+    "background": "#0e0b1f",
+    "background_to": "#1e1646",
+    "surface": "#1a1536",
+    "heading": "#f5f2ea",
+    "text": "#e4e0f2",
+    "muted": "#9c95bd",
     "accents": [
-      "#17a398",
-      "#e4572e",
-      "#3d5a80",
-      "#f2a541"
+      "#8f7bff",
+      "#2ee6c5",
+      "#ff7a5c",
+      "#e4ff6b"
     ],
     "heading_font": "sans-serif",
     "body_font": "sans-serif"
@@ -23,15 +25,15 @@
       "id": "frame-overview",
       "name": "Overview",
       "transform": {
-        "x": -20.0,
+        "x": 0.0,
         "y": 250.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 2200.0,
-        "height": 1237.5
+        "width": 2400.0,
+        "height": 1350.0
       }
     },
     {
@@ -39,97 +41,112 @@
       "name": "Title",
       "transform": {
         "x": 0.0,
-        "y": 20.0,
+        "y": -45.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 1100.0,
-        "height": 618.75
+        "width": 1150.0,
+        "height": 646.875
       }
     },
     {
       "id": "frame-canvas",
       "name": "Infinite canvas",
       "transform": {
-        "x": -620.0,
-        "y": 430.0,
+        "x": -705.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 640.0,
-        "height": 360.0
+        "width": 600.0,
+        "height": 337.5
       }
     },
     {
       "id": "frame-text",
-      "name": "Vector everything",
+      "name": "PowerPoint in & out",
       "transform": {
-        "x": 0.0,
-        "y": 430.0,
+        "x": -235.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 640.0,
-        "height": 360.0
+        "width": 600.0,
+        "height": 337.5
+      }
+    },
+    {
+      "id": "frame-motion",
+      "name": "Motion built in",
+      "transform": {
+        "x": 235.0,
+        "y": 470.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "frame",
+        "width": 600.0,
+        "height": 337.5
       }
     },
     {
       "id": "frame-agents",
-      "name": "Agent-ready",
+      "name": "AI-ready",
       "transform": {
-        "x": 620.0,
-        "y": 430.0,
+        "x": 705.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 640.0,
-        "height": 360.0
+        "width": 600.0,
+        "height": 337.5
       }
     },
     {
       "id": "frame-sticker",
       "name": "Offline",
       "transform": {
-        "x": 560.0,
-        "y": -190.0,
+        "x": 640.0,
+        "y": -250.0,
         "scale": 1.0,
-        "rotation": 12.0
+        "rotation": 10.0
       },
       "kind": {
         "type": "frame",
-        "width": 420.0,
-        "height": 236.25
+        "width": 440.0,
+        "height": 247.5
       }
     },
     {
       "id": "frame-portal",
       "name": "Portal",
       "transform": {
-        "x": -640.0,
-        "y": -200.0,
+        "x": -740.0,
+        "y": -250.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 560.0,
-        "height": 315.0
+        "width": 620.0,
+        "height": 348.75
       }
     },
     {
       "id": "frame-depth-1",
       "name": "Level 1",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 0.01,
         "rotation": 0.0
       },
@@ -143,8 +160,8 @@
       "id": "frame-depth-2",
       "name": "Level 2",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 0.0001,
         "rotation": 0.0
       },
@@ -158,8 +175,8 @@
       "id": "frame-depth-4",
       "name": "Level 4",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 1e-8,
         "rotation": 0.0
       },
@@ -174,19 +191,341 @@
       "name": "Every script",
       "transform": {
         "x": 0.0,
-        "y": 720.0,
+        "y": 735.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "frame",
-        "width": 960.0,
-        "height": 110.0,
-        "corner_radius": 18.0,
+        "width": 1040.0,
+        "height": 130.0,
+        "corner_radius": 65.0,
         "border": {
-          "color": "#5b4fe990",
+          "color": "#2ee6c590",
           "width": 2.0
         }
+      }
+    },
+    {
+      "id": "glow-iris",
+      "name": "Aurora glow",
+      "transform": {
+        "x": -760.0,
+        "y": -180.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.45,
+      "kind": {
+        "type": "ellipse",
+        "width": 1500.0,
+        "height": 1500.0,
+        "fill": "#8f7bff5c",
+        "gradient": {
+          "to": "#2ee6c500",
+          "angle": 60.0
+        }
+      }
+    },
+    {
+      "id": "glow-teal",
+      "name": "Aurora glow",
+      "transform": {
+        "x": 860.0,
+        "y": 80.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.6,
+      "kind": {
+        "type": "ellipse",
+        "width": 1150.0,
+        "height": 1150.0,
+        "fill": "#2ee6c544",
+        "gradient": {
+          "to": "#8f7bff00",
+          "angle": 60.0
+        }
+      }
+    },
+    {
+      "id": "glow-coral",
+      "name": "Aurora glow",
+      "transform": {
+        "x": 120.0,
+        "y": 760.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.35,
+      "kind": {
+        "type": "ellipse",
+        "width": 950.0,
+        "height": 950.0,
+        "fill": "#ff7a5c3c",
+        "gradient": {
+          "to": "#e4ff6b00",
+          "angle": 60.0
+        }
+      }
+    },
+    {
+      "id": "glow-lime",
+      "name": "Aurora glow",
+      "transform": {
+        "x": 980.0,
+        "y": -420.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.7,
+      "kind": {
+        "type": "ellipse",
+        "width": 520.0,
+        "height": 520.0,
+        "fill": "#e4ff6b26",
+        "gradient": {
+          "to": "#2ee6c500",
+          "angle": 60.0
+        }
+      }
+    },
+    {
+      "id": "ring-0",
+      "name": "Orbit ring",
+      "transform": {
+        "x": -1010.0,
+        "y": 520.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.2,
+      "kind": {
+        "type": "ellipse",
+        "width": 420.0,
+        "height": 420.0,
+        "stroke": {
+          "color": "#2ee6c580",
+          "width": 3.0
+        }
+      }
+    },
+    {
+      "id": "ring-1",
+      "name": "Orbit ring",
+      "transform": {
+        "x": 1030.0,
+        "y": 640.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.2,
+      "kind": {
+        "type": "ellipse",
+        "width": 260.0,
+        "height": 260.0,
+        "stroke": {
+          "color": "#ff7a5c80",
+          "width": 3.0
+        }
+      }
+    },
+    {
+      "id": "ring-2",
+      "name": "Orbit ring",
+      "transform": {
+        "x": 420.0,
+        "y": -430.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": 0.2,
+      "kind": {
+        "type": "ellipse",
+        "width": 180.0,
+        "height": 180.0,
+        "stroke": {
+          "color": "#8f7bff80",
+          "width": 3.0
+        }
+      }
+    },
+    {
+      "id": "spark-0",
+      "name": "Spark",
+      "transform": {
+        "x": -980.0,
+        "y": -380.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#e4ff6bd0"
+      }
+    },
+    {
+      "id": "spark-1",
+      "name": "Spark",
+      "transform": {
+        "x": -420.0,
+        "y": -400.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#2ee6c5d0"
+      }
+    },
+    {
+      "id": "spark-2",
+      "name": "Spark",
+      "transform": {
+        "x": 330.0,
+        "y": -330.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#ff7a5cd0"
+      }
+    },
+    {
+      "id": "spark-3",
+      "name": "Spark",
+      "transform": {
+        "x": 1040.0,
+        "y": 300.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#e4ff6bd0"
+      }
+    },
+    {
+      "id": "spark-4",
+      "name": "Spark",
+      "transform": {
+        "x": -1050.0,
+        "y": 160.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#ff7a5cd0"
+      }
+    },
+    {
+      "id": "spark-5",
+      "name": "Spark",
+      "transform": {
+        "x": 760.0,
+        "y": 820.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#2ee6c5d0"
+      }
+    },
+    {
+      "id": "spark-6",
+      "name": "Spark",
+      "transform": {
+        "x": -560.0,
+        "y": 860.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "parallax": -0.25,
+      "kind": {
+        "type": "ellipse",
+        "width": 14.0,
+        "height": 14.0,
+        "fill": "#8f7bffd0"
+      }
+    },
+    {
+      "id": "badge",
+      "name": "Badge",
+      "transform": {
+        "x": 0.0,
+        "y": -215.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "rect",
+        "width": 560.0,
+        "height": 58.0,
+        "corner_radius": 29.0,
+        "fill": "#e4ff6b1c",
+        "stroke": {
+          "color": "#e4ff6b88",
+          "width": 1.5
+        }
+      }
+    },
+    {
+      "id": "badge-icon",
+      "name": "Badge icon",
+      "transform": {
+        "x": -232.0,
+        "y": -215.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "icon",
+        "name": "sparkle",
+        "style": "fill",
+        "size": 28.0,
+        "color": "#e4ff6b"
+      }
+    },
+    {
+      "id": "badge-text",
+      "name": "Badge text",
+      "transform": {
+        "x": 18.0,
+        "y": -215.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "text",
+        "content": "New: carousel, parallax and animations",
+        "font_size": 24.0,
+        "font_family": "sans-serif",
+        "weight": 600,
+        "color": "#e4ff6b",
+        "align": "center",
+        "line_height": 1.35,
+        "role": "caption"
       }
     },
     {
@@ -194,20 +533,41 @@
       "name": "Title",
       "transform": {
         "x": 0.0,
-        "y": -40.0,
+        "y": -75.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
         "content": "GlideDeck",
-        "font_size": 140.0,
+        "font_size": 170.0,
         "font_family": "sans-serif",
-        "weight": 700,
-        "color": "#1f232b",
+        "weight": 800,
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.1,
         "role": "title"
+      }
+    },
+    {
+      "id": "tagline",
+      "name": "Tagline",
+      "transform": {
+        "x": 0.0,
+        "y": 55.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "text",
+        "content": "Presentations that move.",
+        "font_size": 56.0,
+        "font_family": "sans-serif",
+        "weight": 600,
+        "color": "#f5f2ea",
+        "align": "center",
+        "line_height": 1.3,
+        "role": "subtitle"
       }
     },
     {
@@ -215,67 +575,72 @@
       "name": "Subtitle",
       "transform": {
         "x": 0.0,
-        "y": 90.0,
+        "y": 140.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "A local-first, native zooming canvas.\nScroll to zoom · Space-drag to pan · Alt-scroll to rotate",
-        "font_size": 34.0,
+        "content": "Scroll to zoom  ·  Space-drag to pan  ·  Press F5 to play this canvas",
+        "font_size": 26.0,
         "font_family": "sans-serif",
-        "weight": 400,
-        "color": "#5b6478",
+        "weight": 500,
+        "color": "#9c95bd",
         "align": "center",
-        "line_height": 1.3,
-        "role": "subtitle"
+        "line_height": 1.35,
+        "role": "caption"
       }
     },
     {
       "id": "card-canvas",
       "name": "Infinite canvas",
       "transform": {
-        "x": -620.0,
-        "y": 430.0,
+        "x": -705.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "shadow": {
-        "color": "#10142430",
-        "blur": 18.0,
+        "color": "#04021080",
+        "blur": 40.0,
         "x": 0.0,
-        "y": 8.0
+        "y": 18.0
       },
       "kind": {
         "type": "rect",
-        "width": 520.0,
-        "height": 330.0,
-        "corner_radius": 28.0,
-        "fill": "#ffffff"
+        "width": 430.0,
+        "height": 300.0,
+        "corner_radius": 30.0,
+        "fill": "#1a1536d0",
+        "stroke": {
+          "color": "#8f7bff66",
+          "width": 2.0
+        }
       }
     },
     {
       "id": "card-canvas-badge",
       "name": "Infinite canvas badge",
       "transform": {
-        "x": -620.0,
-        "y": 320.0,
+        "x": -705.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
-        "type": "ellipse",
+        "type": "rect",
         "width": 84.0,
         "height": 84.0,
-        "fill": "#17a39822"
+        "corner_radius": 24.0,
+        "fill": "#8f7bff2a"
       }
     },
     {
       "id": "card-canvas-icon",
       "name": "Infinite canvas icon",
       "transform": {
-        "x": -620.0,
-        "y": 320.0,
+        "x": -705.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
@@ -283,26 +648,26 @@
         "type": "icon",
         "name": "infinity",
         "style": "fill",
-        "size": 48.0,
-        "color": "#17a398"
+        "size": 46.0,
+        "color": "#8f7bff"
       }
     },
     {
       "id": "card-canvas-title",
       "name": "Infinite canvas heading",
       "transform": {
-        "x": -620.0,
-        "y": 410.0,
+        "x": -705.0,
+        "y": 465.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
         "content": "Infinite canvas",
-        "font_size": 40.0,
+        "font_size": 36.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#17a398",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15
       }
@@ -311,18 +676,18 @@
       "id": "card-canvas-body",
       "name": "Infinite canvas body",
       "transform": {
-        "x": -620.0,
-        "y": 500.0,
+        "x": -705.0,
+        "y": 545.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "Unbounded in every direction,\nprecise at any zoom depth.",
-        "font_size": 26.0,
+        "content": "Zoom a million times deeper.\nEverything stays razor sharp.",
+        "font_size": 22.0,
         "font_family": "sans-serif",
         "weight": 400,
-        "color": "#2e3440",
+        "color": "#9c95bd",
         "align": "center",
         "line_height": 1.45,
         "role": "body"
@@ -330,96 +695,203 @@
     },
     {
       "id": "card-text",
-      "name": "Vector everything",
+      "name": "PowerPoint in & out",
       "transform": {
-        "x": 0.0,
-        "y": 430.0,
+        "x": -235.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "shadow": {
-        "color": "#10142430",
-        "blur": 18.0,
+        "color": "#04021080",
+        "blur": 40.0,
         "x": 0.0,
-        "y": 8.0
+        "y": 18.0
       },
       "kind": {
         "type": "rect",
-        "width": 520.0,
-        "height": 330.0,
-        "corner_radius": 28.0,
-        "fill": "#ffffff"
+        "width": 430.0,
+        "height": 300.0,
+        "corner_radius": 30.0,
+        "fill": "#1a1536d0",
+        "stroke": {
+          "color": "#ff7a5c66",
+          "width": 2.0
+        }
       }
     },
     {
       "id": "card-text-badge",
-      "name": "Vector everything badge",
+      "name": "PowerPoint in & out badge",
       "transform": {
-        "x": 0.0,
-        "y": 320.0,
+        "x": -235.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
-        "type": "ellipse",
+        "type": "rect",
         "width": 84.0,
         "height": 84.0,
-        "fill": "#e4572e22"
+        "corner_radius": 24.0,
+        "fill": "#ff7a5c2a"
       }
     },
     {
       "id": "card-text-icon",
-      "name": "Vector everything icon",
+      "name": "PowerPoint in & out icon",
       "transform": {
-        "x": 0.0,
-        "y": 320.0,
+        "x": -235.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "icon",
-        "name": "pen-nib",
+        "name": "file-ppt",
         "style": "fill",
-        "size": 48.0,
-        "color": "#e4572e"
+        "size": 46.0,
+        "color": "#ff7a5c"
       }
     },
     {
       "id": "card-text-title",
-      "name": "Vector everything heading",
+      "name": "PowerPoint in & out heading",
       "transform": {
-        "x": 0.0,
-        "y": 410.0,
+        "x": -235.0,
+        "y": 465.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "Vector everything",
-        "font_size": 40.0,
+        "content": "PowerPoint in & out",
+        "font_size": 36.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#e4572e",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15
       }
     },
     {
       "id": "card-text-body",
-      "name": "Vector everything body",
+      "name": "PowerPoint in & out body",
       "transform": {
-        "x": 0.0,
-        "y": 500.0,
+        "x": -235.0,
+        "y": 545.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "Text and 1,500 icons are outlines,\nso they stay razor sharp.",
-        "font_size": 26.0,
+        "content": "Import .pptx decks; export\nPowerPoint with Morph, or PDF.",
+        "font_size": 22.0,
         "font_family": "sans-serif",
         "weight": 400,
-        "color": "#2e3440",
+        "color": "#9c95bd",
+        "align": "center",
+        "line_height": 1.45,
+        "role": "body"
+      }
+    },
+    {
+      "id": "card-motion",
+      "name": "Motion built in",
+      "transform": {
+        "x": 235.0,
+        "y": 470.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "shadow": {
+        "color": "#04021080",
+        "blur": 40.0,
+        "x": 0.0,
+        "y": 18.0
+      },
+      "kind": {
+        "type": "rect",
+        "width": 430.0,
+        "height": 300.0,
+        "corner_radius": 30.0,
+        "fill": "#1a1536d0",
+        "stroke": {
+          "color": "#2ee6c566",
+          "width": 2.0
+        }
+      }
+    },
+    {
+      "id": "card-motion-badge",
+      "name": "Motion built in badge",
+      "transform": {
+        "x": 235.0,
+        "y": 380.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "rect",
+        "width": 84.0,
+        "height": 84.0,
+        "corner_radius": 24.0,
+        "fill": "#2ee6c52a"
+      }
+    },
+    {
+      "id": "card-motion-icon",
+      "name": "Motion built in icon",
+      "transform": {
+        "x": 235.0,
+        "y": 380.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "icon",
+        "name": "shooting-star",
+        "style": "fill",
+        "size": 46.0,
+        "color": "#2ee6c5"
+      }
+    },
+    {
+      "id": "card-motion-title",
+      "name": "Motion built in heading",
+      "transform": {
+        "x": 235.0,
+        "y": 465.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "text",
+        "content": "Motion built in",
+        "font_size": 36.0,
+        "font_family": "sans-serif",
+        "weight": 650,
+        "color": "#f5f2ea",
+        "align": "center",
+        "line_height": 1.15
+      }
+    },
+    {
+      "id": "card-motion-body",
+      "name": "Motion built in body",
+      "transform": {
+        "x": 235.0,
+        "y": 545.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "text",
+        "content": "Swoops, carousels, parallax\nand in-slide animations.",
+        "font_size": 22.0,
+        "font_family": "sans-serif",
+        "weight": 400,
+        "color": "#9c95bd",
         "align": "center",
         "line_height": 1.45,
         "role": "body"
@@ -427,49 +899,54 @@
     },
     {
       "id": "card-agents",
-      "name": "Agent-ready",
+      "name": "AI-ready",
       "transform": {
-        "x": 620.0,
-        "y": 430.0,
+        "x": 705.0,
+        "y": 470.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "shadow": {
-        "color": "#10142430",
-        "blur": 18.0,
+        "color": "#04021080",
+        "blur": 40.0,
         "x": 0.0,
-        "y": 8.0
+        "y": 18.0
       },
       "kind": {
         "type": "rect",
-        "width": 520.0,
-        "height": 330.0,
-        "corner_radius": 28.0,
-        "fill": "#ffffff"
+        "width": 430.0,
+        "height": 300.0,
+        "corner_radius": 30.0,
+        "fill": "#1a1536d0",
+        "stroke": {
+          "color": "#e4ff6b66",
+          "width": 2.0
+        }
       }
     },
     {
       "id": "card-agents-badge",
-      "name": "Agent-ready badge",
+      "name": "AI-ready badge",
       "transform": {
-        "x": 620.0,
-        "y": 320.0,
+        "x": 705.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
-        "type": "ellipse",
+        "type": "rect",
         "width": 84.0,
         "height": 84.0,
-        "fill": "#3d5a8022"
+        "corner_radius": 24.0,
+        "fill": "#e4ff6b2a"
       }
     },
     {
       "id": "card-agents-icon",
-      "name": "Agent-ready icon",
+      "name": "AI-ready icon",
       "transform": {
-        "x": 620.0,
-        "y": 320.0,
+        "x": 705.0,
+        "y": 380.0,
         "scale": 1.0,
         "rotation": 0.0
       },
@@ -477,46 +954,46 @@
         "type": "icon",
         "name": "robot",
         "style": "fill",
-        "size": 48.0,
-        "color": "#3d5a80"
+        "size": 46.0,
+        "color": "#e4ff6b"
       }
     },
     {
       "id": "card-agents-title",
-      "name": "Agent-ready heading",
+      "name": "AI-ready heading",
       "transform": {
-        "x": 620.0,
-        "y": 410.0,
+        "x": 705.0,
+        "y": 465.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "Agent-ready",
-        "font_size": 40.0,
+        "content": "AI-ready",
+        "font_size": 36.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#3d5a80",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15
       }
     },
     {
       "id": "card-agents-body",
-      "name": "Agent-ready body",
+      "name": "AI-ready body",
       "transform": {
-        "x": 620.0,
-        "y": 500.0,
+        "x": 705.0,
+        "y": 545.0,
         "scale": 1.0,
         "rotation": 0.0
       },
       "kind": {
         "type": "text",
-        "content": "Every edit is a JSON op —\nscriptable from the CLI.",
-        "font_size": 26.0,
+        "content": "Claude and Copilot build decks\nthrough the MCP server.",
+        "font_size": 22.0,
         "font_family": "sans-serif",
         "weight": 400,
-        "color": "#2e3440",
+        "color": "#9c95bd",
         "align": "center",
         "line_height": 1.45,
         "role": "body"
@@ -526,25 +1003,25 @@
       "id": "sticker",
       "name": "Sticker",
       "transform": {
-        "x": 560.0,
-        "y": -190.0,
+        "x": 640.0,
+        "y": -250.0,
         "scale": 1.0,
-        "rotation": 12.0
+        "rotation": 10.0
       },
       "shadow": {
-        "color": "#10142440",
-        "blur": 36.0,
+        "color": "#ff7a5c55",
+        "blur": 30.0,
         "x": 0.0,
-        "y": 18.0
+        "y": 10.0
       },
       "kind": {
         "type": "rect",
-        "width": 300.0,
-        "height": 90.0,
-        "corner_radius": 45.0,
-        "fill": "#e4572e",
+        "width": 310.0,
+        "height": 92.0,
+        "corner_radius": 46.0,
+        "fill": "#ff7a5c",
         "gradient": {
-          "to": "#f2a541",
+          "to": "#ffb547",
           "angle": 0.0
         }
       }
@@ -553,21 +1030,42 @@
       "id": "sticker-text",
       "name": "Sticker text",
       "transform": {
-        "x": 560.0,
-        "y": -190.0,
+        "x": 640.0,
+        "y": -250.0,
         "scale": 1.0,
-        "rotation": 12.0
+        "rotation": 10.0
       },
       "kind": {
         "type": "text",
         "content": "100% offline",
         "font_size": 40.0,
         "font_family": "sans-serif",
-        "weight": 700,
-        "color": "#ffffff",
-        "align": "left",
+        "weight": 800,
+        "color": "#1a1024",
+        "align": "center",
         "line_height": 1.45,
         "role": "body"
+      }
+    },
+    {
+      "id": "scripts-pill",
+      "name": "Scripts pill",
+      "transform": {
+        "x": 0.0,
+        "y": 735.0,
+        "scale": 1.0,
+        "rotation": 0.0
+      },
+      "kind": {
+        "type": "rect",
+        "width": 1000.0,
+        "height": 96.0,
+        "corner_radius": 48.0,
+        "fill": "#1a1536d0",
+        "stroke": {
+          "color": "#2ee6c566",
+          "width": 2.0
+        }
       }
     },
     {
@@ -575,7 +1073,7 @@
       "name": "Scripts",
       "transform": {
         "x": 0.0,
-        "y": 720.0,
+        "y": 735.0,
         "scale": 1.0,
         "rotation": 0.0
       },
@@ -585,8 +1083,8 @@
         "font_size": 30.0,
         "font_family": "sans-serif",
         "weight": 500,
-        "color": "#5b6478",
-        "align": "left",
+        "color": "#9c95bd",
+        "align": "center",
         "line_height": 1.35,
         "role": "caption"
       }
@@ -595,8 +1093,8 @@
       "id": "portal",
       "name": "Portal",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 1.0,
         "rotation": 0.0
       },
@@ -604,9 +1102,13 @@
         "type": "ellipse",
         "width": 240.0,
         "height": 240.0,
-        "fill": "#17a39830",
+        "fill": "#2ee6c526",
+        "gradient": {
+          "to": "#8f7bff40",
+          "angle": 135.0
+        },
         "stroke": {
-          "color": "#17a398",
+          "color": "#2ee6c5",
           "width": 3.0
         }
       }
@@ -615,8 +1117,8 @@
       "id": "portal-hint",
       "name": "Portal hint",
       "transform": {
-        "x": -800.0,
-        "y": -200.0,
+        "x": -890.0,
+        "y": -250.0,
         "scale": 1.0,
         "rotation": -8.0
       },
@@ -626,7 +1128,7 @@
         "font_size": 26.0,
         "font_family": "sans-serif",
         "weight": 600,
-        "color": "#17a398",
+        "color": "#2ee6c5",
         "align": "left",
         "line_height": 1.45,
         "role": "body"
@@ -636,8 +1138,8 @@
       "id": "depth-1-ring",
       "name": "Depth 1 ring",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 0.01,
         "rotation": 0.0
       },
@@ -645,9 +1147,13 @@
         "type": "ellipse",
         "width": 9000.0,
         "height": 9000.0,
-        "fill": "#3d5a8018",
+        "fill": "#8f7bff18",
+        "gradient": {
+          "to": "#8f7bff40",
+          "angle": 120.0
+        },
         "stroke": {
-          "color": "#3d5a80",
+          "color": "#8f7bff",
           "width": 40.0
         }
       }
@@ -656,8 +1162,8 @@
       "id": "depth-1-label",
       "name": "Depth 1 label",
       "transform": {
-        "x": -560.0,
-        "y": -215.0,
+        "x": -640.0,
+        "y": -265.0,
         "scale": 0.01,
         "rotation": 0.0
       },
@@ -667,7 +1173,7 @@
         "font_size": 600.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#1f232b",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15,
         "role": "heading"
@@ -677,8 +1183,8 @@
       "id": "depth-2-ring",
       "name": "Depth 2 ring",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 0.0001,
         "rotation": 0.0
       },
@@ -686,9 +1192,13 @@
         "type": "ellipse",
         "width": 9000.0,
         "height": 9000.0,
-        "fill": "#3d5a8018",
+        "fill": "#2ee6c518",
+        "gradient": {
+          "to": "#2ee6c540",
+          "angle": 120.0
+        },
         "stroke": {
-          "color": "#3d5a80",
+          "color": "#2ee6c5",
           "width": 40.0
         }
       }
@@ -697,8 +1207,8 @@
       "id": "depth-2-label",
       "name": "Depth 2 label",
       "transform": {
-        "x": -560.0,
-        "y": -200.15,
+        "x": -640.0,
+        "y": -250.15,
         "scale": 0.0001,
         "rotation": 0.0
       },
@@ -708,7 +1218,7 @@
         "font_size": 600.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#1f232b",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15,
         "role": "heading"
@@ -718,8 +1228,8 @@
       "id": "depth-3-ring",
       "name": "Depth 3 ring",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 1e-6,
         "rotation": 0.0
       },
@@ -727,9 +1237,13 @@
         "type": "ellipse",
         "width": 9000.0,
         "height": 9000.0,
-        "fill": "#3d5a8018",
+        "fill": "#ff7a5c18",
+        "gradient": {
+          "to": "#ff7a5c40",
+          "angle": 120.0
+        },
         "stroke": {
-          "color": "#3d5a80",
+          "color": "#ff7a5c",
           "width": 40.0
         }
       }
@@ -738,8 +1252,8 @@
       "id": "depth-3-label",
       "name": "Depth 3 label",
       "transform": {
-        "x": -560.0,
-        "y": -200.0015,
+        "x": -640.0,
+        "y": -250.0015,
         "scale": 1e-6,
         "rotation": 0.0
       },
@@ -749,7 +1263,7 @@
         "font_size": 600.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#1f232b",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15,
         "role": "heading"
@@ -759,8 +1273,8 @@
       "id": "depth-4-ring",
       "name": "Depth 4 ring",
       "transform": {
-        "x": -560.0,
-        "y": -200.0,
+        "x": -640.0,
+        "y": -250.0,
         "scale": 1e-8,
         "rotation": 0.0
       },
@@ -768,9 +1282,13 @@
         "type": "ellipse",
         "width": 9000.0,
         "height": 9000.0,
-        "fill": "#3d5a8018",
+        "fill": "#e4ff6b18",
+        "gradient": {
+          "to": "#e4ff6b40",
+          "angle": 120.0
+        },
         "stroke": {
-          "color": "#3d5a80",
+          "color": "#e4ff6b",
           "width": 40.0
         }
       }
@@ -779,8 +1297,8 @@
       "id": "depth-4-label",
       "name": "Depth 4 label",
       "transform": {
-        "x": -560.0,
-        "y": -200.000015,
+        "x": -640.0,
+        "y": -250.000015,
         "scale": 1e-8,
         "rotation": 0.0
       },
@@ -790,7 +1308,7 @@
         "font_size": 600.0,
         "font_family": "sans-serif",
         "weight": 650,
-        "color": "#1f232b",
+        "color": "#f5f2ea",
         "align": "center",
         "line_height": 1.15,
         "role": "heading"
@@ -813,45 +1331,167 @@
         "duration": 1.4,
         "easing": "ease_in_out_cubic"
       },
-      "notes": "Welcome everyone. Everything here runs locally — no cloud, no accounts."
+      "notes": "# Welcome\n- Everything here runs locally: no cloud, no accounts.\n- Click once more to highlight the tagline.",
+      "builds": [
+        {
+          "element": "badge",
+          "effect": "pop",
+          "trigger": "after_previous",
+          "duration": 0.45,
+          "delay": 0.05
+        },
+        {
+          "element": "badge-icon",
+          "effect": "pop",
+          "trigger": "with_previous",
+          "duration": 0.45
+        },
+        {
+          "element": "badge-text",
+          "effect": "fade",
+          "trigger": "with_previous",
+          "duration": 0.6,
+          "delay": 0.1
+        },
+        {
+          "element": "title",
+          "effect": "focus",
+          "trigger": "with_previous",
+          "duration": 0.6,
+          "delay": 0.15
+        },
+        {
+          "element": "tagline",
+          "effect": "words",
+          "trigger": "with_previous",
+          "duration": 1.2,
+          "delay": 0.45
+        },
+        {
+          "element": "subtitle",
+          "effect": "rise",
+          "trigger": "with_previous",
+          "duration": 0.6,
+          "delay": 0.9
+        },
+        {
+          "element": "tagline",
+          "effect": "highlight",
+          "duration": 0.7
+        }
+      ]
     },
     {
       "frame": "frame-canvas",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "swoop",
+        "duration": 1.3,
         "easing": "ease_in_out_cubic"
-      }
+      },
+      "builds": [
+        {
+          "element": "card-canvas-icon",
+          "effect": "pulse",
+          "trigger": "after_previous",
+          "duration": 0.45,
+          "delay": 0.1
+        },
+        {
+          "element": "card-canvas-title",
+          "effect": "underline",
+          "trigger": "with_previous",
+          "duration": 0.7,
+          "delay": 0.2
+        }
+      ]
     },
     {
       "frame": "frame-text",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "direct",
+        "duration": 1.0,
         "easing": "ease_in_out_cubic"
-      }
+      },
+      "notes": "Mention PowerPoint import: File → Import PowerPoint, then Design → Arrange.",
+      "builds": [
+        {
+          "element": "card-text-icon",
+          "effect": "pulse",
+          "trigger": "after_previous",
+          "duration": 0.45,
+          "delay": 0.1
+        },
+        {
+          "element": "card-text-title",
+          "effect": "underline",
+          "trigger": "with_previous",
+          "duration": 0.7,
+          "delay": 0.2
+        }
+      ]
+    },
+    {
+      "frame": "frame-motion",
+      "transition": {
+        "style": "punch",
+        "duration": 1.1,
+        "easing": "ease_in_out_cubic"
+      },
+      "notes": "Show the Animate tab and the Carousel template.",
+      "builds": [
+        {
+          "element": "card-motion-icon",
+          "effect": "pulse",
+          "trigger": "after_previous",
+          "duration": 0.45,
+          "delay": 0.1
+        },
+        {
+          "element": "card-motion-title",
+          "effect": "underline",
+          "trigger": "with_previous",
+          "duration": 0.7,
+          "delay": 0.2
+        }
+      ]
     },
     {
       "frame": "frame-agents",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "direct",
+        "duration": 1.0,
         "easing": "ease_in_out_cubic"
-      }
+      },
+      "builds": [
+        {
+          "element": "card-agents-icon",
+          "effect": "pulse",
+          "trigger": "after_previous",
+          "duration": 0.45,
+          "delay": 0.1
+        },
+        {
+          "element": "card-agents-title",
+          "effect": "underline",
+          "trigger": "with_previous",
+          "duration": 0.7,
+          "delay": 0.2
+        }
+      ]
     },
     {
       "frame": "frame-scripts",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "swoop",
+        "duration": 1.3,
         "easing": "ease_in_out_cubic"
       }
     },
     {
       "frame": "frame-sticker",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "spin",
+        "duration": 1.6,
         "easing": "ease_in_out_cubic"
       }
     },
@@ -890,8 +1530,8 @@
     {
       "frame": "frame-overview",
       "transition": {
-        "style": "smooth",
-        "duration": 1.4,
+        "style": "fade",
+        "duration": 1.2,
         "easing": "ease_in_out_cubic"
       }
     }

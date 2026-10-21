@@ -272,11 +272,14 @@ fn layouts_themes_and_templates() {
     // One of the structural templates.
     h.get_by_label("Templates").click();
     h.run_steps(6);
-    h.get_by_label("Use template Orbit").click();
+    h.get_by_label("Use template Carousel").click();
     h.run_steps(6);
     let doc = &h.state().doc;
-    assert_eq!(doc.title, "Orbit");
-    assert_eq!(doc.elements.iter().filter(|e| e.name == "Planet").count(), 5);
+    assert_eq!(doc.title, "Carousel");
+    assert_eq!(doc.theme.as_ref().map(|t| t.name.as_str()), Some("Dusk"));
+    assert!(doc.elements.iter().filter(|e| e.parallax != 0.0).count() > 10, "a parallax backdrop");
+    assert!(doc.path.iter().filter(|s| !s.builds.is_empty()).count() >= 6, "every slide builds in");
+    snapshot(&mut h, "template-carousel");
 }
 
 #[test]
@@ -553,6 +556,51 @@ fn readme_screenshots() {
     h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
     h.state_mut().design_check.open = true;
     shot(&mut h, "design-check");
+
+    // 9. The Carousel template in the show, mid-path over its parallax backdrop.
+    let mut h = build(Some(crate::design::build_template(crate::design::Template::Carousel)));
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 2, Some(false));
+    settle(&mut h);
+    // Mid-glide to the next slide: the layers drift at their own speeds.
+    h.key_press(Key::ArrowRight);
+    shot(&mut h, "carousel");
+
+    // 10. The Animate tab, with click-order badges on an auto-animated slide.
+    let mut doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    doc.path[2].builds = crate::anim::auto_builds(&doc, 2, &mut glide_render::TextEngine::new());
+    let mut h = build(Some(doc));
+    h.state_mut().ribbon_tab = crate::app::RibbonTab::Animate;
+    h.state_mut().go_to_step(2);
+    settle(&mut h);
+    shot(&mut h, "animate");
+
+    // 11. Presenter view with speaker notes.
+    let mut doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    doc.path[1].notes = "# Open strong
+- Thank the hosts
+- **One** number to remember: 87%
+- Pause for questions".into();
+    let mut h = build(Some(doc));
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 1, Some(true));
+    settle(&mut h);
+    shot(&mut h, "presenter");
+
+    // 12. A PowerPoint deck, imported and arranged as a carousel.
+    let pptx = std::env::temp_dir().join(format!("glidedeck-shot-{}.pptx", std::process::id()));
+    std::fs::write(&pptx, include_bytes!("testdata/sample.pptx")).unwrap();
+    let mut h = build(Some(Document::new("x")));
+    let ctx = h.ctx.clone();
+    h.state_mut().import_pptx(&ctx, &pptx);
+    h.run_steps(3);
+    let opts = crate::arrange::ArrangeOptions { tilt: false, ..Default::default() };
+    crate::arrange::arrange(&mut h.state_mut().doc, crate::arrange::Arrangement::Carousel, &opts).unwrap();
+    h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
+    h.state_mut().fit_all(false);
+    settle(&mut h);
+    shot(&mut h, "pptx-carousel");
+    std::fs::remove_file(&pptx).ok();
 }
 
 #[test]
@@ -981,4 +1029,49 @@ fn animate_tab_adds_builds_previews_and_the_show_plays_them() {
     assert!(p.builds.starts.iter().all(Option::is_some), "coming back shows the slide fully built");
     h.key_press(Key::Escape);
     h.run_steps(2);
+}
+
+#[test]
+fn speaker_notes_panel_about_window_and_single_screen_presenter_view() {
+    let doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    let mut h = harness(Some(doc));
+    h.state_mut().go_to_step(1);
+    h.run_steps(8);
+    // The notes panel under the canvas edits the current slide's notes.
+    assert!(h.query_all(egui_kittest::kittest::By::new().label_contains("Speaker notes")).count() >= 1);
+    let field = h.query_all(egui_kittest::kittest::By::new().role(egui::accesskit::Role::MultilineTextInput)).map(|n| n.rect()).next_back().expect("notes field");
+    click(&mut h, egui::pos2(field.center().x, field.center().y));
+    h.event(Event::Text("Stress the 87% number".into()));
+    h.run_steps(2);
+    assert_eq!(h.state().doc.path[1].notes, "Stress the 87% number");
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+    snapshot(&mut h, "notes-panel");
+
+    // File → About GlideDeck.
+    h.get_by_label("File").click();
+    h.run_steps(2);
+    h.get_by_label_contains("About GlideDeck").click();
+    h.run_steps(3);
+    assert!(h.state().updater.open);
+    h.get_by_label_contains(&format!("Version {}", env!("CARGO_PKG_VERSION")));
+    h.get_by_label_contains("Check for updates");
+    h.get_by_label_contains("GlideDeck on GitHub");
+    snapshot(&mut h, "about");
+    h.state_mut().updater.open = false;
+    h.run_steps(2);
+
+    // Presenter view on one screen: no audience window over the notes.
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 1, Some(true));
+    h.run_steps(6);
+    let console = |h: &Harness<'_, GlideDeckApp>| h.state().presenting.as_ref().and_then(|p| p.console.as_ref()).map(|c| c.audience_open);
+    assert_eq!(console(&h), Some(false), "the console shows the live slide itself");
+    h.get_by_label_contains("Stress the 87% number");
+    h.get_by_label_contains("Open audience window").click();
+    h.run_steps(3);
+    assert_eq!(console(&h), Some(true));
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+    assert!(h.state().presenting.is_none());
 }

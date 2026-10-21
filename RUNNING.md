@@ -92,8 +92,25 @@ double-clicked); CLI subcommands still print to the terminal that launched them.
 ## 3. Using the editor
 
 The window has a PowerPoint-style **ribbon** (File · Home · Insert · Design · Transitions ·
-Animate · Present · View), the **Slides** strip on the left, the canvas in the middle and **Properties** on the
-right. The app follows your system's light/dark setting; the sun/moon button switches it.
+Animate · Present · View), the **Slides** strip on the left, the canvas in the middle,
+**Properties** on the right and **Speaker notes** under the canvas. The app follows your
+system's light/dark setting; the sun/moon button switches it. The ⓘ button (or
+**File → About GlideDeck**) shows the version, a link to GitHub and **Check for updates**.
+
+### Speaker notes
+
+The **Speaker notes** panel under the canvas holds the notes for the current slide (the one
+selected in the Slides strip). Only the presenter sees them, in presenter view. They support
+`# headings`, `- bullets`, `1. numbers` and `**bold**`. Collapse the panel with its ˅ button,
+or toggle it with **View → Speaker notes** or **Present → Speaker notes**. Notes imported
+from PowerPoint appear here too.
+
+### Updates
+
+**File → Check for updates** asks GitHub for the latest release. If there is a newer version,
+**Download** saves its installer to your Downloads folder (the `.msi` on Windows, the `.dmg`
+on macOS). **Install now** starts the installer, which upgrades GlideDeck in place; on macOS,
+drag the new app into Applications. GlideDeck makes no other network requests.
 
 ### Slides are frames
 
@@ -112,7 +129,10 @@ right. The app follows your system's light/dark setting; the sun/moon button swi
   **Smooth zoom** (a cinematic zoom-out-and-dive arc), **Direct**, **Swoop** (a sideways
   arc with a gentle roll), **Spin** (a barrel roll), **Punch** (overshoots the zoom, then
   settles), **Fade** (dips through the background color) or **Cut**, plus the duration and
-  easing. Speaker notes (Markdown) go in Properties → Slide.
+  easing.
+- **Depth (parallax)**: Properties → Layout → Depth. In the show, objects with a depth above 0
+  are far away and drift slower than the slides as the camera travels; below 0 they are near
+  and move faster. The effect fades out when the camera zooms out to an overview.
 
 ### Animating objects on a slide
 
@@ -215,9 +235,10 @@ audience view fullscreen on that display. Your screen becomes the presenter cons
   wrong screen) and End show.
 
 Keys and clickers work in either window. **Alt+F5** (Present → Presenter view) opens
-presenter view on a single display too: the audience view opens in its own window, which
-you can drag to another screen and make fullscreen. Write notes in Properties → Speaker
-notes when the slide's frame is selected. To open a file straight into the show:
+presenter view on a single display too, for rehearsing: the console runs the show in its
+NOW pane (click it to advance). **Open audience window** adds a slides-only window you can
+drag to a projector or share in a video call, and then make fullscreen. Write the notes in
+the Speaker notes panel under the canvas. To open a file straight into the show:
 
 ```bash
 glidedeck present talk.glide.json --presenter-view
@@ -361,6 +382,7 @@ the path stays the same. The dialog draws each arrangement live for your number 
 
 | Arrangement | What the path does |
 |---|---|
+| Carousel | Side by side; the camera glides from slide to slide over a parallax backdrop of glowing layers |
 | Spiral | Winds outward from the first slide; slides turn with the curve |
 | Orbits | First slide at the center, the rest on rings around it |
 | Sunflower | Golden-angle seeds: every step swings ~137° around the center |
@@ -377,8 +399,9 @@ the path stays the same. The dialog draws each arrangement live for your number 
 Options:
 - **Spacing** sets the gap between slides.
 - **Turn slides along the path** tilts the slides; in the show, the camera turns with them.
-- **Draw the path** adds a dotted trail between slides (lines for Tree). Arranging again
-  replaces it.
+- **Draw the path** adds a dotted trail between slides (lines for Tree). For Carousel it
+  is the **Parallax backdrop**: orbs, rings and sparks at three depths. Arranging again
+  replaces it. Carousel also sets each slide's transition to a gliding Direct move.
 - **Overview at start and end** adds a view of everything at both ends of the path.
 
 Every arrangement is a formula, so it works for any number of slides. It's one step to

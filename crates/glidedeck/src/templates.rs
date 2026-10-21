@@ -31,11 +31,13 @@ pub enum Template {
     MoodBoard,
     Workshop,
     Chapters,
+    Carousel,
 }
 
 impl Template {
     /// Gallery order: grouped by [`Template::category`].
-    pub const ALL: [Template; 17] = [
+    pub const ALL: [Template; 18] = [
+        Template::Carousel,
         Template::PitchDeck,
         Template::Roadmap,
         Template::Showcase,
@@ -76,6 +78,7 @@ impl Template {
             Template::MoodBoard => "Mood board",
             Template::Workshop => "Workshop",
             Template::Chapters => "Chapters",
+            Template::Carousel => "Carousel",
         }
     }
 
@@ -98,12 +101,13 @@ impl Template {
             Template::MoodBoard => "Tilted polaroids pinned around a title, like a studio wall.",
             Template::Workshop => "Sticky-note clusters for ideas, questions and actions.",
             Template::Chapters => "A bookshelf: each spine opens into a chapter.",
+            Template::Carousel => "Slides glide past side by side over drifting parallax layers, with a reveal on every slide.",
         }
     }
 
     pub fn category(self) -> &'static str {
         match self {
-            Template::PitchDeck | Template::Roadmap | Template::Showcase | Template::Branches => "Business",
+            Template::Carousel | Template::PitchDeck | Template::Roadmap | Template::Showcase | Template::Branches => "Business",
             Template::Journey | Template::Summit | Template::Spiral | Template::DeepDive => "Storytelling",
             Template::MindMap | Template::Hive | Template::Orbit | Template::MoodBoard => "Ideas & maps",
             Template::Lecture | Template::Chapters | Template::Workshop | Template::Cycle => "Teaching",
@@ -121,6 +125,7 @@ impl Template {
             Template::Journey | Template::Spiral => "Sunset",
             Template::Showcase | Template::Workshop => "Mono",
             Template::DeepDive | Template::Branches => "Ocean",
+            Template::Carousel => "Dusk",
         }
     }
 }
@@ -233,9 +238,58 @@ pub fn build_template_with(t: Template, text: &mut TextEngine) -> Document {
         Template::MoodBoard => mood_board(d, &theme, text, &mut path),
         Template::Workshop => workshop(d, &theme, text, &mut path),
         Template::Chapters => chapters(d, &theme, text, &mut path),
+        Template::Carousel => carousel(d, &theme, text),
     }
-    doc.path = path.into_iter().map(Step::new).collect();
+    // (The carousel sets up its own path, with transitions and animations.)
+    if !path.is_empty() {
+        doc.path = path.into_iter().map(Step::new).collect();
+    }
     doc
+}
+
+/// Seven slides side by side, gliding past over a parallax backdrop, each
+/// with an entrance cascade and one key moment emphasised.
+fn carousel(doc: &mut Document, theme: &Theme, te: &mut TextEngine) {
+    let slides: [(LayoutKind, Edits); 7] = [
+        (LayoutKind::Title, &[("Title", "Glide into the story"), ("Subtitle", "A carousel deck: every slide slides in over drifting layers")]),
+        (LayoutKind::ThreePoints, &[("Heading", "Why it lands")]),
+        (LayoutKind::BigNumber, &[("Number", "3.4×"), ("Caption", "more of the audience remembers a story that moves")]),
+        (LayoutKind::Timeline, &[("Heading", "Where we're headed")]),
+        (LayoutKind::Quote, &[]),
+        (LayoutKind::ImageText, &[]),
+        (LayoutKind::Section, &[("Number", "07"), ("Heading", "Thank you")]),
+    ];
+    let mut ids = Vec::new();
+    for (i, (kind, edits)) in slides.into_iter().enumerate() {
+        // A frosted glass card behind each slide; the backdrop drifts past it.
+        let center = DVec2::new(i as f64 * 2000.0, 0.0);
+        let s = theme.surface;
+        let mut card = named(rect(1600.0, 900.0, 44.0, Color::rgba(s.r(), s.g(), s.b(), 0xE4)), "Glass card", at(center.x, center.y));
+        if let ElementKind::Rect(r) = &mut card.kind {
+            r.stroke = Some(Stroke { color: tint(theme.accents[0], 0x48), width: 3.0 });
+        }
+        doc.add(shadowed(card, Shadow { color: Color::rgba(0, 0, 0, 0x60), blur: 60.0, x: 0.0, y: 24.0 }));
+        let id = place_layout(doc, kind, theme, center, 1600.0, 0.0);
+        retitle_all(doc, &id, edits);
+        ids.push(id);
+    }
+    doc.path = ids.iter().map(Step::new).collect();
+    let opts = crate::arrange::ArrangeOptions { spacing: 0.32, tilt: false, trail: true, overview: true };
+    if crate::arrange::arrange(doc, crate::arrange::Arrangement::Carousel, &opts).is_err() {
+        return;
+    }
+    // Every slide builds in as it arrives; the big number gets a spotlight.
+    for i in 0..doc.path.len() {
+        if ids.contains(&doc.path[i].frame) {
+            doc.path[i].builds = crate::anim::auto_builds(doc, i, te);
+        }
+    }
+    if let Some(i) = doc.path.iter().position(|s| s.frame == ids[2]) {
+        let start = doc.index_of(&ids[2]).unwrap_or(0);
+        if let Some(number) = doc.elements[start..].iter().find(|e| e.name == "Number").map(|e| e.id.clone()) {
+            doc.path[i].builds.push(glide_core::Build::new(number, glide_core::Effect::Spotlight));
+        }
+    }
 }
 
 // --- the original five ------------------------------------------------------------
@@ -947,7 +1001,7 @@ mod tests {
             assert!(Template::CATEGORIES.contains(&t.category()), "{t:?}");
             assert!(!t.blurb().is_empty());
         }
-        assert_eq!(labels.len(), 17);
+        assert_eq!(labels.len(), 18);
     }
 
     /// Slides on the path never overlap each other unless one is nested inside

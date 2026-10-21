@@ -244,6 +244,10 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
                 label(ui, "Opacity");
                 ui.add(egui::Slider::new(&mut el.opacity, 0.0..=1.0).show_value(true));
                 ui.end_row();
+                label(ui, "Depth");
+                ui.add(egui::Slider::new(&mut el.parallax, -0.5..=0.9).fixed_decimals(2))
+                    .on_hover_text("Parallax in the show: above 0 the object is far away and drifts slower than the slides; below 0 it is near and moves faster. 0 = on the canvas.");
+                ui.end_row();
                 label(ui, "");
                 ui.horizontal(|ui| {
                     ui.toggle_value(&mut el.locked, format!("{} Lock", icon::LOCK));

@@ -29,10 +29,12 @@ Workflow: `catalog` → `create_presentation` (pick a template that fits the sto
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
 `export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+Write speaker notes for every slide with `set_notes` (what to say, the number to stress); the presenter sees them in presenter view. \
 MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
 (1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
-spiral or sunflower for growth, staircase for progress, zoom-tunnel for drilling down, journey or wave for a story) \
-instead of a flat row. (2) Vary the camera: `set_transitions` (swoop, spin, punch and fade next to smooth; e.g. \
+spiral or sunflower for growth, staircase for progress, zoom-tunnel for drilling down, journey or wave for a story, \
+carousel for a sleek linear deck: slides glide side by side over a parallax backdrop, the best match for an imported \
+PowerPoint that should stay linear) instead of a flat row. The `carousel` template starts there directly. (2) Vary the camera: `set_transitions` (swoop, spin, punch and fade next to smooth; e.g. \
 styles [\"smooth\", \"swoop\", \"punch\"] cycles them), with smooth for zooming out to an overview. (3) Animate inside the \
 slides: `auto_animate` gives every slide a polished entrance cascade (titles focus, text rises, icons pop, numbers \
 count up), then `animate` the key moments: `spotlight` or `highlight` on the one number or phrase that matters, \
@@ -257,6 +259,20 @@ impl Server {
                     "next": "Add emphasis on the key moments with `animate` (spotlight, highlight, count_up, …).",
                 }))])
             }
+            "set_notes" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let notes = args.get("notes").and_then(Value::as_array).context("`notes` must be an array of {step, text}")?;
+                for n in notes {
+                    let step = n.get("step").and_then(Value::as_u64).context("each note needs a 1-based `step`")? as usize;
+                    if step == 0 || step > doc.path.len() {
+                        bail!("slide {step} does not exist ({} slides)", doc.path.len());
+                    }
+                    doc.path[step - 1].notes = n.get("text").and_then(Value::as_str).unwrap_or_default().to_owned();
+                }
+                save(&doc, &path)?;
+                Ok(vec![text(format!("Set speaker notes on {} slides.", notes.len()))])
+            }
             "set_transitions" => {
                 let path = self.project_path(args, "path")?;
                 let mut doc = load(&path)?;
@@ -453,6 +469,9 @@ impl Server {
                     _ => bail!("{id} has no color to change"),
                 }
             }
+            if let Some(depth) = u.get("parallax").and_then(Value::as_f64) {
+                el.parallax = depth.clamp(-1.0, 0.95);
+            }
         }
         save(&doc, &path)?;
         Ok(vec![text(format!("Updated {} element(s) in {}.", updates.len(), path.display()))])
@@ -644,6 +663,7 @@ impl Server {
                     "transition": step.transition.style.id(),
                     "elements": per_frame.get(&step.frame).cloned().unwrap_or_default(),
                     "decorative_shapes": shapes.get(&step.frame).copied().unwrap_or(0),
+                    "notes": step.notes,
                     "animations": animations,
                 })
             })
@@ -1055,11 +1075,12 @@ fn tool_definitions() -> Vec<Value> {
                 "name": { "type": "string", "description": "Slide name shown in the slide list." },
             }), &["path", "layout"], false),
         tool("update_elements", "Update text, icons or colors",
-            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes.",
+            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes, `parallax` for depth in the show (0.3–0.7 far backdrop that drifts slower, negative = near, moves faster).",
             json!({
                 "path": path_prop(),
                 "updates": { "type": "array", "items": { "type": "object", "properties": {
                     "id": { "type": "string" }, "text": { "type": "string" }, "icon": { "type": "string" }, "color": { "type": "string" },
+                    "parallax": { "type": "number", "description": "Parallax depth: 0 = on the canvas, up to 0.95 = far away, negative = near." },
                     "markdown": { "type": "boolean", "description": "Read **bold**, *italic*, __underline__ and ~~strike~~ in `text` as formatting." },
                 }, "required": ["id"] } },
             }), &["path", "updates"], false),
@@ -1114,13 +1135,13 @@ fn tool_definitions() -> Vec<Value> {
                 "overwrite": { "type": "boolean", "default": false },
             }), &["pptx"], false),
         tool("arrange_slides", "Arrange all slides",
-            "Moves every slide on the path into a new layout and path (each slide's content moves with it; the order is kept). Great after import_pptx, which arrives as a plain grid. Layouts: spiral, orbits, sunflower, ring, honeycomb, journey, wave, staircase, tree, zoom-tunnel, snake, grid.",
+            "Moves every slide on the path into a new layout and path (each slide's content moves with it; the order is kept). Great after import_pptx, which arrives as a plain grid. Layouts: carousel (slides side by side gliding over a parallax backdrop), spiral, orbits, sunflower, ring, honeycomb, journey, wave, staircase, tree, zoom-tunnel, snake, grid.",
             json!({
                 "path": path_prop(),
                 "layout": { "type": "string", "description": "Arrangement id from `catalog`." },
                 "spacing": { "type": "number", "default": 0.25, "description": "Gap between slides as a fraction of the slide size." },
                 "tilt": { "type": "boolean", "description": "Turn slides along the path (default depends on the layout)." },
-                "trail": { "type": "boolean", "default": true, "description": "Draw a dotted trail between slides." },
+                "trail": { "type": "boolean", "default": true, "description": "Draw a dotted trail between slides (for carousel: the parallax backdrop)." },
                 "overview": { "type": "boolean", "default": true, "description": "Overview of everything at the start and end." },
             }), &["path", "layout"], false),
         tool("animate", "Animate objects on a slide",
@@ -1150,6 +1171,14 @@ fn tool_definitions() -> Vec<Value> {
                 "duration": { "type": "number", "description": "Seconds (default unchanged)." },
                 "steps": { "type": "array", "items": { "type": "integer" }, "description": "1-based slides (default: all)." },
             }), &["path"], false),
+        tool("set_notes", "Set speaker notes",
+            "Sets the speaker notes of slides (Markdown: # heading, - bullet, **bold**). The presenter sees them in presenter view, next to the live slide; the audience doesn't.",
+            json!({
+                "path": path_prop(),
+                "notes": { "type": "array", "items": { "type": "object", "properties": {
+                    "step": { "type": "integer", "description": "1-based slide." }, "text": { "type": "string" },
+                }, "required": ["step", "text"] } },
+            }), &["path", "notes"], false),
         tool("clear_animations", "Remove animations",
             "Removes the in-slide animations of the given slides (default: all).",
             json!({ "path": path_prop(), "steps": { "type": "array", "items": { "type": "integer" } } }), &["path"], false),
@@ -1187,7 +1216,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "clear_animations", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
@@ -1267,7 +1296,14 @@ mod tests {
         let read: Value = serde_json::from_str(&tool_text(&tools(&mut s, 24, "get_presentation", json!({ "path": "deck" })))).unwrap();
         assert_eq!(read["slides"][0]["animations"][1]["effect"], "spotlight");
         assert_eq!(read["slides"][1]["transition"], "punch");
+        tool_text(&tools(&mut s, 26, "set_notes", json!({ "path": "deck", "notes": [{ "step": 1, "text": "# Hello\n- **Smile**" }] })));
+        tool_text(&tools(&mut s, 27, "update_elements", json!({ "path": "deck", "updates": [{ "id": title_id, "parallax": 0.4 }] })));
+        let read: Value = serde_json::from_str(&tool_text(&tools(&mut s, 28, "get_presentation", json!({ "path": "deck" })))).unwrap();
+        assert_eq!(read["slides"][0]["notes"], "# Hello\n- **Smile**");
+        assert_eq!(Document::load(&dir.join("deck.glide.json")).unwrap().get(&title_id).unwrap().parallax, 0.4);
         let cat: Value = serde_json::from_str(&tool_text(&tools(&mut s, 25, "catalog", json!({})))).unwrap();
+        assert!(cat["arrangements"].as_array().unwrap().iter().any(|a| a["id"] == "carousel"));
+        assert!(cat["templates"].as_array().unwrap().iter().any(|t| t["id"] == "carousel"));
         assert_eq!(cat["effects"].as_array().unwrap().len(), 23);
         assert_eq!(cat["transitions"].as_array().unwrap().len(), 7);
 

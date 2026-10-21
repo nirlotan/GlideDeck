@@ -157,8 +157,9 @@ MCP server also tells the assistant the workflow when it connects.
 | `export_pptx` | PowerPoint export with Morph transitions |
 | `export_pdf` | PDF, one page per slide |
 | `import_pptx` | Converts a PowerPoint file into a GlideDeck project (slides, text, pictures, notes) |
-| `arrange_slides` | Rearranges every slide into a spiral, orbits, tree, zoom tunnel… with a matching path |
+| `arrange_slides` | Rearranges every slide into a carousel (over a parallax backdrop), spiral, orbits, tree, zoom tunnel… with a matching path |
 | `set_transitions` | Camera moves per slide: smooth, swoop, spin, punch, fade, direct or cut (or a cycle of them) |
+| `set_notes` | Speaker notes per slide (Markdown), shown in presenter view |
 | `auto_animate` | Gives slides an entrance cascade in reading order that plays on arrival |
 | `animate` | Adds appear, emphasis (spotlight, highlight, count up…) and disappear animations by element id |
 | `clear_animations` | Removes slides' animations |
@@ -177,7 +178,8 @@ GlideDeck's motion features, unless you ask for a plain one:
 
 1. **A path with a shape.** `arrange_slides` with a layout that mirrors the story: orbits
    or a tree for a hub and its topics, a spiral or staircase for growth, a zoom tunnel for
-   drilling down.
+   drilling down, a carousel (with a parallax backdrop) for a sleek linear deck such as an
+   imported PowerPoint.
 2. **Varied camera moves.** `set_transitions`, e.g. cycling smooth, swoop and punch.
 3. **Builds.** `auto_animate` on every slide, then `animate` for the key moments: a
    spotlight on the number that matters, a highlight on a phrase, count-up metrics, a

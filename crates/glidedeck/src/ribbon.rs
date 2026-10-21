@@ -133,6 +133,9 @@ pub fn ribbon(app: &mut GlideDeckApp, ui: &mut egui::Ui) -> Vec<Action> {
             if ui.add_enabled(!app.doc.path.is_empty(), present).on_hover_text("Present from the beginning (F5)").on_disabled_hover_text("Add a frame to create your first slide").clicked() {
                 out.push(Action::Present { from_start: true });
             }
+            if ui.add(egui::Button::new(RichText::new(icon::INFO).size(16.0)).frame(false).min_size(egui::vec2(30.0, 30.0))).on_hover_text("About GlideDeck · check for updates").clicked() {
+                out.push(Action::ShowAbout);
+            }
             let dark = ui.ctx().theme() == egui::Theme::Dark;
             let glyph = if dark { icon::SUN } else { icon::MOON };
             if ui.add(egui::Button::new(RichText::new(glyph).size(16.0)).frame(false).min_size(egui::vec2(30.0, 30.0))).on_hover_text("Toggle light / dark").clicked() {
@@ -221,6 +224,8 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
         item(ui, icon::FILE_IMAGE, "Export view as PNG…", None, Action::ExportPng);
         ui.separator();
         item(ui, icon::QUESTION, "Keyboard shortcuts", None, Action::ToggleShortcuts);
+        item(ui, icon::ARROWS_CLOCKWISE, "Check for updates…", None, Action::CheckForUpdates);
+        item(ui, icon::INFO, "About GlideDeck", None, Action::ShowAbout);
         if ui.button(format!("{}   Quit", icon::X)).clicked() {
             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
         }
@@ -589,10 +594,15 @@ fn present_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>)
             out.push(Action::Present { from_start: false });
         }
         if big(ui, icon::PRESENTATION_CHART, "Presenter view", false, has_path)
-            .on_hover_text("Alt+F5 · notes, next slide and timer for you; the show on the other display (or in its own window)")
+            .on_hover_text("Alt+F5 · your notes, the next slide and a timer on your screen; the show on the other display")
             .clicked()
         {
             out.push(Action::PresenterView { from_start: false });
+        }
+    });
+    group(ui, "Prepare", |ui| {
+        if big(ui, icon::NOTE, "Speaker notes", app.show_notes, true).on_hover_text("Write notes for each slide in the panel under the canvas").clicked() {
+            out.push(Action::ToggleNotes);
         }
     });
     group(ui, "Export", |ui| {
@@ -645,6 +655,9 @@ fn view_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
             }
             if small(ui, icon::SIDEBAR_SIMPLE, "Properties", app.show_inspector, true).clicked() {
                 out.push(Action::ToggleInspector);
+            }
+            if small(ui, icon::NOTE, "Speaker notes", app.show_notes, true).clicked() {
+                out.push(Action::ToggleNotes);
             }
         });
     });

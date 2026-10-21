@@ -40,6 +40,10 @@ pub struct Console {
     pub audience_fullscreen: bool,
     /// The audience view is on its own display.
     pub second_display: bool,
+    /// Whether the separate audience window is open. On a single display it
+    /// starts closed (as in PowerPoint): the console shows the live slide, and
+    /// the window can be opened to drag onto a projector.
+    pub audience_open: bool,
     /// Pending re-fullscreen after moving the audience window to another display.
     refullscreen_in: u8,
     /// Frames until the audience window is brought to the front (single display).
@@ -122,9 +126,9 @@ impl GlideDeckApp {
                 audience,
                 audience_fullscreen: target.is_some(),
                 second_display: target.is_some(),
+                audience_open: target.is_some(),
                 refullscreen_in: 0,
-                // On a single display the new window would open behind the console.
-                focus_audience_in: if target.is_some() { 0 } else { 3 },
+                focus_audience_in: 0,
                 notes_size: 20.0,
             }
         });
@@ -218,13 +222,18 @@ impl GlideDeckApp {
         }
     }
 
-    /// The document as the audience sees it right now (animations applied).
+    /// The document as the audience sees it right now (animations and
+    /// parallax applied), or None when it is the document itself.
     pub fn show_scene(&mut self) -> Option<glide_core::Document> {
         let p = self.presenting.as_ref()?;
-        if self.doc.path.iter().all(|s| s.builds.is_empty()) {
+        let builds = self.doc.path.iter().any(|s| !s.builds.is_empty());
+        let parallax = self.doc.elements.iter().any(|e| e.parallax != 0.0);
+        if !builds && !parallax {
             return None;
         }
-        Some(crate::anim::scene(&self.doc, &p.builds, p.now, &mut self.renderer))
+        let mut scene = if builds { crate::anim::scene(&self.doc, &p.builds, p.now, &mut self.renderer) } else { self.doc.clone() };
+        crate::anim::apply_parallax(&mut scene, &self.camera, self.viewport());
+        Some(scene)
     }
 
     /// Applies navigation from any input source. Returns true to end the show.
@@ -519,17 +528,32 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
     }
     let bg = app.doc.background;
     let fill = Color32::from_rgb(bg.r(), bg.g(), bg.b());
+    let audience_open = console.audience_open;
+    let second = console.second_display;
     let mut exit = false;
-    ctx.show_viewport_immediate(audience_id, builder, |ui, class| {
-        if ui.input(|i| i.viewport().close_requested()) {
-            exit = true;
-        }
-        // An embedded audience view shares the console's input, already read above.
-        let own_window = class != egui::ViewportClass::EmbeddedWindow;
-        egui::CentralPanel::no_frame().frame(egui::Frame::new().fill(fill)).show(ui, |ui| {
-            exit |= show_view(app, ui, frame, own_window);
+    let mut close_audience = false;
+    if audience_open {
+        ctx.show_viewport_immediate(audience_id, builder, |ui, class| {
+            if ui.input(|i| i.viewport().close_requested()) {
+                // On its own display, closing the audience window ends the show;
+                // on a single display it only closes the extra window.
+                if second {
+                    exit = true;
+                } else {
+                    close_audience = true;
+                }
+            }
+            // An embedded audience view shares the console's input, already read above.
+            let own_window = class != egui::ViewportClass::EmbeddedWindow;
+            egui::CentralPanel::no_frame().frame(egui::Frame::new().fill(fill)).show(ui, |ui| {
+                exit |= show_view(app, ui, frame, own_window);
+            });
         });
-    });
+    }
+    if close_audience && let Some(c) = app.presenting.as_mut().and_then(|p| p.console.as_mut()) {
+        c.audience_open = false;
+        c.audience_fullscreen = false;
+    }
     if exit {
         app.stop_presenting(&ctx);
         return;
@@ -546,7 +570,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
     let (second_display, audience_fullscreen) = (console.second_display, console.audience_fullscreen);
     let audience_aspect = {
         let v = app.viewport();
-        if v.x > 1.0 && v.y > 1.0 { (v.x / v.y) as f32 } else { 16.0 / 9.0 }
+        if audience_open && v.x > 1.0 && v.y > 1.0 { (v.x / v.y) as f32 } else { 16.0 / 9.0 }
     };
     let current_tex = app.texture_id;
     let notes = app.doc.path.get(step).map(|s| s.notes.clone()).unwrap_or_default();
@@ -572,6 +596,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
         Larger,
         Swap,
         Fullscreen,
+        Audience,
         End,
     }
     let mut clicked: Option<Click> = None;
@@ -641,12 +666,21 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
                     clicked = Some(Click::Swap);
                 }
             } else {
-                let label = if audience_fullscreen { "Exit fullscreen" } else { "Audience fullscreen" };
-                if toggle_button(ui, &format!("{}  {label}", icon::CORNERS_OUT), audience_fullscreen)
-                    .on_hover_text("Drag the audience window to the projector first, then make it fullscreen")
+                if audience_open {
+                    let label = if audience_fullscreen { "Exit fullscreen" } else { "Audience fullscreen" };
+                    if toggle_button(ui, &format!("{}  {label}", icon::CORNERS_OUT), audience_fullscreen)
+                        .on_hover_text("Drag the audience window to the projector first, then make it fullscreen")
+                        .clicked()
+                    {
+                        clicked = Some(Click::Fullscreen);
+                    }
+                }
+                let label = if audience_open { "Close audience window" } else { "Open audience window" };
+                if toggle_button(ui, &format!("{}  {label}", icon::MONITOR), audience_open)
+                    .on_hover_text("A separate window with just the slides, to drag onto a projector or share in a video call")
                     .clicked()
                 {
-                    clicked = Some(Click::Fullscreen);
+                    clicked = Some(Click::Audience);
                 }
             }
         });
@@ -666,8 +700,16 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
         let area = egui::Rect::from_min_max(left.min + egui::vec2(0.0, 22.0), left.max);
         let shown = fit_aspect(area, audience_aspect);
         painter.rect_filled(shown, 8, fill);
-        if let Some(tex) = current_tex {
-            egui::Image::new(egui::load::SizedTexture::new(tex, shown.size())).corner_radius(8).paint_at(ui, shown);
+        if audience_open {
+            if let Some(tex) = current_tex {
+                egui::Image::new(egui::load::SizedTexture::new(tex, shown.size())).corner_radius(8).paint_at(ui, shown);
+            }
+        } else {
+            // No audience window: the show itself runs here (clicks advance it).
+            let mut live = ui.new_child(egui::UiBuilder::new().max_rect(shown));
+            if show_view(app, &mut live, frame, false) {
+                clicked = Some(Click::End);
+            }
         }
         if let Some(c) = blank {
             painter.rect_filled(shown, 8, c.gamma_multiply(0.92));
@@ -735,7 +777,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
             ui.set_min_size(ui.available_size());
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 if notes.trim().is_empty() {
-                    ui.label(RichText::new("No notes for this slide. Add them in the editor: Properties → Speaker notes.").size(notes_size * 0.75).color(ink::MUTED));
+                    ui.label(RichText::new("No notes for this slide. Add them in the editor, in the Speaker notes panel under the canvas.").size(notes_size * 0.75).color(ink::MUTED));
                 } else {
                     notes_markdown(ui, &notes, notes_size);
                 }
@@ -777,6 +819,10 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
                     }
                     Click::Smaller => console.notes_size = (console.notes_size - 2.0).max(12.0),
                     Click::Larger => console.notes_size = (console.notes_size + 2.0).min(48.0),
+                    Click::Audience => {
+                        console.audience_open = !console.audience_open;
+                        console.audience_fullscreen = false;
+                    }
                     Click::Fullscreen => {
                         console.audience_fullscreen = !console.audience_fullscreen;
                         ctx.send_viewport_cmd_to(audience_id, egui::ViewportCommand::Fullscreen(console.audience_fullscreen));

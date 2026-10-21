@@ -144,8 +144,12 @@ pub fn arrange_window(app: &mut GlideDeckApp, ctx: &egui::Context) {
                 ui.add_space(12.0);
                 ui.add_enabled(dialog.kind.can_tilt(), egui::Checkbox::new(&mut dialog.opts.tilt, "Turn slides along the path"))
                     .on_hover_text("The show's camera turns with each slide, for a more cinematic ride");
-                ui.add_enabled(dialog.kind.has_trail(), egui::Checkbox::new(&mut dialog.opts.trail, "Draw the path"))
-                    .on_hover_text("A dotted trail between slides (lines for Tree); replaced on the next arrangement");
+                let (label, tip) = if dialog.kind == Arrangement::Carousel {
+                    ("Parallax backdrop", "Glowing layers behind the slides that drift at different speeds in the show")
+                } else {
+                    ("Draw the path", "A dotted trail between slides (lines for Tree); replaced on the next arrangement")
+                };
+                ui.add_enabled(dialog.kind.has_trail(), egui::Checkbox::new(&mut dialog.opts.trail, label)).on_hover_text(tip);
                 ui.checkbox(&mut dialog.opts.overview, "Overview at start and end");
             });
             ui.add_space(8.0);

@@ -582,6 +582,12 @@ pub struct Element {
     /// Optional soft drop shadow (shapes, frames and images).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<Shadow>,
+    /// Depth for the parallax effect in the show: 0 moves with the canvas,
+    /// positive values are farther away and drift slower as the camera
+    /// travels (up to 1, fixed to the camera), negative values are nearer
+    /// and move faster.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub parallax: f64,
     pub kind: ElementKind,
 }
 
@@ -595,6 +601,7 @@ impl Element {
             locked: false,
             hidden: false,
             shadow: None,
+            parallax: 0.0,
             kind,
         }
     }
