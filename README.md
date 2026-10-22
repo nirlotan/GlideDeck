@@ -27,6 +27,7 @@
 - [Works with PowerPoint](#works-with-powerpoint)
 - [Feature tour](#feature-tour)
 - [Let Claude or GitHub Copilot build your deck](#let-claude-or-github-copilot-build-your-deck)
+- [Support GlideDeck](#support-glidedeck)
 - [Privacy](#privacy)
 - [Questions](#questions)
 - [For developers](#for-developers)
@@ -223,6 +224,19 @@ The server has 23 tools:
 
 It runs on your computer and makes no network calls. Setup for each app and troubleshooting
 are in the **[AI guide](docs/AI.md)**.
+
+## Support GlideDeck
+
+GlideDeck is free and open source, and it stays that way: no trials, no watermarks, no
+locked features. If it saves you time or helps a talk land, you can support its development.
+
+- **Chip in what you like.** A one-time "pay what you want" contribution (suggested: $9)
+  helps the most. The link is coming soon.
+- **Sponsor on GitHub** for ongoing support. Coming soon.
+- **Star the repo and share it.** It genuinely helps other people find GlideDeck.
+- **Report bugs and ideas** in [Issues](https://github.com/nirlotan/GlideDeck/issues).
+
+The **Support GlideDeck** button in the app (ⓘ → About) opens this section.
 
 ## Privacy
 

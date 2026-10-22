@@ -1057,6 +1057,7 @@ fn speaker_notes_panel_about_window_and_single_screen_presenter_view() {
     h.get_by_label_contains(&format!("Version {}", env!("CARGO_PKG_VERSION")));
     h.get_by_label_contains("Check for updates");
     h.get_by_label_contains("GlideDeck on GitHub");
+    h.get_by_label_contains("Support GlideDeck");
     snapshot(&mut h, "about");
     h.state_mut().updater.open = false;
     h.run_steps(2);

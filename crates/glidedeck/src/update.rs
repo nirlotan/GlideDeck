@@ -14,6 +14,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 pub const REPO_URL: &str = "https://github.com/nirlotan/GlideDeck";
+/// Where to support GlideDeck: a README section, so payment links can change
+/// without a new release.
+pub const SUPPORT_URL: &str = "https://github.com/nirlotan/GlideDeck#support-glidedeck";
 const LATEST_API: &str = "https://api.github.com/repos/nirlotan/GlideDeck/releases/latest";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -234,9 +237,20 @@ pub fn about_window(app: &mut GlideDeckApp, ctx: &egui::Context) {
                 ui.add_space(6.0);
                 ui.label("Zooming presentations on an infinite canvas.\nNative, local-first and free.");
                 ui.add_space(8.0);
-                if ui.button(format!("{}  GlideDeck on GitHub", icon::GITHUB_LOGO)).on_hover_text(REPO_URL).clicked() {
-                    open_external(REPO_URL);
-                }
+                ui.horizontal(|ui| {
+                    // Center the two buttons: measure once, then pad.
+                    let w = 380.0_f32.min(ui.available_width());
+                    ui.add_space(((ui.available_width() - w) / 2.0).max(0.0));
+                    if ui.button(format!("{}  GlideDeck on GitHub", icon::GITHUB_LOGO)).on_hover_text(REPO_URL).clicked() {
+                        open_external(REPO_URL);
+                    }
+                    let support = egui::Button::new(RichText::new(format!("{}  Support GlideDeck", icon::HEART)).color(p.on_accent)).fill(p.accent);
+                    if ui.add(support).on_hover_text("GlideDeck is free. If it helps you, you can chip in for its development.").clicked() {
+                        open_external(SUPPORT_URL);
+                    }
+                });
+                ui.add_space(4.0);
+                ui.label(RichText::new("Free and open source. If it saves you time, consider supporting it.").size(11.5).color(p.text_muted));
                 ui.add_space(10.0);
             });
             ui.separator();
