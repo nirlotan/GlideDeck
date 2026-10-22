@@ -4,7 +4,7 @@
 
 ### Install
 - **Windows 10/11 (x64):** download **`GlideDeck-0.1.6-x64.msi`** below and run it. It upgrades earlier versions in place. `GlideDeck-x64.msi` is the same file under a name that never changes.
-- **macOS (Apple Silicon):** the 0.1.5 DMG is on the [0.1.5 release](https://github.com/nirlotan/GlideDeck/releases/tag/v0.1.5). A 0.1.6 DMG will follow.
+- **macOS (Apple Silicon and Intel):** download **`GlideDeck-0.1.6.dmg`** below, open it and drag GlideDeck into **Applications**. The universal app and DMG are Developer ID-signed, and the DMG is notarized by Apple with the ticket stapled.
 
 > The MSI is not code-signed yet, so Windows SmartScreen may warn. Choose **More info → Run anyway**.
 
@@ -38,3 +38,4 @@
 
 ### Checksums
 SHA-256 of the MSI is listed in `GlideDeck-0.1.6-x64.msi.sha256`.
+SHA-256 of the DMG is listed in `GlideDeck-0.1.6.dmg.sha256`.

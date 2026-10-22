@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%2010%2F11-4f46e5?style=for-the-badge&logo=windows&logoColor=white"></a>
-  <a href="https://github.com/nirlotan/GlideDeck/releases/download/v0.1.5/GlideDeck-0.1.5.dmg"><img alt="Download for macOS (Apple Silicon)" src="https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg"><img alt="Download for macOS (Apple Silicon and Intel)" src="https://img.shields.io/badge/Download-macOS%20(Universal)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
 </p>
 
 ![GlideDeck: the welcome canvas in the editor](docs/screenshots/editor.png)
@@ -39,7 +39,7 @@
 | Your computer | Download | How to install |
 |---|---|---|
 | **Windows 10 / 11** (64-bit) | **[⬇ GlideDeck-x64.msi](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi)** (always the latest version) | Double-click the file and follow the installer. It adds GlideDeck to the Start menu. |
-| **Mac with Apple Silicon** (M1 or newer) | **[⬇ GlideDeck-0.1.5.dmg](https://github.com/nirlotan/GlideDeck/releases/download/v0.1.5/GlideDeck-0.1.5.dmg)** | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
+| **Mac with Apple Silicon or Intel** | **[⬇ GlideDeck-0.1.6.dmg](https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg)** | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
 | Other versions | [All releases](https://github.com/nirlotan/GlideDeck/releases) | Every version, with release notes and SHA-256 checksums. |
 
 - **Already installed?** Choose **ⓘ → Check for updates** (or **File → Check for updates**).
