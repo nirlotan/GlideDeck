@@ -230,9 +230,8 @@ are in the **[AI guide](docs/AI.md)**.
 GlideDeck is free and open source, and it stays that way: no trials, no watermarks, no
 locked features. If it saves you time or helps a talk land, you can support its development.
 
-- **Chip in what you like.** A one-time "pay what you want" contribution (suggested: $9)
-  helps the most. The link is coming soon.
-- **Sponsor on GitHub** for ongoing support. Coming soon.
+- **[Sponsor GlideDeck on GitHub](https://github.com/sponsors/nirlotan).** Any amount helps;
+  $9 is a great way to say thanks.
 - **Star the repo and share it.** It genuinely helps other people find GlideDeck.
 - **Report bugs and ideas** in [Issues](https://github.com/nirlotan/GlideDeck/issues).
 
