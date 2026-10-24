@@ -213,8 +213,8 @@ pub struct CanvasRenderer {
     images: ImageCache,
     svgs: HashMap<PathBuf, Option<std::sync::Arc<svg::SvgDoc>>>,
     videos: HashMap<PathBuf, VideoEntry>,
-    video_tx: std::sync::mpsc::Sender<(PathBuf, Result<(video::VideoInfo, u32, u32, Vec<u8>), String>)>,
-    video_rx: std::sync::mpsc::Receiver<(PathBuf, Result<(video::VideoInfo, u32, u32, Vec<u8>), String>)>,
+    video_tx: std::sync::mpsc::Sender<VideoLoaded>,
+    video_rx: std::sync::mpsc::Receiver<VideoLoaded>,
     base_dir: Option<PathBuf>,
     frame: u64,
     pub text: TextEngine,
@@ -508,16 +508,20 @@ impl CanvasRenderer {
     pub fn poll_images(&mut self) -> bool {
         self.images.poll(&self.device, &self.queue, self.frame);
         self.poll_videos();
-        self.images.is_loading() || self.videos.values().any(|v| matches!(v, VideoEntry::Loading)) || self.any_video_playing()
+        self.images.is_loading() || self.videos.values().any(|v| matches!(v, VideoEntry::Loading { .. })) || self.any_video_playing()
     }
 
-    /// Starts loading every image in `doc` and blocks until all are ready.
+    /// Starts loading every image (and web video poster) in `doc` and blocks
+    /// until all are ready.
     pub fn load_images_blocking(&mut self, doc: &Document) {
         for el in &doc.elements {
-            if let ElementKind::Image(m) = &el.kind {
-                let path = assets::resolve(self.base_dir.as_deref(), &m.path);
-                self.images.request(&path, self.frame);
-            }
+            let poster = match &el.kind {
+                ElementKind::Image(m) => &m.path,
+                ElementKind::Video(m) if m.url.is_some() && !m.path.is_empty() => &m.path,
+                _ => continue,
+            };
+            let path = assets::resolve(self.base_dir.as_deref(), poster);
+            self.images.request(&path, self.frame);
         }
         self.images.wait(&self.device, &self.queue, self.frame);
     }
@@ -539,31 +543,66 @@ impl CanvasRenderer {
 
     // --- video -----------------------------------------------------------------
 
+    /// Where a video reference lives: a file next to the document, or a web address.
+    fn video_key(&self, reference: &str) -> PathBuf {
+        if glide_core::weblink::is_web_url(reference) {
+            PathBuf::from(reference.trim())
+        } else {
+            assets::resolve(self.base_dir.as_deref(), reference)
+        }
+    }
+
+    /// The playback entry for a reference, loading it if needed. Web videos
+    /// first resolve their streams; nothing goes over the network until then.
     fn video_entry(&mut self, reference: &str) -> (PathBuf, &mut VideoEntry) {
-        let path = assets::resolve(self.base_dir.as_deref(), reference);
+        let path = self.video_key(reference);
         if !self.videos.contains_key(&path) {
             let tx = self.video_tx.clone();
-            let p = path.clone();
+            let (p, web) = (path.clone(), glide_core::weblink::is_web_url(reference));
             std::thread::spawn(move || {
-                let result = video::probe(&p).and_then(|info| {
-                    let at = (info.duration * 0.1).min(1.0);
-                    let (w, h, rgba) = video::frame_at(&p, &info, at).ok_or("could not decode a frame")?;
-                    Ok((info, w, h, rgba))
+                let stream = if web {
+                    video::resolve_web(&p.to_string_lossy())
+                } else {
+                    Ok(video::Stream { video: p.clone(), audio: None })
+                };
+                let result = stream.and_then(|stream| {
+                    let mut info = video::probe(&stream.video)?;
+                    info.has_audio |= stream.audio.is_some();
+                    let at = if web { 0.0 } else { (info.duration * 0.1).min(1.0) };
+                    let (w, h, rgba) = video::frame_at(&stream.video, &info, at).ok_or("could not decode a frame")?;
+                    Ok((info, stream, w, h, rgba))
                 });
                 let _ = tx.send((p, result));
             });
-            self.videos.insert(path.clone(), VideoEntry::Loading);
+            self.videos.insert(path.clone(), VideoEntry::Loading { play: None });
         }
         let entry = self.videos.get_mut(&path).expect("inserted above");
         (path, entry)
+    }
+
+    /// True for a web video that has not been asked to load yet.
+    fn web_video_idle(&self, reference: &str) -> bool {
+        glide_core::weblink::is_web_url(reference) && !self.videos.contains_key(&self.video_key(reference))
+    }
+
+    /// Starts resolving and probing a video ahead of playing it (e.g. web
+    /// videos when a show starts).
+    pub fn video_prepare(&mut self, reference: &str) {
+        if video::ffmpeg_path().is_some() {
+            self.video_entry(reference);
+        }
     }
 
     fn poll_videos(&mut self) -> bool {
         let mut changed = false;
         while let Ok((path, result)) = self.video_rx.try_recv() {
             changed = true;
+            let play = match self.videos.get(&path) {
+                Some(VideoEntry::Loading { play }) => *play,
+                _ => None,
+            };
             let entry = match result {
-                Ok((info, w, h, rgba)) => {
+                Ok((info, stream, w, h, rgba)) => {
                     let texture = self.device.create_texture(&wgpu::TextureDescriptor {
                         label: Some("glide video"),
                         size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
@@ -577,7 +616,15 @@ impl CanvasRenderer {
                     write_rgba(&self.queue, &texture, w, h, &rgba);
                     let view = texture.create_view(&Default::default());
                     let bind_group = self.images.bind_group(&self.device, &view);
-                    VideoEntry::Ready { info, texture, bind_group, size: (w, h), player: None }
+                    // Asked to play while it was loading: start now.
+                    let player = play.and_then(|(looping, muted)| {
+                        let p = video::Player::new(&stream.video, stream.audio.as_deref(), info.clone())?;
+                        p.set_looping(looping);
+                        p.set_muted(muted);
+                        p.play();
+                        Some(p)
+                    });
+                    VideoEntry::Ready { info, stream, texture, bind_group, size: (w, h), player }
                 }
                 Err(e) => VideoEntry::Failed(e),
             };
@@ -592,8 +639,16 @@ impl CanvasRenderer {
         if video::ffmpeg_path().is_none() {
             return VideoStatus::Unavailable("FFmpeg is not installed".into());
         }
+        if self.web_video_idle(reference) {
+            if let Some(v) = glide_core::weblink::site_video(reference)
+                && video::ytdlp_path().is_none()
+            {
+                return VideoStatus::Unavailable(format!("Playing {} videos here needs yt-dlp", v.site_name()));
+            }
+            return VideoStatus::Ready { playing: false, position: 0.0, duration: 0.0 };
+        }
         match self.video_entry(reference).1 {
-            VideoEntry::Loading => VideoStatus::Loading,
+            VideoEntry::Loading { play } => if play.is_some() { VideoStatus::Loading } else { VideoStatus::Ready { playing: false, position: 0.0, duration: 0.0 } },
             VideoEntry::Failed(e) => VideoStatus::Unavailable(e.clone()),
             VideoEntry::Ready { info, player, .. } => VideoStatus::Ready {
                 playing: player.as_ref().is_some_and(|p| p.is_playing()),
@@ -606,10 +661,19 @@ impl CanvasRenderer {
     /// Starts or pauses a video. Returns the new playing state.
     pub fn video_set_playing(&mut self, reference: &str, play: bool, looping: bool, muted: bool) -> bool {
         self.poll_videos();
-        let (path, entry) = self.video_entry(reference);
-        let VideoEntry::Ready { info, player, .. } = entry else { return false };
+        // A web video that failed (offline, say) tries again when played.
+        let key = self.video_key(reference);
+        if play && glide_core::weblink::is_web_url(reference) && matches!(self.videos.get(&key), Some(VideoEntry::Failed(_))) {
+            self.videos.remove(&key);
+        }
+        let (_, entry) = self.video_entry(reference);
+        if let VideoEntry::Loading { play: pending } = entry {
+            *pending = play.then_some((looping, muted));
+            return play;
+        }
+        let VideoEntry::Ready { info, stream, player, .. } = entry else { return false };
         if player.is_none() && play {
-            *player = video::Player::new(&path, info.clone());
+            *player = video::Player::new(&stream.video, stream.audio.as_deref(), info.clone());
         }
         let Some(p) = player else { return false };
         p.set_looping(looping);
@@ -769,9 +833,25 @@ impl CanvasRenderer {
             }
 
             // Videos draw their current frame (or poster) as a textured quad.
-            if let ElementKind::Video(m) = &el.kind {
+            // Web videos show their poster image until they start playing.
+            if let ElementKind::Video(m) = &el.kind
+                && m.url.is_some()
+                && !matches!(self.videos.get(&self.video_key(m.source())), Some(VideoEntry::Ready { player: Some(_), .. }))
+            {
+                let path = assets::resolve(self.base_dir.as_deref(), &m.path);
+                if !m.path.is_empty() && let ImageState::Ready { .. } = self.images.request(&path, self.frame) {
+                    let quad = model * DAffine2::from_scale(DVec2::new(m.width, m.height));
+                    let h = m.height.abs().max(1e-12);
+                    let params = [(m.width / h) as f32, (m.corner_radius / h) as f32, 0.0, 0.0];
+                    draws.push((Draw::Image(path), instance(quad, opacity, params)));
+                    continue;
+                }
+            }
+            if let ElementKind::Video(m) = &el.kind
+                && (m.url.is_none() || !self.web_video_idle(m.source()))
+            {
                 let queue = self.queue.clone();
-                let (path, entry) = self.video_entry(&m.path);
+                let (path, entry) = self.video_entry(m.source());
                 if let VideoEntry::Ready { texture, player, size, .. } = entry {
                     if let Some(p) = player
                         && let Some(rgba) = p.take_frame()
@@ -925,10 +1005,15 @@ impl CanvasRenderer {
     }
 }
 
+/// A probed video: its info, streams and a first frame (w, h, RGBA).
+type VideoLoaded = (PathBuf, Result<(video::VideoInfo, video::Stream, u32, u32, Vec<u8>), String>);
+
 enum VideoEntry {
-    Loading,
+    /// Probing; `play` holds (looping, muted) when asked to play meanwhile.
+    Loading { play: Option<(bool, bool)> },
     Ready {
         info: video::VideoInfo,
+        stream: video::Stream,
         texture: wgpu::Texture,
         bind_group: wgpu::BindGroup,
         size: (u32, u32),

@@ -93,6 +93,19 @@ impl GlideDeckApp {
             return;
         }
         self.stop_text_edit();
+        // Look up web videos' streams now, so they start promptly when played.
+        let web: Vec<String> = self
+            .doc
+            .elements
+            .iter()
+            .filter_map(|e| match &e.kind {
+                glide_core::ElementKind::Video(m) if m.url.is_some() && !e.hidden => Some(m.source().to_owned()),
+                _ => None,
+            })
+            .collect();
+        for url in web {
+            self.renderer.video_prepare(&url);
+        }
         let step = start.min(self.doc.path.len() - 1);
         let was_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
         let displays = crate::displays::list();
@@ -184,7 +197,7 @@ impl GlideDeckApp {
         for (pos, m) in videos {
             let l = inv.transform_point2(pos);
             let inside = l.x.abs() <= size.x / 2.0 && l.y.abs() <= size.y / 2.0;
-            self.renderer.video_set_playing(&m.path, inside && m.autoplay, m.looping, m.muted);
+            self.renderer.video_set_playing(m.source(), inside && m.autoplay, m.looping, m.muted);
         }
     }
 

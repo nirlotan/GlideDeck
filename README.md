@@ -46,6 +46,9 @@
   GlideDeck downloads the new installer for you, and installing it upgrades your copy in place.
 - **Windows says "Windows protected your PC"?** The installer isn't code-signed yet. Click
   **More info → Run anyway**.
+- **Want to play YouTube, Vimeo or Loom videos inside GlideDeck too?** Also install yt-dlp:
+  `winget install yt-dlp` on Windows, or `brew install yt-dlp` on a Mac. (They always play in
+  the web page export.)
 - **Want to play videos in your slides?** Install FFmpeg once: `winget install Gyan.FFmpeg` on
   Windows, or `brew install ffmpeg` on a Mac.
 
@@ -58,6 +61,10 @@
   transition, or a PDF to share.
 - **Share it as a web page.** Export a single `.html` file that plays the show in any browser
   exactly as GlideDeck does: every camera move, animation, parallax layer and effect.
+- **Put YouTube, Vimeo and Loom videos on a slide.** Paste a link onto the canvas. The video
+  zooms and turns with your slides, and plays in the site's own player in the web page export.
+- **Never lose work.** AutoSave keeps your file saved as you go, and if GlideDeck or your
+  computer crashes, your unsaved changes are waiting for you next time.
 - **Use any font on your computer.** The font picker shows every installed font in its own
   face, and you can add a font file that then travels with the presentation.
 - **Start from a template.** 18 complete stories with a theme and a path, from a pitch deck to
@@ -134,6 +141,9 @@ anyone can open in a browser. Nothing needs to be installed.
 - **Sharp at any zoom.** Text is embedded as vector outlines, so it looks the same without the
   fonts, and pictures and SVGs are embedded in the file.
 - **Videos** are copied to a `<name>_media` folder next to the page; keep the two together.
+- **YouTube, Vimeo and Loom videos** play in the site's own player, right on the slide, and
+  move with the camera. YouTube only plays inside pages served from a website (GitHub Pages,
+  your intranet…); when the page is opened as a file, a click opens the video on YouTube.
 - **Controls:** → / Space / click for next, ← for back, Home / End, **F** for fullscreen, the
   mouse wheel to look around, and swipe on a phone or tablet. Press **?** for the list.
 
@@ -191,6 +201,15 @@ anyone can open in a browser. Nothing needs to be installed.
 - **Pictures:** insert them, drag and drop, or paste screenshots and images from other apps.
 - **SVG graphics:** shown as true vectors.
 - **Video:** with sound, autoplay, loop and mute.
+- **Web video:** paste a YouTube, Vimeo or Loom link (or a link to a video file), or use
+  **Insert → Web video**. Its poster is saved with the presentation; the video streams when it
+  plays. In PowerPoint it becomes the poster, linked to the video.
+
+### Your work is safe
+- **AutoSave** (File → AutoSave, on by default) saves a presentation that has a file a moment
+  after each change. The status bar shows when it's saved.
+- **Crash recovery:** unsaved changes, even in a presentation you never saved, are kept in a
+  recovery copy. If GlideDeck doesn't close normally, it offers them the next time it starts.
 
 ### Presenting
 - **Fullscreen show** with keyboard and clicker support. Press **B** or **W** to black or white
@@ -234,11 +253,11 @@ Then ask, for example:
 > Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, with
 > speaker notes, and export a PowerPoint copy.
 
-The server has 26 tools:
+The server has 27 tools:
 - **Find:** `catalog`, `search_icons`.
 - **Create and read:** `create_presentation`, `import_pptx`, `get_presentation`.
 - **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`, `remove_slide`,
-  `arrange_slides`, `edit_presentation`, `list_fonts`, `add_font`.
+  `add_web_video`, `arrange_slides`, `edit_presentation`, `list_fonts`, `add_font`.
 - **Bring it to life:** `animate`, `auto_animate`, `set_transitions`, `set_notes`,
   `clear_animations`.
 - **Check and deliver:** `render_slide`, `export_pptx`, `export_pdf`, `export_html`, `save_as`,

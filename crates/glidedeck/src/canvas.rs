@@ -926,16 +926,32 @@ impl GlideDeckApp {
             if !rect.intersects(bounds) || bounds.width().min(bounds.height()) < 60.0 {
                 continue;
             }
-            let status = self.renderer.video_status(&m.path);
+            let status = self.renderer.video_status(m.source());
             let playing = matches!(status, glide_render::VideoStatus::Ready { playing: true, .. });
             let hovered = pointer.is_some_and(|p| bounds.contains(p));
             let center = bounds.center();
             let button = egui::Rect::from_center_size(center, egui::vec2(56.0, 56.0));
             let show = hovered || self.selection.contains(&el.id) || !playing;
             if let glide_render::VideoStatus::Unavailable(reason) = &status {
-                if hovered {
+                // Web videos that can't play here offer the browser instead.
+                if m.url.is_some() {
+                    let over = pointer.is_some_and(|p| button.contains(p));
+                    painter.circle_filled(center, 28.0, Color32::from_black_alpha(if over { 190 } else { 140 }));
+                    painter.text(center, egui::Align2::CENTER_CENTER, icon::ARROW_SQUARE_OUT, egui::FontId::new(24.0, egui::FontFamily::Name("phosphor-fill".into())), Color32::WHITE);
+                    if hovered {
+                        let tip = format!("{reason}. Click to open it in the browser");
+                        painter.text(center + egui::vec2(0.0, 44.0), egui::Align2::CENTER_CENTER, tip, theme::semibold(12.0), Color32::WHITE);
+                    }
+                    self.video_buttons.push((button, el.id.clone()));
+                } else if hovered {
                     painter.text(center, egui::Align2::CENTER_CENTER, format!("{}  {reason}", icon::WARNING), theme::semibold(12.0), Color32::WHITE);
                 }
+                continue;
+            }
+            if matches!(status, glide_render::VideoStatus::Loading) {
+                painter.circle_filled(center, 28.0, Color32::from_black_alpha(140));
+                painter.text(center, egui::Align2::CENTER_CENTER, icon::HOURGLASS_MEDIUM, egui::FontId::new(24.0, egui::FontFamily::Name("phosphor-fill".into())), Color32::WHITE);
+                self.video_buttons.push((button, el.id.clone()));
                 continue;
             }
             if show {

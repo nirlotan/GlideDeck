@@ -96,6 +96,7 @@ pub enum Action {
     SetTool(Tool),
     InsertImage,
     InsertVideo,
+    InsertWebVideo,
     FrameFromView,
     AddSelectedFrameToPath,
     GoToStep(usize),
@@ -204,7 +205,8 @@ pub const SC_LAYOUTS: KeyboardShortcut = sc(Modifiers::COMMAND.plus(Modifiers::S
 pub struct GlideDeckApp {
     pub doc: Document,
     pub path: Option<PathBuf>,
-    saved: Document,
+    /// The document as last saved (or opened), to tell unsaved changes.
+    pub(crate) saved: Document,
     pub history: History,
     pub camera: Camera,
     pub nav: Navigation,
@@ -249,7 +251,11 @@ pub struct GlideDeckApp {
     /// Clickable frame name tags drawn on the canvas last frame.
     pub frame_tags: Vec<(egui::Rect, String)>,
     /// Asset folder for documents that have not been saved yet.
-    session_dir: PathBuf,
+    pub(crate) session_dir: PathBuf,
+    /// AutoSave and crash-recovery copies.
+    pub autosave: crate::autosave::AutoSave,
+    /// The Recover dialog is open (work left behind by an earlier session).
+    pub show_recovery: bool,
     /// A paste event already handled the current Ctrl+V press.
     pub paste_consumed: bool,
     pub show_shortcuts: bool,
@@ -262,6 +268,9 @@ pub struct GlideDeckApp {
     pub guides: Vec<(bool, f32)>,
     /// Play/pause buttons drawn over videos last frame: (rect, element id).
     pub video_buttons: Vec<(egui::Rect, String)>,
+    /// Web videos whose details are being fetched.
+    pub web_videos: Vec<crate::webvideo::Pending>,
+    pub web_video_dialog: crate::webvideo::Dialog,
     /// In-place text editing on the canvas.
     pub text_edit: Option<crate::textedit::TextEditSession>,
     /// How new animations start (Animate tab).
@@ -334,6 +343,8 @@ impl GlideDeckApp {
             presenting: None,
             frame_tags: Vec::new(),
             session_dir,
+            autosave: crate::autosave::AutoSave::load(),
+            show_recovery: true,
             paste_consumed: false,
             show_shortcuts: false,
             icon_picker: IconPicker::default(),
@@ -343,6 +354,8 @@ impl GlideDeckApp {
             previews: Previews::default(),
             guides: Vec::new(),
             video_buttons: Vec::new(),
+            web_videos: Vec::new(),
+            web_video_dialog: Default::default(),
             text_edit: None,
             anim_trigger: glide_core::Trigger::OnClick,
             anim_together: false,
@@ -556,8 +569,14 @@ impl GlideDeckApp {
     /// Toggles playback of a video element. Returns the new playing state.
     pub fn toggle_video(&mut self, id: &str) -> bool {
         let Some(glide_core::Element { kind: ElementKind::Video(m), .. }) = self.doc.get(id).cloned() else { return false };
-        let playing = matches!(self.renderer.video_status(&m.path), glide_render::VideoStatus::Ready { playing: true, .. });
-        self.renderer.video_set_playing(&m.path, !playing, m.looping, m.muted)
+        let status = self.renderer.video_status(m.source());
+        // A web video that can't play here opens in the browser instead.
+        if m.url.is_some() && matches!(status, glide_render::VideoStatus::Unavailable(_)) {
+            crate::webvideo::open_in_browser(m.source());
+            return false;
+        }
+        let playing = matches!(status, glide_render::VideoStatus::Ready { playing: true, .. } | glide_render::VideoStatus::Loading);
+        self.renderer.video_set_playing(m.source(), !playing, m.looping, m.muted)
     }
 
     /// Wraps the selection in a new invisible 16:9 frame (aligned with the
@@ -704,6 +723,7 @@ impl GlideDeckApp {
                     self.import_image_files(ctx, &files, None);
                 }
             }
+            Action::InsertWebVideo => self.web_video_dialog.open = true,
             Action::InsertVideo => {
                 if let Some(files) = rfd::FileDialog::new().add_filter("Videos", crate::media::VIDEO_EXTS).pick_files() {
                     self.import_video_files(ctx, &files, None);
@@ -957,7 +977,7 @@ impl GlideDeckApp {
         }
     }
 
-    fn replace_document(&mut self, doc: Document, path: Option<PathBuf>) {
+    pub(crate) fn replace_document(&mut self, doc: Document, path: Option<PathBuf>) {
         self.saved = doc.clone();
         self.history.reset(&doc);
         self.current_step = (!doc.path.is_empty()).then_some(0);
@@ -1265,7 +1285,9 @@ impl GlideDeckApp {
     fn handle_close(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.viewport().close_requested()) && !self.allow_close && self.is_dirty() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            if self.confirm_discard() {
+            // With AutoSave on, a presentation that has a file just saves.
+            let autosaved = self.autosave.enabled && self.path.is_some() && self.save();
+            if autosaved || self.confirm_discard() {
                 self.allow_close = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
@@ -1335,10 +1357,18 @@ impl GlideDeckApp {
 }
 
 impl eframe::App for GlideDeckApp {
+    /// Closing normally: the work was saved or deliberately discarded.
+    fn on_exit(&mut self) {
+        self.autosave.discard_copy();
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.handle_close(&ctx);
         self.handle_dropped_files(&ctx);
+        self.poll_web_videos(&ctx);
+        self.autosave_tick(&ctx);
+        crate::autosave::recover_window(self, &ctx);
 
         if let Some(p) = self.import_on_start.take() {
             self.import_pptx(&ctx, &p);
@@ -1394,6 +1424,7 @@ impl eframe::App for GlideDeckApp {
             crate::ribbon::shortcuts_window(self, &ctx);
         }
         crate::galleries::icon_picker(self, &ctx);
+        crate::webvideo::dialog(self, &ctx);
         crate::arrange_ui::arrange_window(self, &ctx);
         crate::update::about_window(self, &ctx);
         crate::galleries::design_check_window(self, &ctx);

@@ -218,6 +218,14 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
         ui.separator();
         item(ui, icon::FLOPPY_DISK, "Save", Some(SC_SAVE), Action::Save);
         item(ui, icon::FLOPPY_DISK, "Save As…", Some(SC_SAVE_AS), Action::SaveAs);
+        let mut on = app.autosave.enabled;
+        if ui
+            .checkbox(&mut on, "AutoSave")
+            .on_hover_text("Save a presentation that has a file a moment after each change. Unsaved work is always kept for recovery after a crash.")
+            .changed()
+        {
+            app.autosave.set_enabled(on);
+        }
         ui.separator();
         item(ui, icon::FILE_PPT, "Export PowerPoint (Morph)…", None, Action::ExportPptx);
         item(ui, icon::FILE_PDF, "Export PDF…", None, Action::ExportPdf);
@@ -439,6 +447,12 @@ fn insert_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) 
         }
         if big(ui, icon::FILM_STRIP, "Video", false, true).on_hover_text("Embed a video (MP4, MOV, WebM…) — plays in the editor and the show").clicked() {
             out.push(Action::InsertVideo);
+        }
+        if big(ui, icon::YOUTUBE_LOGO, "Web video", app.web_video_dialog.open, true)
+            .on_hover_text("Embed a YouTube, Vimeo or Loom video, or a video link. Tip: paste a link onto the canvas")
+            .clicked()
+        {
+            out.push(Action::InsertWebVideo);
         }
         if big(ui, icon::BEZIER_CURVE, "SVG", false, true).on_hover_text("Insert a vector graphic — stays crisp at any zoom").clicked() {
             out.push(Action::InsertImage);
@@ -725,6 +739,11 @@ pub fn status_bar(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
         if !app.selection.is_empty() {
             ui.label(muted("·".into()));
             ui.label(RichText::new(format!("{} selected", app.selection.len())).size(12.0).color(p.accent));
+        }
+        if app.autosave.enabled && app.path.is_some() {
+            ui.label(muted("·".into()));
+            let state = if app.is_dirty() { format!("{}  Saving…", icon::CLOUD_ARROW_UP) } else { format!("{}  Saved", icon::CLOUD_CHECK) };
+            ui.label(muted(state)).on_hover_text("AutoSave is on (File → AutoSave)");
         }
         if let Some((msg, until)) = app.toast().cloned()
             && ui.input(|i| i.time) < until

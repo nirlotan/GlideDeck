@@ -1135,3 +1135,125 @@ fn hebrew_in_the_properties_field_edits_in_visual_order() {
     assert_eq!(content(&h), "שלו-ם!");
     snapshot(&mut h, "hebrew-properties");
 }
+
+#[test]
+fn autosave_writes_the_file_once_changes_settle() {
+    let dir = std::env::temp_dir().join(format!("gd-autosave-ui-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("talk.glide.json");
+    let doc = Document::new("Talk");
+    doc.save(&file).unwrap();
+    let mut h = harness(Some(doc.clone()));
+    h.state_mut().path = Some(file.clone());
+    h.state_mut().saved = doc;
+    h.run_steps(2);
+    h.state_mut().insert_text_role(glide_core::TextRole::Title);
+    h.state_mut().focus_text_editor = false;
+    h.run_steps(2);
+    assert!(h.state().is_dirty());
+    // A quarter of a second per step: give it a few seconds.
+    for _ in 0..16 {
+        h.run_steps(1);
+    }
+    assert!(!h.state().is_dirty(), "saved by AutoSave");
+    assert_eq!(Document::load(&file).unwrap().elements.len(), 1);
+
+    // Turned off, changes wait for an explicit save.
+    h.state_mut().autosave.enabled = false;
+    h.state_mut().insert_text_role(glide_core::TextRole::Body);
+    h.state_mut().focus_text_editor = false;
+    for _ in 0..16 {
+        h.run_steps(1);
+    }
+    assert!(h.state().is_dirty());
+    assert_eq!(Document::load(&file).unwrap().elements.len(), 1);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn web_videos_show_their_poster_and_offer_the_browser() {
+    let mut h = harness(Some(Document::new("Web")));
+    h.state_mut().camera = glide_core::Camera::default();
+    let meta = crate::webvideo::WebVideoMeta { url: "https://youtu.be/dQw4w9WgXcQ".into(), title: "A talk".into(), poster: None, size: (1280.0, 720.0) };
+    let id = h.state_mut().add_web_video(meta, None);
+    h.run_steps(4);
+    let el = h.state().doc.get(&id).unwrap().clone();
+    let ElementKind::Video(m) = &el.kind else { panic!("a video") };
+    assert_eq!(m.url.as_deref(), Some("https://youtu.be/dQw4w9WgXcQ"));
+    assert_eq!(el.name, "A talk");
+    assert!(!m.path.is_empty(), "a poster is stored even without a thumbnail");
+    // Nothing goes over the network just by showing it.
+    assert!(!matches!(h.state_mut().renderer.video_status(m.source()), glide_render::VideoStatus::Loading));
+    for _ in 0..20 {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    snapshot(&mut h, "web-video");
+}
+
+#[test]
+fn unsaved_work_is_kept_and_recovered_after_a_crash() {
+    let dir = std::env::temp_dir().join(format!("gd-recovery-ui-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // A session with unsaved work keeps a recovery copy.
+    let mut h = harness(Some(Document::new("Draft")));
+    h.state_mut().autosave = crate::autosave::AutoSave::new(Some(dir.clone()));
+    h.run_steps(2);
+    h.state_mut().insert_text_role(glide_core::TextRole::Title);
+    h.state_mut().focus_text_editor = false;
+    for _ in 0..28 {
+        h.run_steps(1);
+    }
+    let copies = || std::fs::read_dir(dir.join("recovery")).map(|d| d.count()).unwrap_or(0);
+    assert_eq!(copies(), 2, "a copy and its details");
+    // Closing normally removes it.
+    h.state_mut().autosave.discard_copy();
+    assert_eq!(copies(), 0);
+
+    // A copy left behind by a session that crashed is offered on the next start.
+    let mut lost = Document::new("Lost talk");
+    lost.add(glide_core::Element::new(ElementKind::Text(glide_core::TextBlock::new("Keep me"))));
+    let old = crate::autosave::now_unix() - 3600;
+    let meta = crate::autosave::Meta { original: None, base_dir: dir.clone(), title: "Lost talk".into(), saved: old, heartbeat: old, pid: 1 };
+    crate::autosave::write_copy(&dir, "1-1", &lost, &meta).unwrap();
+    let mut h = harness(None);
+    h.state_mut().autosave = crate::autosave::AutoSave::new(Some(dir.clone()));
+    h.run_steps(3);
+    snapshot(&mut h, "recover-dialog");
+    h.get_by_label("Recover").click();
+    h.run_steps(3);
+    assert_eq!(h.state().doc.title, "Lost talk");
+    assert!(h.state().is_dirty(), "recovered work is unsaved until saved");
+    assert!(h.state().autosave.found.is_empty());
+    assert!(h.query_by_label("Recover unsaved work").is_none());
+    std::fs::remove_dir_all(dir).ok();
+}
+
+/// `GLIDEDECK_WEB_VIDEO=<direct video link> cargo test -p glidedeck web_video_plays -- --ignored`
+#[test]
+#[ignore = "needs the network and FFmpeg"]
+fn web_video_plays_in_the_editor() {
+    let Some(url) = std::env::var_os("GLIDEDECK_WEB_VIDEO") else { return };
+    let mut h = harness(Some(Document::new("Web")));
+    h.state_mut().camera = glide_core::Camera::default();
+    let meta = crate::webvideo::WebVideoMeta { url: url.to_string_lossy().into_owned(), title: "Clip".into(), poster: None, size: (640.0, 360.0) };
+    let id = h.state_mut().add_web_video(meta, None);
+    h.run_steps(2);
+    assert!(h.state_mut().toggle_video(&id), "asked to play");
+    let source = url.to_string_lossy().into_owned();
+    let mut playing = false;
+    for _ in 0..100 {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        if let glide_render::VideoStatus::Ready { playing: true, position, .. } = h.state_mut().renderer.video_status(&source)
+            && position > 0.5
+        {
+            playing = true;
+            break;
+        }
+    }
+    snapshot(&mut h, "web-video-playing");
+    assert!(playing, "streams and plays");
+}

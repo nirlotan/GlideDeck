@@ -45,7 +45,7 @@ impl GlideDeckApp {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_media_element(
+    pub(crate) fn add_media_element(
         &mut self,
         kind: fn(Media) -> ElementKind,
         reference: String,
@@ -164,6 +164,11 @@ impl GlideDeckApp {
 
     /// Handles text that arrived via a paste event or the clipboard.
     fn paste_text(&mut self, ctx: &egui::Context, text: &str, at_screen: Option<DVec2>) {
+        // A link to a video becomes a web video.
+        if glide_core::weblink::is_video_link(text.trim()) {
+            self.insert_web_video(ctx, text.trim(), at_screen);
+            return;
+        }
         // Our own elements?
         if let Ok(v) = serde_json::from_str::<serde_json::Value>(text)
             && v.get("type").and_then(|t| t.as_str()) == Some(CLIPBOARD_TAG)

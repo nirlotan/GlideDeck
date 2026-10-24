@@ -319,6 +319,23 @@ editable in Properties → Layout.
   clicking a video toggles playback instead of advancing. Audio plays through the system
   output. Videos need FFmpeg (see Prerequisites); without it they show as a poster
   placeholder.
+- **Insert → Web video** (or paste a link onto the canvas) adds a YouTube, Vimeo or Loom
+  video, or a direct link to a video file (`.mp4`, `.webm`, an HLS `.m3u8`…). GlideDeck
+  fetches its title and poster image, saves the poster in `assets/`, and keeps the link in
+  the element (`"url"`). Nothing is fetched just by opening the presentation: the video
+  streams only when it plays, and when a show starts GlideDeck looks up its streams so it
+  starts promptly.
+  - In GlideDeck it plays on the canvas like any video, zooming and turning with the
+    slides. Direct links need only FFmpeg; site links also need
+    [yt-dlp](https://github.com/yt-dlp/yt-dlp) (`winget install yt-dlp`,
+    `brew install yt-dlp`), which turns the page into its video and audio streams, as VLC
+    and mpv do. Without it, clicking the video opens it in the browser.
+  - In the **web page export** it plays in the site's own player (YouTube's
+    privacy-enhanced youtube-nocookie.com), laid over the canvas and moving with the
+    camera. YouTube only plays embeds on pages served from a web server; on a page opened
+    as a file, a click opens the video on YouTube instead.
+  - In **PowerPoint** it becomes its poster, linked to the video (a click in the show opens
+    it); in PDF it is the poster.
 - Media is **never embedded in the JSON**. Files are copied into an `assets/` folder next to
   the document, named by content hash, and referenced by relative path
   (`"path": "assets/1f3c….png"`). Save As copies the referenced assets to the new folder.
@@ -428,6 +445,19 @@ line:
 glidedeck arrange deck.glide.json --layout orbits
 ```
 
+### AutoSave and crash recovery
+
+- **AutoSave** (File → AutoSave, on by default): a presentation that has a file is saved
+  about two seconds after a change, once you stop dragging or typing. The status bar shows
+  *Saving…* / *Saved*. Closing with AutoSave on saves instead of asking. Untitled
+  presentations are not saved anywhere until you choose Save As.
+- **Crash recovery**: whenever there are unsaved changes (with or without AutoSave, saved or
+  untitled), GlideDeck keeps a copy in the `recovery` folder of your settings folder, a few
+  seconds after each change. Saving, or closing normally, removes it. If GlideDeck stops
+  without closing (a crash, a power cut), the next start shows **Recover unsaved work**:
+  **Recover** opens the copy (still unsaved, so you choose where to save it), **Discard**
+  deletes it, and **Decide later** keeps it for next time.
+
 ### Recent files
 
 **File → Open recent** lists the last 10 documents (and PowerPoint files) you opened, saved
@@ -481,7 +511,8 @@ glidedeck arrange deck.glide.json --layout spiral
   canvas. Use `--step N` to render slide N exactly as presented, `--element ID` to frame one
   element, or `--center=x,y --zoom Z --rotation DEG` for an explicit camera.
 - `export-pptx` writes the Morph deck described above.
-- `export-html` writes the self-playing web page described above.
+- `export-html` writes the self-playing web page described above (web videos play in their
+  site's player there).
 - `mcp [--root DIR]` runs the MCP server on stdio for AI assistants. Relative project paths
   resolve against `--root`, which defaults to the current folder.
 - `agent-setup [--project DIR | --user] [--no-mcp | --no-skill]` installs the GlideDeck

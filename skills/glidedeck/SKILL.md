@@ -18,8 +18,13 @@ If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
 `export_pptx`, `export_pdf`, `export_html`, `import_pptx`, `arrange_slides`, `animate`,
 `auto_animate`, `set_transitions`, `set_notes`, `clear_animations`, `save_as`,
-`open_in_editor`, `search_icons`, `list_fonts`, `add_font` and
-`edit_presentation`. Prefer them.
+`open_in_editor`, `search_icons`, `list_fonts`, `add_font`, `add_web_video`
+and `edit_presentation`. Prefer them.
+
+**Videos from the web:** `add_web_video` with a YouTube, Vimeo or Loom link (or
+a direct link to a video file) places the video on a slide with its title and
+poster. It plays in the web page export (`export_html`) in the site's player,
+and in GlideDeck itself.
 
 **Fonts:** any font installed on the user's computer works. Find exact family
 names with `list_fonts` (e.g. `query: "serif"`), then set one per text box with

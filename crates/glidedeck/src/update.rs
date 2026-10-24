@@ -97,7 +97,7 @@ impl Updater {
 }
 
 /// Runs `curl` and returns its output (without flashing a console window on Windows).
-fn curl(args: &[&str]) -> Result<Vec<u8>, String> {
+pub(crate) fn curl(args: &[&str]) -> Result<Vec<u8>, String> {
     let mut cmd = std::process::Command::new("curl");
     cmd.args(args).arg("-A").arg(format!("GlideDeck/{VERSION}"));
     #[cfg(windows)]
@@ -110,7 +110,7 @@ fn curl(args: &[&str]) -> Result<Vec<u8>, String> {
         Ok(out.stdout)
     } else {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_owned();
-        Err(if err.is_empty() { "no connection to GitHub".into() } else { err })
+        Err(if err.is_empty() { "no connection".into() } else { err })
     }
 }
 
@@ -177,10 +177,16 @@ pub fn evaluate(release: &Value, current: &str) -> UpdateState {
 
 /// Opens a URL or file with the system's default handler.
 pub fn open_external(target: &str) {
+    // Web addresses go to the URL handler directly: `cmd /C start` would
+    // read `&` in a query string as a command separator.
     #[cfg(windows)]
     let result = {
         use std::os::windows::process::CommandExt;
-        std::process::Command::new("cmd").args(["/C", "start", "", target]).creation_flags(0x0800_0000).spawn()
+        if glide_core::weblink::is_web_url(target) {
+            std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", target.trim()]).spawn()
+        } else {
+            std::process::Command::new("cmd").args(["/C", "start", "", target]).creation_flags(0x0800_0000).spawn()
+        }
     };
     #[cfg(target_os = "macos")]
     let result = std::process::Command::new("open").arg(target).spawn();

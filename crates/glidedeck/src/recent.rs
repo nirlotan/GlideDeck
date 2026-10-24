@@ -13,7 +13,7 @@ pub struct RecentFiles {
 }
 
 /// The per-user settings folder for GlideDeck.
-fn settings_dir() -> Option<PathBuf> {
+pub(crate) fn settings_dir() -> Option<PathBuf> {
     if cfg!(windows) {
         std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("GlideDeck"))
     } else if cfg!(target_os = "macos") {

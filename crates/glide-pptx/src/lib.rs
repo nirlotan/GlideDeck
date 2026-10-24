@@ -100,6 +100,17 @@ struct SlideOut {
 const REL_IMAGE: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image";
 const REL_VIDEO: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video";
 const REL_MEDIA: &str = "http://schemas.microsoft.com/office/2007/relationships/media";
+const REL_HYPERLINK: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink";
+
+/// A relationship to a web address (a web video's link).
+fn link_rel(rels: &mut Vec<(String, &'static str, String)>, url: &str) -> String {
+    if let Some((r, _, _)) = rels.iter().find(|(_, t, g)| *t == REL_HYPERLINK && g == url) {
+        return r.clone();
+    }
+    let r = format!("rId{}", rels.len() + 2);
+    rels.push((r.clone(), REL_HYPERLINK, url.to_owned()));
+    r
+}
 
 fn rel(rels: &mut Vec<(String, &'static str, String)>, typ: &'static str, name: &str) -> String {
     let target = format!("../media/{name}");
@@ -271,8 +282,11 @@ fn build_slide(
                 Some(shape(id, &name, &descr, &xfrm, &geom, "<a:noFill/>".into(), "<a:ln><a:noFill/></a:ln>".into(), Some(body)))
             }
             ElementKind::Image(m) | ElementKind::Svg(m) | ElementKind::Video(m) => {
+                // A web video exports as its poster, linked to the video.
+                let web = matches!(el.kind, ElementKind::Video(_)).then(|| m.url.clone()).flatten().filter(|u| glide_core::weblink::is_web_url(u));
+                let load_kind = if web.is_some() { ElementKind::Image(m.clone()) } else { el.kind.clone() };
                 let entry = media.entry(m.path.clone()).or_insert_with(|| {
-                    let loaded = load_media(base_dir, &m.path, media_order.len() + 1, &el.kind);
+                    let loaded = load_media(base_dir, &m.path, media_order.len() + 1, &load_kind);
                     if loaded.is_some() {
                         media_order.push(m.path.clone());
                     }
@@ -284,9 +298,16 @@ fn build_slide(
                         let svg_rid = med.svg.as_ref().map(|s| rel(&mut media_rels, REL_IMAGE, s));
                         let video_rids = med.video.as_ref().map(|v| (rel(&mut media_rels, REL_VIDEO, v), rel(&mut media_rels, REL_MEDIA, v)));
                         let geom = image_geom(m.width, m.height, m.corner_radius);
-                        Some(match video_rids {
+                        let pic = match video_rids {
                             Some((link, embed)) => video_picture(id, &name, &descr, &xfrm, &image_rid, &link, &embed, &geom, &fx),
                             None => picture(id, &name, &descr, &xfrm, &image_rid, svg_rid.as_deref(), opacity, &geom, &fx),
+                        };
+                        Some(match &web {
+                            Some(url) => {
+                                let rid = link_rel(&mut media_rels, url.trim());
+                                pic.replacen(r#""/><p:cNvPicPr>"#, &format!(r#""><a:hlinkClick r:id="{rid}"/></p:cNvPr><p:cNvPicPr>"#), 1)
+                            }
+                            None => pic,
                         })
                     }
                     None => {
@@ -712,7 +733,11 @@ fn slide_rels(media: &[(String, &'static str, String)]) -> String {
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="{REL_BASE}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>"#
     );
     for (rid, typ, target) in media {
-        let _ = write!(s, r#"<Relationship Id="{rid}" Type="{typ}" Target="{target}"/>"#);
+        if *typ == REL_HYPERLINK {
+            let _ = write!(s, r#"<Relationship Id="{rid}" Type="{typ}" Target="{}" TargetMode="External"/>"#, esc(target));
+        } else {
+            let _ = write!(s, r#"<Relationship Id="{rid}" Type="{typ}" Target="{target}"/>"#);
+        }
     }
     s.push_str("</Relationships>");
     s

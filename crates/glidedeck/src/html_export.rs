@@ -5,7 +5,9 @@
 //! Everything is vector data drawn on a `<canvas>` by a small player
 //! (`html_player.js`) that re-implements the show's maths. Text is exported
 //! as the very glyph outlines the app draws, so it looks the same without any
-//! fonts installed. Images and SVGs are embedded; videos are copied next to
+//! fonts installed. Web videos (YouTube, Vimeo, Loom, video links) play in
+//! the site's own player, laid over the canvas and moving with the camera.
+//! Images and SVGs are embedded; videos are copied next to
 //! the HTML file (they are usually too big to inline).
 
 use crate::anim::Measure;
@@ -230,6 +232,27 @@ fn element_json(cx: &mut Ctx, el: &Element, effects: &[Effect]) -> Value {
             m.insert("k".into(), json!("svg"));
             m.insert("src".into(), json!(cx.embed(&media.path)));
         }
+        ElementKind::Video(media) if media.url.as_deref().is_some_and(glide_core::weblink::is_web_url) => {
+            let url = media.url.as_deref().unwrap_or_default().trim();
+            m.insert("k".into(), json!("embed"));
+            m.insert("rad".into(), json!(r4(media.corner_radius)));
+            // The poster draws like an image until the video plays.
+            m.insert("src".into(), json!(cx.embed(&media.path)));
+            m.insert("url".into(), json!(url));
+            m.insert("title".into(), json!(el.display_name()));
+            match glide_core::weblink::site_video(url) {
+                Some(v) => {
+                    m.insert("player".into(), json!(v.player_url(true, media.muted, media.looping)));
+                    m.insert("site".into(), json!(v.site_name().to_lowercase()));
+                }
+                None => {
+                    m.insert("media".into(), json!(url));
+                }
+            }
+            m.insert("loop".into(), json!(media.looping));
+            m.insert("muted".into(), json!(media.muted));
+            m.insert("autoplay".into(), json!(media.autoplay));
+        }
         ElementKind::Video(media) => {
             m.insert("k".into(), json!("video"));
             m.insert("rad".into(), json!(r4(media.corner_radius)));
@@ -323,6 +346,11 @@ pub fn html_page(deck: &Value, title: &str) -> String {
   #hud.hidden {{ opacity: 0; pointer-events: none; }}
   #help {{ position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.55); color: #fff; font: 15px/1.7 system-ui, sans-serif; }}
   #help.show {{ display: grid; }}
+  #embeds {{ position: fixed; inset: 0; pointer-events: none; overflow: hidden; }}
+  #embeds .embed {{ position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; display: none; }}
+  #embeds iframe, #embeds video {{ position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; pointer-events: auto; }}
+  #embeds .play {{ position: absolute; left: 50%; top: 50%; width: 11%; transform: translate(-50%, -50%); }}
+  #embeds .play svg {{ display: block; width: 100%; height: auto; }}
   #help div {{ background: #16161c; padding: 22px 28px; border-radius: 14px; }}
   #help b {{ display: inline-block; min-width: 128px; }}
 </style>
@@ -401,6 +429,55 @@ mod tests {
         assert_eq!(deck["path"][1]["builds"][0]["fx"], "typewriter");
         // Every text has outlines, so the browser needs no fonts.
         assert!(els.iter().filter(|e| e["k"] == "text").all(|e| !e["runs"].as_array().unwrap().is_empty()));
+    }
+
+    #[test]
+    fn web_videos_play_in_the_site_player_and_link_from_powerpoint() {
+        let dir = std::env::temp_dir().join(format!("gd-webvideo-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::RgbaImage::from_pixel(16, 9, image::Rgba([200, 30, 30, 255])).write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let poster = assets::import_bytes(&dir, png.get_ref(), "png").unwrap();
+
+        let mut doc = Document::new("Web");
+        let frame = doc.add(Element::new(ElementKind::Frame(Frame::widescreen(1600.0))));
+        doc.path.push(Step::new(frame));
+        let mut yt = glide_core::Media::new(poster.clone(), 1280.0, 720.0);
+        yt.url = Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30".into());
+        yt.muted = true;
+        let mut clip = glide_core::Media::new(poster, 1280.0, 720.0);
+        clip.url = Some("https://cdn.example.com/clip.mp4".into());
+        doc.add(Element::new(ElementKind::Video(yt)).with_transform(Transform { x: -300.0, y: 0.0, scale: 0.3, rotation: 0.0 }));
+        doc.add(Element::new(ElementKind::Video(clip)).with_transform(Transform { x: 300.0, y: 0.0, scale: 0.3, rotation: 0.0 }));
+
+        let mut text = TextEngine::new();
+        let (deck, report) = deck_json(&doc, &mut text, Some(dir.clone()), None);
+        assert_eq!(report.media_files, 0, "web videos are not copied");
+        let embeds: Vec<&Value> = deck["elements"].as_array().unwrap().iter().filter(|e| e["k"] == "embed").collect();
+        assert_eq!(embeds.len(), 2);
+        assert_eq!(
+            embeds[0]["player"],
+            "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&playsinline=1&autoplay=1&mute=1&start=30"
+        );
+        assert_eq!(embeds[0]["site"], "youtube");
+        assert_eq!(embeds[1]["media"], "https://cdn.example.com/clip.mp4");
+        // The poster is embedded so it draws before (and instead of) the player.
+        let key = embeds[0]["src"].as_str().unwrap();
+        assert!(deck["media"][key].as_str().unwrap().starts_with("data:image/png;base64,"));
+        assert!(html_page(&deck, "Web").contains("#embeds"));
+
+        // PowerPoint: the poster, linked to the video.
+        let out = dir.join("web.pptx");
+        glide_pptx::export(&doc, Some(&dir), &mut text, &out).unwrap();
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&out).unwrap()).unwrap();
+        let mut rels = String::new();
+        std::io::Read::read_to_string(&mut zip.by_name("ppt/slides/_rels/slide1.xml.rels").unwrap(), &mut rels).unwrap();
+        assert!(rels.contains(r#"Target="https://www.youtube.com/watch?v=dQw4w9WgXcQ&amp;t=30" TargetMode="External""#), "{rels}");
+        let mut slide = String::new();
+        std::io::Read::read_to_string(&mut zip.by_name("ppt/slides/slide1.xml").unwrap(), &mut slide).unwrap();
+        assert_eq!(slide.matches("<a:hlinkClick r:id=").count(), 2);
+        assert!(!slide.contains("videoFile"), "no embedded video file for web videos");
+        std::fs::remove_dir_all(dir).ok();
     }
 
     #[test]

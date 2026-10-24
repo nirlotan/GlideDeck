@@ -465,11 +465,20 @@ pub struct Media {
     /// Video: start playing when its slide is reached in the show.
     #[serde(default = "yes", skip_serializing_if = "is_true")]
     pub autoplay: bool,
+    /// Video: a web address to play (a YouTube, Vimeo or Loom page, or a
+    /// direct link to a video file). `path` then holds a poster image.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }
 
 impl Media {
     pub fn new(path: impl Into<String>, width: f64, height: f64) -> Self {
-        Media { path: path.into(), width, height, corner_radius: 0.0, looping: false, muted: false, autoplay: true }
+        Media { path: path.into(), width, height, corner_radius: 0.0, looping: false, muted: false, autoplay: true, url: None }
+    }
+
+    /// What to play: the web address of a web video, otherwise the file.
+    pub fn source(&self) -> &str {
+        self.url.as_deref().unwrap_or(&self.path)
     }
 }
 

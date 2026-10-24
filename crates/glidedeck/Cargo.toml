@@ -27,6 +27,7 @@ png.workspace = true
 rfd.workspace = true
 roxmltree = "0.21"
 unicode-bidi = "0.3"
+serde.workspace = true
 serde_json.workspace = true
 zip.workspace = true
 

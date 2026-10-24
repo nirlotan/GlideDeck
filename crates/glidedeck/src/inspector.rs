@@ -489,11 +489,25 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
                 });
                 ui.label(RichText::new("Rendered as true vectors — crisp at any zoom, exported to PowerPoint as SVG.").size(11.5).color(p.text_muted));
             }),
-            ElementKind::Video(m) => card(ui, "Video", |ui| {
+            ElementKind::Video(m) => card(ui, if m.url.is_some() { "Web video" } else { "Video" }, |ui| {
                 video_status = Some(m.clone());
                 grid(ui, "video", |ui| {
-                    label(ui, "File");
-                    ui.label(RichText::new(&m.path).monospace().size(11.0).color(p.text_muted));
+                    match &m.url {
+                        Some(url) => {
+                            label(ui, "Link");
+                            ui.horizontal(|ui| {
+                                let short: String = url.trim_start_matches("https://").trim_start_matches("www.").chars().take(34).collect();
+                                ui.label(RichText::new(short).monospace().size(11.0).color(p.text_muted)).on_hover_text(url);
+                                if ui.small_button(icon::ARROW_SQUARE_OUT).on_hover_text("Open in the browser").clicked() {
+                                    crate::webvideo::open_in_browser(url);
+                                }
+                            });
+                        }
+                        None => {
+                            label(ui, "File");
+                            ui.label(RichText::new(&m.path).monospace().size(11.0).color(p.text_muted));
+                        }
+                    }
                     ui.end_row();
                     size_row(ui, &mut m.width, &mut m.height);
                     label(ui, "Corners");
@@ -601,21 +615,25 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
         replace_image_file(app, ui.ctx(), &id);
     }
     if let Some(m) = video_status {
-        card(ui, "Player", |ui| match app.renderer.video_status(&m.path) {
+        card(ui, "Player", |ui| match app.renderer.video_status(m.source()) {
             glide_render::VideoStatus::Ready { playing, position, duration } => {
                 ui.horizontal(|ui| {
                     let label = if playing { format!("{}  Pause", icon::PAUSE) } else { format!("{}  Play", icon::PLAY) };
                     if ui.button(label).clicked() {
-                        app.renderer.video_set_playing(&m.path, !playing, m.looping, m.muted);
+                        app.renderer.video_set_playing(m.source(), !playing, m.looping, m.muted);
                     }
                     if ui.button(format!("{}  Restart", icon::ARROW_COUNTER_CLOCKWISE)).clicked() {
-                        app.renderer.video_restart(&m.path);
+                        app.renderer.video_restart(m.source());
                     }
                     ui.label(RichText::new(format!("{:.0}:{:02.0} / {:.0}:{:02.0}", (position / 60.0).floor(), position % 60.0, (duration / 60.0).floor(), duration % 60.0)).color(p.text_muted));
                 });
             }
             glide_render::VideoStatus::Loading => {
-                ui.label(RichText::new("Reading video…").color(p.text_muted));
+                ui.label(RichText::new(if m.url.is_some() { "Connecting to the video…" } else { "Reading video…" }).color(p.text_muted));
+            }
+            glide_render::VideoStatus::Unavailable(reason) if m.url.is_some() => {
+                ui.label(RichText::new(format!("{}  {reason}", icon::WARNING)).color(p.danger));
+                ui.label(RichText::new("It still plays in the web page export (Present → Web page), and clicking it opens it in the browser.").size(11.5).color(p.text_muted));
             }
             glide_render::VideoStatus::Unavailable(reason) => {
                 ui.label(RichText::new(format!("{}  {reason}", icon::WARNING)).color(p.danger));

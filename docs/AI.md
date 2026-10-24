@@ -151,6 +151,7 @@ MCP server also tells the assistant the workflow when it connects.
 | `add_slide` | Adds a layout slide and fills its text fields and icons |
 | `update_elements` | Changes text, icons, colors or fonts by id |
 | `add_text` / `add_image` | Adds a text box or an image (copied into `assets/`) to a slide |
+| `add_web_video` | Puts a YouTube, Vimeo or Loom video (or a video link) on a slide, with its poster |
 | `set_theme` | Restyles the whole deck |
 | `remove_slide` | Removes a slide and its content |
 | `render_slide` | Renders a slide to PNG and returns the image, so the assistant can check its work |

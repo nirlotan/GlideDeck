@@ -422,16 +422,116 @@
     const f = els[path[step].frame];
     const fa = (-f.r * PI) / 180, s = abs(f.s) || 1;
     els.forEach((el) => {
-      if (el.k !== 'video' || el.hidden) return;
-      const v = videoFor(el);
-      if (!v) return;
+      if ((el.k !== 'video' && el.k !== 'embed') || el.hidden) return;
       const dx = el.x - f.x, dy = el.y - f.y;
       const lx = (cos(fa) * dx - sin(fa) * dy) / s, ly = (sin(fa) * dx + cos(fa) * dy) / s;
       const inside = abs(lx) <= f.w / 2 && abs(ly) <= f.h / 2;
+      if (el.k === 'embed') {
+        if (inside && el.autoplay && !opensOutside(el)) playEmbed(el);
+        else if (!inside) stopEmbed(el);
+        return;
+      }
+      const v = videoFor(el);
+      if (!v) return;
       if (inside && el.autoplay) v.play().catch(() => {});
       else v.pause();
     });
   }
+
+  // --- web videos (YouTube, Vimeo, Loom, video links) ---------------------------------------
+  // A site's player is a page from that site, which can't be drawn into the
+  // canvas: the poster draws like an image, and a layer that follows the
+  // camera holds a play badge and, once played, the site's own player.
+  const embedLayer = document.createElement('div');
+  embedLayer.id = 'embeds';
+  canvas.after(embedLayer);
+  const embeds = new Map();
+  const PLAY_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="rgba(0,0,0,.55)"/><path d="M26 19 L47 32 L26 45 Z" fill="#fff"/></svg>';
+  function embedFor(el) {
+    let e = embeds.get(el.id);
+    if (!e) {
+      const box = document.createElement('div');
+      box.className = 'embed';
+      const badge = document.createElement('div');
+      badge.className = 'play';
+      badge.innerHTML = PLAY_SVG;
+      box.appendChild(badge);
+      embedLayer.appendChild(box);
+      e = { box, badge, node: null, size: '' };
+      embeds.set(el.id, e);
+    }
+    return e;
+  }
+  // YouTube refuses to play embeds on pages opened as local files (they send
+  // no referrer), so there the video opens on YouTube instead.
+  const opensOutside = (el) => el.site === 'youtube' && location.protocol === 'file:';
+  function playEmbed(el) {
+    const e = embedFor(el);
+    if (e.node) return;
+    if (opensOutside(el)) { window.open(el.url, '_blank', 'noopener'); return; }
+    let node;
+    if (el.player) {
+      node = document.createElement('iframe');
+      node.src = el.player;
+      node.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+      node.referrerPolicy = 'strict-origin-when-cross-origin';
+      node.title = el.title || 'Video';
+    } else {
+      node = document.createElement('video');
+      node.src = el.media;
+      node.controls = true;
+      node.autoplay = true;
+      node.playsInline = true;
+      node.loop = !!el.loop;
+      node.muted = !!el.muted;
+      // Keys stay with the show.
+      node.addEventListener('focus', () => canvas.focus({ preventScroll: true }));
+    }
+    e.node = node;
+    e.box.appendChild(node);
+    e.badge.style.display = 'none';
+  }
+  function stopEmbed(el) {
+    const e = embeds.get(el.id);
+    if (!e || !e.node) return;
+    e.node.remove();
+    e.node = null;
+    e.badge.style.display = '';
+  }
+  // Places each web video's layer over its element. The layer is sized in
+  // screen pixels (so a site's player lays out its controls at their normal
+  // size) and the matrix keeps only the rotation and position.
+  function layoutEmbeds(items, vm, vis, fade) {
+    const shown = new Set();
+    if (!show.blank) {
+      for (const it of items) {
+        if (it.el.k !== 'embed') continue;
+        const G = itemGeometry(it, vm, 1, vis, show.cam.zoom);
+        if (!G) continue;
+        const e = embedFor(it.el), m = G.m, k = Math.hypot(m[0], m[1]) || 1;
+        const w = G.w * k, h = G.h * k;
+        const size = `${round(w)}x${round(h)}`;
+        if (size !== e.size) {
+          e.size = size;
+          e.box.style.width = `${w}px`;
+          e.box.style.height = `${h}px`;
+          e.box.style.borderRadius = it.el.rad > 0 ? `${it.el.rad * k}px` : '';
+        }
+        e.box.style.transform = `matrix(${m[0] / k},${m[1] / k},${m[2] / k},${m[3] / k},${m[4]},${m[5]}) translate(${-w / 2}px,${-h / 2}px)`;
+        e.box.style.opacity = String(clamp01(it.o) * (1 - fade));
+        e.box.style.display = 'block';
+        shown.add(it.el.id);
+      }
+    }
+    for (const [id, e] of embeds) if (!shown.has(id)) e.box.style.display = 'none';
+  }
+  // Clicking a site's player gives it the keyboard; take it back so the
+  // arrow keys keep driving the show.
+  canvas.tabIndex = -1;
+  window.addEventListener('blur', () => setTimeout(() => {
+    const a = document.activeElement;
+    if (a && a.tagName === 'IFRAME' && embedLayer.contains(a)) canvas.focus({ preventScroll: true });
+  }, 0));
 
   // --- drawing -------------------------------------------------------------------------------
   // Two renderers share the same scene: WebGL2, which matches the app pixel for
@@ -846,6 +946,7 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
             }
             break;
           }
+          case 'embed':
           case 'image': {
             const img = imageFor(el.src);
             if (img) drawTexture(texture(el.src, img, true), m, w, h, el.rad, opacity);
@@ -959,9 +1060,9 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
         const opacity = clamp01(it.o);
         const sh = it.shadow || el.sh;
         let shape = null;
-        if (el.k === 'rect' || el.k === 'frame' || el.k === 'image') shape = roundRect(w, h, el.rad);
+        if (el.k === 'rect' || el.k === 'frame' || el.k === 'image' || el.k === 'embed') shape = roundRect(w, h, el.rad);
         else if (el.k === 'ellipse') shape = ellipsePath(w, h);
-        if (sh && shape) drawShadow(shape, sh, m, opacity);
+        if (sh && shape && el.k !== 'embed') drawShadow(shape, sh, m, opacity);
         ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
         ctx.globalAlpha = opacity;
         switch (el.k) {
@@ -995,6 +1096,7 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
             }
             break;
           }
+          case 'embed':
           case 'image': {
             const img = imageFor(el.src);
             if (img) { ctx.save(); if (el.rad > 0) ctx.clip(shape); ctx.drawImage(img, -w / 2, -h / 2, w, h); ctx.restore(); }
@@ -1096,6 +1198,7 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
 
   function render() {
     R.begin(canvas.width, canvas.height);
+    let layout = null;
     if (path.length) {
       const items = scene(show.clock, show.now);
       applyParallax(items, show.cam, vp);
@@ -1105,8 +1208,10 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
       const fade = fadeAmount(show.tween);
       if (fade > 0) R.overlay(background, round(fade * 255) / 255);
       if (show.blank) R.overlay(show.blank === '#000' ? [0, 0, 0] : [255, 255, 255], 1);
+      layout = [items, vm, vis, fade];
     }
     R.end();
+    if (layout) layoutEmbeds(...layout);
     count.textContent = path.length ? `${show.step + 1} / ${path.length}` : '';
   }
 
@@ -1156,19 +1261,22 @@ float rbox(vec2 p, vec2 h, float r) { vec2 q = abs(p) - h + vec2(r); return leng
     if (k === '?') help.classList.toggle('show');
     if (k === 'Escape') help.classList.remove('show');
   });
+  // The topmost video or web video under a point.
   function videoAt(px, py) {
     const [wx, wy] = screenToWorld(show.cam, px, py, vp);
     for (let i = els.length - 1; i >= 0; i--) {
       const el = els[i];
-      if (el.k !== 'video' || el.hidden) continue;
+      if ((el.k !== 'video' && el.k !== 'embed') || el.hidden) continue;
       const th = (-el.r * PI) / 180, s = abs(el.s) || 1, dx = wx - el.x, dy = wy - el.y;
       const lx = (cos(th) * dx - sin(th) * dy) / s, ly = (sin(th) * dx + cos(th) * dy) / s;
-      if (abs(lx) <= el.w / 2 && abs(ly) <= el.h / 2) return videoFor(el);
+      if (abs(lx) <= el.w / 2 && abs(ly) <= el.h / 2) return el;
     }
     return null;
   }
   canvas.addEventListener('click', (e) => {
-    const v = videoAt(e.clientX, e.clientY);
+    const el = videoAt(e.clientX, e.clientY);
+    if (el && el.k === 'embed') { playEmbed(el); needsFrame = true; return; }
+    const v = el && videoFor(el);
     if (v) { if (v.paused) v.play().catch(() => {}); else v.pause(); needsFrame = true; return; }
     act({ next: true });
   });

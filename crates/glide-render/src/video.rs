@@ -5,6 +5,10 @@
 //! streams raw RGBA frames, another streams PCM audio into the system output
 //! through cpal. This keeps GlideDeck pure Rust with no C library linking,
 //! while supporting every format FFmpeg does.
+//!
+//! Web videos stream the same way: a direct link goes straight to FFmpeg, and
+//! a YouTube, Vimeo or Loom page is first turned into stream addresses by a
+//! locally installed `yt-dlp`, like media players such as VLC and mpv do.
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::VecDeque;
@@ -50,6 +54,54 @@ fn tool(name: &str) -> Option<PathBuf> {
 /// Location of the `ffmpeg` executable, if installed.
 pub fn ffmpeg_path() -> Option<PathBuf> {
     tool("ffmpeg")
+}
+
+/// Location of the `yt-dlp` executable, if installed.
+pub fn ytdlp_path() -> Option<PathBuf> {
+    tool("yt-dlp")
+}
+
+/// What to decode: a file or stream address, and a separate audio stream
+/// when the site serves sound apart from the picture.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stream {
+    pub video: PathBuf,
+    pub audio: Option<PathBuf>,
+}
+
+/// Turns a web video address into streams FFmpeg can play.
+pub fn resolve_web(url: &str) -> Result<Stream, String> {
+    use glide_core::weblink;
+    if !weblink::is_web_url(url) {
+        return Err("not a web address".into());
+    }
+    let site = weblink::site_video(url);
+    if site.is_none() && weblink::is_direct_video(url) {
+        return Ok(Stream { video: PathBuf::from(url.trim()), audio: None });
+    }
+    let Some(ytdlp) = ytdlp_path() else {
+        return match site {
+            Some(v) => Err(format!("Playing {} videos here needs yt-dlp (winget install yt-dlp, or brew install yt-dlp)", v.site_name())),
+            None => Ok(Stream { video: PathBuf::from(url.trim()), audio: None }),
+        };
+    };
+    let out = command(&ytdlp)
+        .args(["--no-playlist", "--no-warnings", "-g", "-f", "bv*[height<=1080][vcodec!^=av01]+ba/b[height<=1080]/b", "--"])
+        .arg(url.trim())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("could not run yt-dlp: {e}"))?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut lines = text.lines().map(str::trim).filter(|l| weblink::is_web_url(l));
+    match (lines.next(), lines.next()) {
+        (Some(v), a) => Ok(Stream { video: PathBuf::from(v), audio: a.map(PathBuf::from) }),
+        (None, _) => {
+            let err = String::from_utf8_lossy(&out.stderr);
+            let reason = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("no playable stream").trim();
+            Err(format!("yt-dlp could not open this video: {}", reason.trim_start_matches("ERROR: ")))
+        }
+    }
 }
 
 fn command(program: &Path) -> Command {
@@ -154,7 +206,8 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(file: &Path, info: VideoInfo) -> Option<Player> {
+    /// Plays `file`, with sound from `audio` when the sound is a separate stream.
+    pub fn new(file: &Path, audio: Option<&Path>, info: VideoInfo) -> Option<Player> {
         let ffmpeg = ffmpeg_path()?;
         let size = decode_size(&info);
         let shared = Arc::new(Shared {
@@ -172,7 +225,7 @@ impl Player {
             let (shared, file, ffmpeg, info) = (shared.clone(), file.to_path_buf(), ffmpeg.clone(), info.clone());
             std::thread::spawn(move || video_thread(&ffmpeg, &file, &info, size, &shared));
         }
-        let stream = if info.has_audio { audio_stream(&ffmpeg, file, &shared) } else { None };
+        let stream = if info.has_audio || audio.is_some() { audio_stream(&ffmpeg, audio.unwrap_or(file), &shared) } else { None };
         Some(Player { info, size, shared, _stream: stream, shown_seq: 0 })
     }
 
@@ -391,6 +444,33 @@ fn audio_thread(ffmpeg: &Path, file: &Path, rate: u32, channels: usize, s: &Shar
                 return;
             }
             std::thread::sleep(Duration::from_millis(30));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Streams a web video: `GLIDEDECK_WEB_VIDEO=<url> cargo test -p glide-render web_video -- --ignored`.
+    #[test]
+    #[ignore = "needs the network, FFmpeg (and yt-dlp for site links)"]
+    fn web_video_streams() {
+        let Some(url) = std::env::var_os("GLIDEDECK_WEB_VIDEO") else { return };
+        let stream = resolve_web(&url.to_string_lossy()).unwrap();
+        let info = probe(&stream.video).unwrap();
+        let (w, h, rgba) = frame_at(&stream.video, &info, 1.0).expect("a frame");
+        assert_eq!(rgba.len(), (w * h * 4) as usize);
+        println!("{stream:?} {info:?}");
+    }
+
+    #[test]
+    fn site_links_need_yt_dlp_and_files_do_not() {
+        let direct = resolve_web("https://cdn.example.com/a/clip.mp4").unwrap();
+        assert_eq!(direct, Stream { video: PathBuf::from("https://cdn.example.com/a/clip.mp4"), audio: None });
+        assert!(resolve_web("file:///C:/clip.mp4").is_err());
+        if ytdlp_path().is_none() {
+            assert!(resolve_web("https://youtu.be/dQw4w9WgXcQ").unwrap_err().contains("yt-dlp"));
         }
     }
 }

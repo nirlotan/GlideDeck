@@ -28,7 +28,7 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF, or `export_html` for a web page that plays the show in a browser with every effect intact. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF, or `export_html` for a web page that plays the show in a browser with every effect intact. To show a YouTube, Vimeo or Loom video on a slide, use `add_web_video`. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
 Write speaker notes for every slide with `set_notes` (what to say, the number to stress); the presenter sees them in presenter view. \
 MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
 (1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
@@ -156,6 +156,7 @@ impl Server {
             "update_elements" => self.update_elements(args),
             "add_text" => self.add_text(args),
             "add_image" => self.add_image(args),
+            "add_web_video" => self.add_web_video(args),
             "set_theme" => {
                 let path = self.project_path(args, "path")?;
                 let mut doc = load(&path)?;
@@ -584,6 +585,31 @@ impl Server {
         let id = doc.add(Element::new(kind).with_transform(on_slide(&frame, local, width / w.max(1.0))));
         save(&doc, &path)?;
         Ok(vec![text_json(&json!({ "added": id, "note": "The image was copied into the project's assets/ folder." }))])
+    }
+
+    fn add_web_video(&mut self, args: &Value) -> Result<Vec<Value>> {
+        let path = self.project_path(args, "path")?;
+        let mut doc = load(&path)?;
+        let frame = slide_frame(&doc, args)?;
+        let meta = crate::webvideo::fetch(str_arg(args, "url")?).map_err(|e| anyhow::anyhow!(e))?;
+        let (w, h) = meta.size;
+        let mut media = Media::new(crate::webvideo::store_poster(&base_dir(&path), &meta), w, h);
+        media.url = Some(meta.url.clone());
+        media.corner_radius = w.min(h) * 0.03;
+        media.autoplay = args.get("autoplay").and_then(Value::as_bool).unwrap_or(false);
+        let width = args.get("width").and_then(Value::as_f64).unwrap_or(1000.0);
+        let local = DVec2::new(args.get("x").and_then(Value::as_f64).unwrap_or(0.0), args.get("y").and_then(Value::as_f64).unwrap_or(0.0));
+        let mut el = Element::new(ElementKind::Video(media)).with_transform(on_slide(&frame, local, width / w.max(1.0)));
+        el.name = meta.title.clone();
+        el.shadow = Some(glide_core::Shadow::lifted());
+        let id = doc.add(el);
+        save(&doc, &path)?;
+        Ok(vec![text_json(&json!({
+            "added": id,
+            "title": meta.title,
+            "poster": meta.poster.is_some(),
+            "note": "The poster was saved in assets/. The video streams when played: in GlideDeck (FFmpeg, plus yt-dlp for YouTube, Vimeo and Loom) and in the export_html web page. PowerPoint gets the poster linked to the video.",
+        }))])
     }
 
     fn remove_slide(&mut self, args: &Value) -> Result<Vec<Value>> {
@@ -1161,6 +1187,16 @@ fn tool_definitions() -> Vec<Value> {
                 "x": { "type": "number", "default": 0 }, "y": { "type": "number", "default": 0 },
                 "width": { "type": "number", "default": 800 },
             }), &["path", "image"], false),
+        tool("add_web_video", "Add a web video",
+            "Places a YouTube, Vimeo or Loom video (or a direct link to a video file) on a slide, with its title and poster image. It plays in GlideDeck and in the export_html web page (in the site's own player). Slide units: 1600 × 900, origin at the center.",
+            json!({
+                "path": path_prop(),
+                "url": { "type": "string", "description": "Link to the video, e.g. https://www.youtube.com/watch?v=…" },
+                "step": { "type": "integer" },
+                "x": { "type": "number", "default": 0 }, "y": { "type": "number", "default": 0 },
+                "width": { "type": "number", "default": 1000 },
+                "autoplay": { "type": "boolean", "default": false, "description": "Start playing when its slide is reached in the show." },
+            }), &["path", "url"], false),
         tool("set_theme", "Change the theme",
             "Restyles the whole presentation with a theme from `catalog` (colors, fonts and background).",
             json!({ "path": path_prop(), "theme": { "type": "string" } }), &["path", "theme"], false),
@@ -1283,7 +1319,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "export_html", "list_fonts", "add_font", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "export_html", "list_fonts", "add_font", "add_web_video", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
