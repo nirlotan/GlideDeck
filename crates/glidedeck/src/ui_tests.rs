@@ -1102,3 +1102,36 @@ fn font_picker_lists_computer_fonts_and_sets_one() {
     h.run_steps(2);
     let _ = h.get_by_label_contains("Web page");
 }
+
+#[test]
+fn hebrew_in_the_properties_field_edits_in_visual_order() {
+    let t = glide_core::TextBlock::new("שלום");
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(4);
+    let field = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("שלום"));
+    let field = field.unwrap_or_else(|| h.get_all_by_role(egui::accesskit::Role::TextInput).find(|n| n.value().as_deref() == Some("שלום")).expect("text field"));
+    // The line is right-aligned, so clicking the empty left part lands at the end.
+    let r = field.rect();
+    h.event(Event::PointerMoved(Pos2::new(r.left() + 12.0, r.top() + 10.0)));
+    h.event(Event::PointerButton { pos: Pos2::new(r.left() + 12.0, r.top() + 10.0), button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
+    h.event(Event::PointerButton { pos: Pos2::new(r.left() + 12.0, r.top() + 10.0), button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+    h.run_steps(3);
+    h.event(Event::Text("!".into()));
+    h.run_steps(2);
+    let content = |h: &Harness<'_, GlideDeckApp>| match &h.state().doc.get("t").unwrap().kind {
+        ElementKind::Text(t) => t.content.clone(),
+        _ => unreachable!(),
+    };
+    assert_eq!(content(&h), "שלום!");
+    // → walks right on screen, which is backwards through Hebrew.
+    h.key_press(Key::ArrowRight);
+    h.run_steps(1);
+    h.key_press(Key::ArrowRight);
+    h.run_steps(1);
+    h.event(Event::Text("-".into()));
+    h.run_steps(2);
+    assert_eq!(content(&h), "שלו-ם!");
+    snapshot(&mut h, "hebrew-properties");
+}

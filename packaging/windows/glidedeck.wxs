@@ -14,7 +14,7 @@
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64"
              Description="GlideDeck $(var.Version) — local-first zooming presentations" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of GlideDeck is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of GlideDeck is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- Icons for advertised shortcuts must carry the key file's extension. -->

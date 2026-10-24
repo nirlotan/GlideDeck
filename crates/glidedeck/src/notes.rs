@@ -43,13 +43,10 @@ pub fn notes_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
             match step {
                 Some(i) => {
                     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                        ui.add_sized(
-                            ui.available_size(),
-                            egui::TextEdit::multiline(&mut app.doc.path[i].notes)
-                                .id_salt("speaker-notes")
-                                .hint_text("Click to add notes for this slide: what to say, numbers to mention, a reminder to pause…")
-                                .desired_width(f32::INFINITY),
-                        );
+                        let size = ui.available_size();
+                        crate::bidi::multiline(ui, "speaker-notes", &mut app.doc.path[i].notes, |e| {
+                            e.hint_text("Click to add notes for this slide: what to say, numbers to mention, a reminder to pause…").desired_width(f32::INFINITY).min_size(size)
+                        });
                     });
                 }
                 None => {

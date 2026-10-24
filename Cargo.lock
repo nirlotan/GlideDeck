@@ -1617,6 +1617,7 @@ dependencies = [
  "rfd",
  "roxmltree 0.21.1",
  "serde_json",
+ "unicode-bidi",
  "winresource",
  "zip",
 ]

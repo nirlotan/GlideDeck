@@ -251,8 +251,10 @@ the canvas. Editing uses the same text engine that draws it, so Hebrew, Arabic a
 right-to-left / left-to-right text, word motion (Ctrl/⌥+arrows), selection
 (Shift+arrows, drag, double-click a word), clipboard and IME input all behave as in a word
 processor, at any zoom or rotation. **Esc** or clicking outside finishes; an emptied text
-box is removed. The multi-line field in Properties also edits text, but it shows
-right-to-left words in left-to-right order, so use the canvas for those scripts.
+box is removed. The multi-line field in Properties also edits text. It shows Hebrew and
+Arabic in reading order, right-aligned, with ←/→ moving across the screen, as do the
+speaker notes and presenter view. Arabic letters there aren't joined, so the canvas is
+the better place to write Arabic.
 
 **Formatting words and phrases:** while editing, select text and use the floating format
 bar above the text box, or the shortcuts below. With nothing selected, the formatting

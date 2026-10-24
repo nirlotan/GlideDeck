@@ -158,7 +158,7 @@ fn document_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
     card(ui, "Presentation", |ui| {
         grid(ui, "doc", |ui| {
             label(ui, "Title");
-            ui.add(egui::TextEdit::singleline(&mut app.doc.title).hint_text("Untitled").desired_width(f32::INFINITY));
+            crate::bidi::singleline(ui, "doc-title", &mut app.doc.title, |e| e.hint_text("Untitled").desired_width(f32::INFINITY));
             ui.end_row();
             label(ui, "Slides");
             ui.label(format!("{}", app.doc.path.len()));
@@ -217,8 +217,8 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
         card(ui, "Object", |ui| {
             grid(ui, "object", |ui| {
                 label(ui, "Name");
-                let hint = el.display_name();
-                ui.add(egui::TextEdit::singleline(&mut el.name).hint_text(hint).desired_width(f32::INFINITY));
+                let hint = crate::bidi::hint(ui, &el.display_name());
+                crate::bidi::singleline(ui, "element-name", &mut el.name, |e| e.hint_text(hint).desired_width(f32::INFINITY));
                 ui.end_row();
                 label(ui, "Id");
                 ui.label(RichText::new(&el.id).monospace().size(11.5).color(p.text_muted));
@@ -334,7 +334,7 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
             ElementKind::Text(t) => card(ui, "Text", |ui| {
                 // Edit a copy so formatted spans move with the text that changed.
                 let mut content = t.content.clone();
-                let r = ui.add(egui::TextEdit::multiline(&mut content).desired_rows(3).desired_width(f32::INFINITY));
+                let r = crate::bidi::multiline(ui, "text-content", &mut content, |e| e.desired_rows(3).desired_width(f32::INFINITY));
                 if r.changed() {
                     t.set_content(content);
                 }
@@ -342,7 +342,7 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
                     r.request_focus();
                 }
                 ui.label(
-                    RichText::new(format!("{}  Double-click the text on the canvas (or press Enter) to edit it in place. For Hebrew, Arabic and mixed-direction text, edit on the canvas: this field shows right-to-left words in left-to-right order.", icon::CURSOR_TEXT))
+                    RichText::new(format!("{}  Double-click the text on the canvas (or press Enter) to edit it in place.", icon::CURSOR_TEXT))
                         .size(11.5)
                         .color(p.text_muted),
                 );
@@ -682,12 +682,7 @@ fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, index: usize, all: &[us
         });
         ui.add_space(6.0);
         ui.label(RichText::new(format!("{}  Speaker notes", icon::NOTE)).color(p.text_muted));
-        ui.add(
-            egui::TextEdit::multiline(&mut step.notes)
-                .hint_text("Markdown notes for the presenter view…")
-                .desired_rows(4)
-                .desired_width(f32::INFINITY),
-        );
+        crate::bidi::multiline(ui, "step-notes", &mut step.notes, |e| e.hint_text("Markdown notes for the presenter view…").desired_rows(4).desired_width(f32::INFINITY));
     });
 }
 

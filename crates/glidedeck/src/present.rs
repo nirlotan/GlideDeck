@@ -907,7 +907,7 @@ fn notes_markdown(ui: &mut egui::Ui, notes: &str, size: f32) {
             }
         }
         job.wrap.max_width = ui.available_width();
-        ui.label(job);
+        crate::bidi::label(ui, job);
     }
 }
 
