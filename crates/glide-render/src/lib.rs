@@ -24,10 +24,10 @@ mod text;
 
 pub use headless::{read_back, HeadlessError, HeadlessRenderer};
 pub use images::image_dimensions;
-pub use tessellate::{geometry_hash, local_size, Vertex};
+pub use tessellate::{commands_to_path, geometry_hash, local_size, path_to_svg, tessellate, Mesh, Vertex};
 pub use icon_table::ICONS;
 pub use cosmic_text::{Cursor as TextCursor, Motion as TextMotion};
-pub use text::{icon_codepoint, EditAction, EditResult, EditState, PathCmd, TextEngine, TextLayout};
+pub use text::{icon_codepoint, EditAction, EditResult, EditState, GlyphOutline, PathCmd, TextEngine, TextLayout};
 
 use bytemuck::{Pod, Zeroable};
 use glam::{DAffine2, DMat2, DVec2};
@@ -218,6 +218,8 @@ pub struct CanvasRenderer {
     base_dir: Option<PathBuf>,
     frame: u64,
     pub text: TextEngine,
+    /// Font files from documents that are already loaded into `text`.
+    loaded_fonts: std::collections::HashSet<PathBuf>,
 }
 
 impl CanvasRenderer {
@@ -438,6 +440,7 @@ impl CanvasRenderer {
             video_tx,
             video_rx,
             base_dir: None,
+            loaded_fonts: Default::default(),
             frame: 0,
             text: TextEngine::new(),
         }
@@ -467,6 +470,37 @@ impl CanvasRenderer {
 
     pub fn base_dir(&self) -> Option<&Path> {
         self.base_dir.as_deref()
+    }
+
+    /// Loads one font file (a path relative to the document) right away and
+    /// returns its family names.
+    pub fn load_document_font(&mut self, rel: &str) -> Result<Vec<String>, String> {
+        let path = assets::resolve(self.base_dir.as_deref(), rel);
+        let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let names = self.text.load_font_data(bytes);
+        self.loaded_fonts.insert(path);
+        if names.is_empty() {
+            return Err("the file contains no usable font".into());
+        }
+        Ok(names)
+    }
+
+    /// Loads the font files a document carries (once each), so its text
+    /// renders with them even where they aren't installed.
+    pub fn ensure_document_fonts(&mut self, doc: &Document) {
+        for rel in &doc.fonts {
+            let path = assets::resolve(self.base_dir.as_deref(), rel);
+            if self.loaded_fonts.contains(&path) {
+                continue;
+            }
+            match std::fs::read(&path) {
+                Ok(bytes) => {
+                    self.text.load_font_data(bytes);
+                }
+                Err(e) => log::warn!("font {} could not be read: {e}", path.display()),
+            }
+            self.loaded_fonts.insert(path);
+        }
     }
 
     /// Uploads finished background image decodes. Returns true while images
@@ -664,6 +698,7 @@ impl CanvasRenderer {
         opts: &RenderOptions,
     ) -> RenderStats {
         self.frame += 1;
+        self.ensure_document_fonts(doc);
         self.images.poll(&self.device, &self.queue, self.frame);
         self.poll_videos();
         let mut stats = RenderStats::default();

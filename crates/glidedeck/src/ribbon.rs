@@ -221,6 +221,7 @@ fn file_menu(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
         ui.separator();
         item(ui, icon::FILE_PPT, "Export PowerPoint (Morph)…", None, Action::ExportPptx);
         item(ui, icon::FILE_PDF, "Export PDF…", None, Action::ExportPdf);
+        item(ui, icon::FILE_HTML, "Export web page (HTML)…", None, Action::ExportHtml);
         item(ui, icon::FILE_IMAGE, "Export view as PNG…", None, Action::ExportPng);
         ui.separator();
         item(ui, icon::QUESTION, "Keyboard shortcuts", None, Action::ToggleShortcuts);
@@ -463,6 +464,37 @@ fn design_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) 
     group(ui, "Themes", |ui| {
         crate::galleries::themes_row(app, ui, out);
     });
+    group(ui, "Fonts", |ui| {
+        column(ui, |ui| {
+            let mut theme = app.theme();
+            let used = crate::fontpick::used_families(&app.doc);
+            let (mut heading, mut body) = (theme.heading_font.clone(), theme.body_font.clone());
+            let mut add = false;
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Headings").size(12.0).color(p.text_muted));
+                let r = crate::fontpick::font_picker(ui, &mut app.renderer.text, "heading-font", &mut heading, &used, 120.0);
+                add |= r.add_file;
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Body").size(12.0).color(p.text_muted));
+                ui.add_space(22.0);
+                let r = crate::fontpick::font_picker(ui, &mut app.renderer.text, "body-font", &mut body, &used, 120.0);
+                add |= r.add_file;
+            });
+            if add {
+                let ctx = ui.ctx().clone();
+                if let Some(f) = crate::fontpick::add_font_file(app, &ctx) {
+                    heading = f;
+                }
+            }
+            if heading != theme.heading_font || body != theme.body_font {
+                theme.heading_font = heading;
+                theme.body_font = body;
+                // Restyles text by role (titles and headings use the heading font).
+                glide_core::theme::apply_theme(&mut app.doc, &theme);
+            }
+        });
+    });
     group(ui, "Background", |ui| {
         column(ui, |ui| {
             ui.horizontal(|ui| {
@@ -614,6 +646,12 @@ fn present_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>)
         }
         if big(ui, icon::FILE_PDF, "PDF", false, !app.doc.path.is_empty()).on_hover_text("One page per slide, in show order").clicked() {
             out.push(Action::ExportPdf);
+        }
+        if big(ui, icon::FILE_HTML, "Web page", false, !app.doc.path.is_empty())
+            .on_hover_text("A single HTML file that plays exactly like the show (transitions, animations, parallax) in any browser")
+            .clicked()
+        {
+            out.push(Action::ExportHtml);
         }
         if big(ui, icon::FILE_IMAGE, "PNG image", false, true).on_hover_text("Export the current view at 2×").clicked() {
             out.push(Action::ExportPng);

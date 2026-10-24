@@ -104,6 +104,8 @@ pub enum Action {
     RemoveStep(usize),
     ImportPptx,
     ExportPdf,
+    /// A self-contained web page that plays like the show.
+    ExportHtml,
     /// Opens the "Arrange slides" dialog.
     ShowArrange,
     OpenRecent(PathBuf),
@@ -629,6 +631,7 @@ impl GlideDeckApp {
             }
             Action::ExportPptx => self.export_pptx(ctx),
             Action::ExportPdf => self.export_pdf(ctx),
+            Action::ExportHtml => self.export_html(ctx),
             Action::ImportPptx => {
                 if self.confirm_discard()
                     && let Some(p) = rfd::FileDialog::new().add_filter("PowerPoint presentation", &["pptx"]).pick_file()
@@ -1052,6 +1055,30 @@ impl GlideDeckApp {
         match crate::pdf::export(&mut self.renderer, &self.doc, &out, crate::pdf::PdfOptions::default()) {
             Ok(r) => self.notify(ctx, format!("Exported {} pages to {}", r.pages, out.display())),
             Err(e) => self.error_dialog(&format!("PDF export failed: {e}")),
+        }
+    }
+
+    fn export_html(&mut self, ctx: &egui::Context) {
+        if self.doc.path.is_empty() {
+            self.notify(ctx, "Add a frame first — every frame on the path is a slide");
+            return;
+        }
+        let name = if self.doc.title.trim().is_empty() { "Presentation".to_owned() } else { self.doc.title.clone() };
+        let Some(out) = rfd::FileDialog::new().add_filter("Web page", &["html"]).set_file_name(format!("{name}.html")).save_file() else {
+            return;
+        };
+        self.renderer.ensure_document_fonts(&self.doc);
+        let base = self.base_dir();
+        match crate::html_export::export(&self.doc, &mut self.renderer.text, Some(&base), &out) {
+            Ok(r) => {
+                let size = r.bytes as f64 / 1_048_576.0;
+                let mut msg = format!("Exported {} slides to {} ({size:.1} MB). Open it in any browser to present", r.slides, out.display());
+                if !r.missing_media.is_empty() {
+                    msg.push_str(&format!("; {} media file(s) were missing", r.missing_media.len()));
+                }
+                self.notify(ctx, msg);
+            }
+            Err(e) => self.error_dialog(&format!("HTML export failed: {e}")),
         }
     }
 

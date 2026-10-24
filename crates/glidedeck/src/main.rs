@@ -10,6 +10,8 @@ mod canvas;
 mod cli;
 mod demo;
 mod displays;
+mod fontpick;
+mod html_export;
 mod design;
 mod galleries;
 mod history;

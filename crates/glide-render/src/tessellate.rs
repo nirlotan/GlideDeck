@@ -156,6 +156,30 @@ fn ellipse_path(w: f64, h: f64) -> Path {
     b.build()
 }
 
+/// A lyon path as SVG path data (`M … L … Q … C … Z`), with coordinates
+/// rounded to `decimals` places.
+pub fn path_to_svg(path: &Path, decimals: usize) -> String {
+    use lyon::path::Event;
+    use std::fmt::Write;
+    let f = |v: f32| {
+        let s = format!("{v:.decimals$}");
+        let s = if s.contains('.') { s.trim_end_matches('0').trim_end_matches('.').to_owned() } else { s };
+        if s == "-0" { "0".to_owned() } else { s }
+    };
+    let mut out = String::new();
+    for e in path.iter() {
+        let _ = match e {
+            Event::Begin { at } => write!(out, "M{} {}", f(at.x), f(at.y)),
+            Event::Line { to, .. } => write!(out, "L{} {}", f(to.x), f(to.y)),
+            Event::Quadratic { ctrl, to, .. } => write!(out, "Q{} {} {} {}", f(ctrl.x), f(ctrl.y), f(to.x), f(to.y)),
+            Event::Cubic { ctrl1, ctrl2, to, .. } => write!(out, "C{} {} {} {} {} {}", f(ctrl1.x), f(ctrl1.y), f(ctrl2.x), f(ctrl2.y), f(to.x), f(to.y)),
+            Event::End { close: true, .. } => write!(out, "Z"),
+            Event::End { .. } => Ok(()),
+        };
+    }
+    out
+}
+
 /// Converts path commands into a lyon path.
 pub fn commands_to_path(cmds: &[PathCmd]) -> Path {
     let mut b = Path::builder();

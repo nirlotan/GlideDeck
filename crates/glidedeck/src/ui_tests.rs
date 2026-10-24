@@ -1076,3 +1076,29 @@ fn speaker_notes_panel_about_window_and_single_screen_presenter_view() {
     h.run_steps(2);
     assert!(h.state().presenting.is_none());
 }
+
+#[test]
+fn font_picker_lists_computer_fonts_and_sets_one() {
+    let t = glide_core::TextBlock::new("Hello");
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    let families = h.state().renderer.text.families();
+    let Some(family) = families.iter().find(|f| f.as_str() != "sans-serif").cloned() else { return };
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(3);
+    h.get_by_label_contains("sans-serif").click();
+    h.run_steps(3);
+    // The popup's search box is the newest text field.
+    snapshot(&mut h, "font-picker-open");
+    h.get_all_by_role(egui::accesskit::Role::TextInput).last().unwrap().type_text(&family);
+    h.run_steps(3);
+    snapshot(&mut h, "font-picker");
+    h.get_by_label(&format!("Font {family}")).click();
+    h.run_steps(3);
+    let ElementKind::Text(t) = &h.state().doc.get("t").unwrap().kind else { unreachable!() };
+    assert_eq!(t.font_family, family);
+    // The web page export sits next to the other exports.
+    h.get_by_label("Present").click();
+    h.run_steps(2);
+    let _ = h.get_by_label_contains("Web page");
+}

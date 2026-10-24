@@ -149,13 +149,16 @@ MCP server also tells the assistant the workflow when it connects.
 | `create_presentation` | New project from a template; returns every slide's element ids and placeholder text |
 | `get_presentation` | Slides in show order, with the text, icons and images on each |
 | `add_slide` | Adds a layout slide and fills its text fields and icons |
-| `update_elements` | Changes text, icons or colors by id |
+| `update_elements` | Changes text, icons, colors or fonts by id |
 | `add_text` / `add_image` | Adds a text box or an image (copied into `assets/`) to a slide |
 | `set_theme` | Restyles the whole deck |
 | `remove_slide` | Removes a slide and its content |
 | `render_slide` | Renders a slide to PNG and returns the image, so the assistant can check its work |
 | `export_pptx` | PowerPoint export with Morph transitions |
 | `export_pdf` | PDF, one page per slide |
+| `export_html` | A single web page that plays the show in a browser exactly like the app |
+| `list_fonts` | Font families installed on this computer (plus a project's added fonts) |
+| `add_font` | Copies a font file into the project so it travels with it |
 | `import_pptx` | Converts a PowerPoint file into a GlideDeck project (slides, text, pictures, notes) |
 | `arrange_slides` | Rearranges every slide into a carousel (over a parallax backdrop), spiral, orbits, tree, zoom tunnel… with a matching path |
 | `set_transitions` | Camera moves per slide: smooth, swoop, spin, punch, fade, direct or cut (or a cycle of them) |

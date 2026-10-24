@@ -276,6 +276,21 @@ fn scaled_number(token: &str, k: f64) -> String {
     s
 }
 
+/// The text with every number scaled toward its value at progress `p` of a
+/// count-up animation (formats such as `$12,400` and `87.5%` are kept).
+pub fn count_up_text(content: &str, p: f64) -> String {
+    let mut rebuilt = String::new();
+    let mut at = 0;
+    let k = if p >= 1.0 { 1.0 } else { 1.0 - 2f64.powf(-10.0 * p) };
+    for r in numbers(content) {
+        rebuilt.push_str(&content[at..r.start]);
+        rebuilt.push_str(&scaled_number(&content[r.clone()], k));
+        at = r.end;
+    }
+    rebuilt.push_str(&content[at..]);
+    rebuilt
+}
+
 // --- the scene --------------------------------------------------------------------------
 
 #[derive(Clone, Copy, PartialEq)]
@@ -412,16 +427,7 @@ pub fn scene(doc: &Document, clock: &BuildClock, now: f64, measure: &mut dyn Mea
                             fade_text(text, &ranges);
                         }
                         _ => {
-                            let content = text.content.clone();
-                            let mut rebuilt = String::new();
-                            let mut at = 0;
-                            let k = 1.0 - 2f64.powf(-10.0 * p);
-                            for r in numbers(&content) {
-                                rebuilt.push_str(&content[at..r.start]);
-                                rebuilt.push_str(&scaled_number(&content[r.clone()], if p >= 1.0 { 1.0 } else { k }));
-                                at = r.end;
-                            }
-                            rebuilt.push_str(&content[at..]);
+                            let rebuilt = count_up_text(&text.content, p);
                             text.set_content(rebuilt);
                             el.opacity *= (p * 4.0).min(1.0);
                         }

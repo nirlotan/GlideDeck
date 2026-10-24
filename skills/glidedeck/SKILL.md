@@ -16,9 +16,15 @@ the GlideDeck editor later to edit and present it, or export it to PowerPoint.
 If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
-`export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `animate`,
+`export_pptx`, `export_pdf`, `export_html`, `import_pptx`, `arrange_slides`, `animate`,
 `auto_animate`, `set_transitions`, `set_notes`, `clear_animations`, `save_as`,
-`open_in_editor`, `search_icons` and `edit_presentation`. Prefer them.
+`open_in_editor`, `search_icons`, `list_fonts`, `add_font` and
+`edit_presentation`. Prefer them.
+
+**Fonts:** any font installed on the user's computer works. Find exact family
+names with `list_fonts` (e.g. `query: "serif"`), then set one per text box with
+`update_elements` (`font`). If the user gives you a font file, `add_font` copies
+it into the project so it travels with the presentation.
 
 **Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
 every slide into a frame with its text, pictures and notes, laid out as a plain
@@ -82,7 +88,9 @@ Follow this workflow:
 8. **Finish.** Tell the user where the project file is. Mention they can
    present it with F5; with a second display, presenter view shows the speaker
    notes (Alt+F5 rehearses with them on one screen). Offer `export_pptx`
-   for PowerPoint, `export_pdf` for a PDF, and `open_in_editor` to open it in
+   for PowerPoint, `export_pdf` for a PDF, `export_html` for a web page that
+   plays the whole show in a browser with every effect intact (the best way to
+   share it with people who don't have GlideDeck), and `open_in_editor` to open it in
    GlideDeck. Use `save_as`
    to keep a separate copy or version.
 
@@ -171,6 +179,7 @@ glidedeck show talk.glide.json                       # list element ids and name
 glidedeck apply talk.glide.json ops.json             # atomic batch of JSON edit operations
 glidedeck render talk.glide.json -o s1.png --step 1  # render a slide to check it
 glidedeck export-pptx talk.glide.json -o talk.pptx   # PowerPoint with Morph transitions
+glidedeck export-html talk.glide.json -o talk.html   # web page that plays the show exactly
 ```
 
 Animations live on each path step as `builds`. With `apply`, set them with

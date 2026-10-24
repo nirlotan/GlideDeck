@@ -269,6 +269,12 @@ The bar also has the theme's colours. When a text box is selected but not being 
 the same commands (and the Home → Text format buttons) format the whole box. Formatting
 is exported to PowerPoint as real formatted text.
 
+**Fonts:** the Font control in Properties (and Design → Fonts for the theme's heading
+and body fonts) lists the theme's fonts, the fonts already used in the presentation and every
+font installed on this computer, each previewed in its own face, with a search box. **Add
+font file…** copies a `.ttf`, `.otf`, `.ttc` or `.otc` into `assets/` and lists it in the
+document's `fonts`, so the presentation renders the same on a computer without that font.
+
 **Bullets and numbering:** select a text box, then use the list buttons in Home → Text
 format (or Properties → List). Each paragraph gets a marker with a proper hanging indent,
 placed on the right for right-to-left paragraphs. Lists export to PowerPoint as real
@@ -351,6 +357,14 @@ rotation, so you can zoom in and build nested "worlds".
 - **Present → PDF** (or File → Export PDF) writes one page per slide on the path, rendered
   exactly as in the show (2560 px wide images). It's handy for sharing a handout or
   printing.
+- **Present → Web page** (or File → Export web page (HTML)…) writes a single `.html` file
+  that plays the show in any modern browser exactly as the app does. The page carries the
+  vectors the app draws (text as glyph outlines, so no fonts are needed), embedded images
+  and SVGs, and a player that reproduces the camera (all transition styles), builds,
+  emphasis effects, parallax and video autoplay. It renders with WebGL2 in linear light like
+  the app, with a Canvas 2D fallback. Videos are copied to a `<name>_media` folder next to
+  the page. Keys: → / Space / click next, ← back, Home / End, F fullscreen, ? help; the
+  mouse wheel zooms, and touch swipes work on phones and tablets.
 - **Present → PNG image** saves the current view at 2× resolution.
 
 ### Importing PowerPoint
@@ -448,6 +462,7 @@ glidedeck render talk.glide.json --out slide3.png --step 3
 ```bash
 glidedeck export-pptx talk.glide.json --out talk.pptx
 glidedeck export-pdf talk.glide.json --out talk.pdf
+glidedeck export-html talk.glide.json --out talk.html
 glidedeck import-pptx deck.pptx --out deck.glide.json
 glidedeck arrange deck.glide.json --layout spiral
 ```
@@ -464,6 +479,7 @@ glidedeck arrange deck.glide.json --layout spiral
   canvas. Use `--step N` to render slide N exactly as presented, `--element ID` to frame one
   element, or `--center=x,y --zoom Z --rotation DEG` for an explicit camera.
 - `export-pptx` writes the Morph deck described above.
+- `export-html` writes the self-playing web page described above.
 - `mcp [--root DIR]` runs the MCP server on stdio for AI assistants. Relative project paths
   resolve against `--root`, which defaults to the current folder.
 - `agent-setup [--project DIR | --user] [--no-mcp | --no-skill]` installs the GlideDeck

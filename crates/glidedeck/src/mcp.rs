@@ -28,7 +28,7 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF, or `export_html` for a web page that plays the show in a browser with every effect intact. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
 Write speaker notes for every slide with `set_notes` (what to say, the number to stress); the presenter sees them in presenter view. \
 MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
 (1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
@@ -187,6 +187,49 @@ impl Server {
                 Ok(vec![text_json(&json!({
                     "written": out, "slides": report.slides, "shapes": report.shapes, "skipped_media": report.skipped,
                 }))])
+            }
+            "export_html" => {
+                let path = self.project_path(args, "path")?;
+                let doc = load(&path)?;
+                let out = match args.get("out").and_then(Value::as_str) {
+                    Some(o) => self.resolve(o),
+                    None => with_suffix(&path, "html"),
+                };
+                let base = base_dir(&path);
+                crate::html_export::load_document_fonts(self.text(), &doc, Some(&base));
+                let report = crate::html_export::export(&doc, self.text(), Some(&base), &out).map_err(|e| anyhow::anyhow!(e))?;
+                Ok(vec![text_json(&json!({
+                    "written": out, "slides": report.slides, "elements": report.elements, "bytes": report.bytes,
+                    "media_files": report.media_files, "missing_media": report.missing_media,
+                }))])
+            }
+            "list_fonts" => {
+                if let Some(rel) = args.get("path").and_then(Value::as_str) {
+                    let path = self.project_path(&json!({ "path": rel }), "path")?;
+                    let doc = load(&path)?;
+                    crate::html_export::load_document_fonts(self.text(), &doc, Some(&base_dir(&path)));
+                }
+                let query = args.get("query").and_then(Value::as_str).unwrap_or("").to_lowercase();
+                let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(200) as usize;
+                let all = self.text().families();
+                let matches: Vec<&String> = all.iter().filter(|f| f.to_lowercase().contains(&query)).collect();
+                Ok(vec![text_json(&json!({ "total": matches.len(), "fonts": matches.into_iter().take(limit).collect::<Vec<_>>() }))])
+            }
+            "add_font" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let src = self.resolve(str_arg(args, "font")?);
+                let reference = assets::import_file(&base_dir(&path), &src).with_context(|| format!("copying {}", src.display()))?;
+                let bytes = std::fs::read(&src).with_context(|| format!("reading {}", src.display()))?;
+                let families = self.text().load_font_data(bytes);
+                if families.is_empty() {
+                    bail!("{} is not a font file GlideDeck can read (ttf, otf, ttc, otc)", src.display());
+                }
+                if !doc.fonts.contains(&reference) {
+                    doc.fonts.push(reference.clone());
+                }
+                save(&doc, &path)?;
+                Ok(vec![text_json(&json!({ "added": reference, "families": families }))])
             }
             "save_as" => self.save_as(args),
             "import_pptx" => {
@@ -451,6 +494,16 @@ impl Server {
                 let ElementKind::Text(block) = &mut el.kind else { bail!("{id} is not a text element") };
                 set_text(block, t, u.get("markdown").and_then(Value::as_bool).unwrap_or(false));
             }
+            if let Some(font) = u.get("font").and_then(Value::as_str) {
+                if !self.text().has_family(font) {
+                    bail!("the font {font:?} is not installed; see `list_fonts`, or add a font file with `add_font`");
+                }
+                let el = doc.get_mut(id).with_context(|| format!("no element with id {id:?}"))?;
+                let ElementKind::Text(block) = &mut el.kind else { bail!("{id} is not a text element") };
+                block.font_family = font.to_owned();
+                block.role = None;
+            }
+            let el = doc.get_mut(id).with_context(|| format!("no element with id {id:?}"))?;
             if let Some(name) = u.get("icon").and_then(Value::as_str) {
                 let ElementKind::Icon(icon) = &mut el.kind else { bail!("{id} is not an icon") };
                 check_icon(name)?;
@@ -1007,7 +1060,7 @@ fn inline_markdown(src: &str) -> (String, Vec<glide_core::TextSpan>) {
     (out, block.spans)
 }
 
-fn base64(bytes: &[u8]) -> String {
+pub(crate) fn base64(bytes: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
@@ -1075,11 +1128,12 @@ fn tool_definitions() -> Vec<Value> {
                 "name": { "type": "string", "description": "Slide name shown in the slide list." },
             }), &["path", "layout"], false),
         tool("update_elements", "Update text, icons or colors",
-            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes, `parallax` for depth in the show (0.3–0.7 far backdrop that drifts slower, negative = near, moves faster).",
+            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes, `font` (a family from `list_fonts`) for text boxes, `parallax` for depth in the show (0.3–0.7 far backdrop that drifts slower, negative = near, moves faster).",
             json!({
                 "path": path_prop(),
                 "updates": { "type": "array", "items": { "type": "object", "properties": {
                     "id": { "type": "string" }, "text": { "type": "string" }, "icon": { "type": "string" }, "color": { "type": "string" },
+                    "font": { "type": "string", "description": "Font family for a text box: any font on this computer or added with `add_font` (see `list_fonts`)." },
                     "parallax": { "type": "number", "description": "Parallax depth: 0 = on the canvas, up to 0.95 = far away, negative = near." },
                     "markdown": { "type": "boolean", "description": "Read **bold**, *italic*, __underline__ and ~~strike~~ in `text` as formatting." },
                 }, "required": ["id"] } },
@@ -1127,6 +1181,19 @@ fn tool_definitions() -> Vec<Value> {
         tool("export_pptx", "Export to PowerPoint",
             "Exports the presentation to .pptx: one slide per step, with Morph transitions. Defaults to the project's name with .pptx.",
             json!({ "path": path_prop(), "out": { "type": "string" } }), &["path"], false),
+        tool("export_html", "Export to a web page",
+            "Exports the presentation to a single self-contained .html file that plays the show in any browser exactly like the app: the same camera moves, transitions, builds, parallax and effects, with text as vector outlines (no fonts needed) and images embedded. Videos are copied to a `<name>_media` folder next to it. Defaults to the project's name with .html.",
+            json!({ "path": path_prop(), "out": { "type": "string" } }), &["path"], false),
+        tool("list_fonts", "List fonts",
+            "Lists the font families available for text: the fonts installed on this computer plus, when `path` is given, the font files added to that presentation.",
+            json!({
+                "query": { "type": "string", "description": "Only families whose name contains this (case-insensitive)." },
+                "path": { "type": "string", "description": "Optional project, to include its added fonts." },
+                "limit": { "type": "integer", "default": 200 },
+            }), &[], true),
+        tool("add_font", "Add a font file",
+            "Copies a .ttf/.otf/.ttc/.otc font file into the project's assets/ folder so it travels with the presentation, and returns its family names for `update_elements` (`font`).",
+            json!({ "path": path_prop(), "font": { "type": "string", "description": "The font file." } }), &["path", "font"], false),
         tool("import_pptx", "Import a PowerPoint file",
             "Converts a .pptx into a GlideDeck project: each slide becomes a frame with its text (with formatting), shapes, pictures, background and speaker notes, in slide order. Tables, charts and SmartArt are listed as skipped. Returns the slides like get_presentation.",
             json!({
@@ -1216,7 +1283,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "export_html", "list_fonts", "add_font", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
@@ -1272,6 +1339,22 @@ mod tests {
         let pptx = tools(&mut s, 7, "export_pptx", json!({ "path": "deck" }));
         tool_text(&pptx);
         assert!(dir.join("deck.pptx").exists());
+
+        let html: Value = serde_json::from_str(&tool_text(&tools(&mut s, 30, "export_html", json!({ "path": "deck" })))).unwrap();
+        assert_eq!(html["slides"], 2);
+        let page = std::fs::read_to_string(dir.join("deck.html")).unwrap();
+        assert!(page.contains("Q3 review") && page.contains("<script"));
+
+        let fonts: Value = serde_json::from_str(&tool_text(&tools(&mut s, 31, "list_fonts", json!({ "path": "deck" })))).unwrap();
+        assert!(!fonts["fonts"].as_array().unwrap().iter().any(|f| f.as_str().unwrap().starts_with("Phosphor")));
+        if let Some(family) = fonts["fonts"][0].as_str() {
+            tool_text(&tools(&mut s, 32, "update_elements", json!({ "path": "deck", "updates": [{ "id": title_id, "font": family }] })));
+            let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
+            let ElementKind::Text(t) = &doc.get(&title_id).unwrap().kind else { panic!() };
+            assert_eq!(t.font_family, family);
+        }
+        let missing = tools(&mut s, 33, "update_elements", json!({ "path": "deck", "updates": [{ "id": title_id, "font": "No Such Font 123" }] }));
+        assert_eq!(missing["result"]["isError"], true);
 
         tool_text(&tools(&mut s, 8, "save_as", json!({ "path": "deck", "new_path": "copies/deck-v2" })));
         assert!(dir.join("copies/deck-v2.glide.json").exists());

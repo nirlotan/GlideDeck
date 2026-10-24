@@ -209,6 +209,8 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
     let mut replace_image = false;
     let mut video_status: Option<glide_core::Media> = None;
     let mut add_to_path = false;
+    let used_fonts = crate::fontpick::used_families(&app.doc);
+    let mut add_font = false;
     {
         let Some(el) = app.doc.get_mut(&id) else { return };
 
@@ -348,11 +350,8 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
                 grid(ui, "text", |ui| {
                     label(ui, "Font");
                     ui.horizontal(|ui| {
-                        egui::ComboBox::from_id_salt("font").selected_text(t.font_family.clone()).width(110.0).show_ui(ui, |ui| {
-                            for f in ["sans-serif", "serif", "monospace", "Segoe UI", "Georgia", "Arial", "Consolas"] {
-                                ui.selectable_value(&mut t.font_family, f.to_owned(), f);
-                            }
-                        });
+                        let picked = crate::fontpick::font_picker(ui, &mut app.renderer.text, "font", &mut t.font_family, &used_fonts, 120.0);
+                        add_font |= picked.add_file;
                         ui.add(DragValue::new(&mut t.font_size).speed(0.5).range(0.01..=f64::MAX).max_decimals(1));
                     });
                     ui.end_row();
@@ -585,6 +584,12 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
     }
     if add_to_path {
         actions.push(Action::AddSelectedFrameToPath);
+    }
+    if add_font
+        && let Some(family) = crate::fontpick::add_font_file(app, ui.ctx())
+        && let Some(ElementKind::Text(t)) = app.doc.get_mut(&id).map(|e| &mut e.kind)
+    {
+        t.font_family = family;
     }
     if let Some(&first) = steps.first() {
         slide_card(app, ui, first, &steps);

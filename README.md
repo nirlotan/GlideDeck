@@ -56,6 +56,10 @@
   orbits or a tree.
 - **Export back to PowerPoint or PDF.** Get a `.pptx` where every move is a native Morph
   transition, or a PDF to share.
+- **Share it as a web page.** Export a single `.html` file that plays the show in any browser
+  exactly as GlideDeck does: every camera move, animation, parallax layer and effect.
+- **Use any font on your computer.** The font picker shows every installed font in its own
+  face, and you can add a font file that then travels with the presentation.
 - **Start from a template.** 18 complete stories with a theme and a path, from a pitch deck to
   a parallax **carousel**.
 - **Bring slides to life.** Make text and pictures appear, take the spotlight and leave, with
@@ -85,7 +89,8 @@
    - **Design → Arrange** reshapes the whole path.
 6. **Present** with **F5**. With a second screen or projector connected, presenter view starts
    automatically. On one screen, press **Alt+F5** to rehearse with your notes.
-7. **Share.** Use **Present → PowerPoint** or **PDF**, or just send the `.glide.json` file.
+7. **Share.** Use **Present → Web page**, **PowerPoint** or **PDF**, or just send the
+   `.glide.json` file.
 
 | To… | Do this |
 |---|---|
@@ -117,6 +122,20 @@ arrive as editable text, shapes and pictures (Windows).
   PowerPoint itself animates the zooms, pans and turns. Icons stay editable vectors; videos are
   embedded.
 - **Present → PDF** writes one page per slide, exactly as presented.
+
+## Share as a web page
+
+**Present → Web page** (or **File → Export web page (HTML)…**) writes one `.html` file that
+anyone can open in a browser. Nothing needs to be installed.
+
+- **The show is the same show.** Camera flights and all seven transition styles, builds
+  (typewriter, count up, spotlight and the rest), parallax and fades play exactly as they do
+  in GlideDeck. Unlike a PowerPoint export, nothing is approximated.
+- **Sharp at any zoom.** Text is embedded as vector outlines, so it looks the same without the
+  fonts, and pictures and SVGs are embedded in the file.
+- **Videos** are copied to a `<name>_media` folder next to the page; keep the two together.
+- **Controls:** → / Space / click for next, ← for back, Home / End, **F** for fullscreen, the
+  mouse wheel to look around, and swipe on a phone or tablet. Press **?** for the list.
 
 ## Feature tour
 
@@ -166,6 +185,9 @@ arrive as editable text, shapes and pictures (Windows).
 ### Content
 - **Rich text:** bold, italic, underline, strikethrough, colours and sizes, bullets and
   numbering. Right-to-left languages (Hebrew, Arabic) work too.
+- **Fonts:** pick any font installed on your computer, previewed in its own face, for one text
+  box or for the whole theme (**Design → Fonts**). **Add font file…** copies a `.ttf` or
+  `.otf` into the presentation, so it looks right on any computer.
 - **Pictures:** insert them, drag and drop, or paste screenshots and images from other apps.
 - **SVG graphics:** shown as true vectors.
 - **Video:** with sound, autoplay, loop and mute.
@@ -212,14 +234,14 @@ Then ask, for example:
 > Create a 7-slide GlideDeck presentation about our Q3 results in q3.glide.json, with
 > speaker notes, and export a PowerPoint copy.
 
-The server has 23 tools:
+The server has 26 tools:
 - **Find:** `catalog`, `search_icons`.
 - **Create and read:** `create_presentation`, `import_pptx`, `get_presentation`.
 - **Edit:** `add_slide`, `update_elements`, `add_text`, `add_image`, `set_theme`, `remove_slide`,
-  `arrange_slides`, `edit_presentation`.
+  `arrange_slides`, `edit_presentation`, `list_fonts`, `add_font`.
 - **Bring it to life:** `animate`, `auto_animate`, `set_transitions`, `set_notes`,
   `clear_animations`.
-- **Check and deliver:** `render_slide`, `export_pptx`, `export_pdf`, `save_as`,
+- **Check and deliver:** `render_slide`, `export_pptx`, `export_pdf`, `export_html`, `save_as`,
   `open_in_editor`.
 
 It runs on your computer and makes no network calls. Setup for each app and troubleshooting
@@ -248,7 +270,12 @@ only when you click **Check for updates**, and then only to GitHub.
 **Can I open my GlideDeck presentation on another computer?** Yes. Copy the `.glide.json` file
 together with its `assets/` folder.
 
-**Do my viewers need GlideDeck?** No. Present from your computer, or export to PowerPoint or PDF.
+**Do my viewers need GlideDeck?** No. Present from your computer, send a web page
+(**Present → Web page**) that plays the full show in any browser, or export to PowerPoint or PDF.
+
+**Will my fonts look right on another computer?** In a web page export, yes: text is embedded
+as outlines. To edit on another computer, add the font with **Add font file…** in the font
+picker, and it travels in the presentation's `assets/` folder.
 
 **Where did my notes go after importing a PowerPoint?** They come along. You'll find them in the
 **Speaker notes** panel under the canvas and in presenter view.
@@ -314,6 +341,10 @@ glidedeck arrange deck.glide.json --layout carousel
 
 ```bash
 glidedeck export-pptx talk.glide.json --out talk.pptx
+```
+
+```bash
+glidedeck export-html talk.glide.json --out talk.html
 ```
 
 Operations are plain tagged JSON, applied **atomically** per batch:
