@@ -117,7 +117,9 @@ impl Template {
 
     fn theme_name(self) -> &'static str {
         match self {
-            Template::Blank | Template::Roadmap | Template::MoodBoard => "Paper",
+            // A blank deck starts in the house style, like the welcome deck.
+            Template::Blank => glide_core::theme::HOUSE_DARK,
+            Template::Roadmap | Template::MoodBoard => "Paper",
             Template::PitchDeck | Template::Orbit => "Midnight",
             Template::Lecture | Template::Chapters => "Editorial",
             Template::MindMap | Template::Hive => "Aurora",
@@ -215,7 +217,13 @@ pub fn build_template(t: Template) -> Document {
 
 /// Builds a template, reusing an existing text engine for measurements.
 pub fn build_template_with(t: Template, text: &mut TextEngine) -> Document {
-    let theme = theme_named(t.theme_name());
+    build_template_themed(t, text, None)
+}
+
+/// Builds a template in `theme` instead of its own, so every layout is laid
+/// out and colored for that theme from the start.
+pub fn build_template_themed(t: Template, text: &mut TextEngine, theme: Option<Theme>) -> Document {
+    let theme = theme.unwrap_or_else(|| theme_named(t.theme_name()));
     let mut doc = Document::new(t.label());
     glide_core::theme::apply_theme(&mut doc, &theme);
     let mut path: Vec<String> = Vec::new();

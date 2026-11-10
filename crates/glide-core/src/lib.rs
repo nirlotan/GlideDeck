@@ -14,6 +14,7 @@ pub mod element;
 pub mod geom;
 pub mod ops;
 pub mod theme;
+pub mod weblink;
 
 pub use build::{Build, BuildKind, Direction, Effect, Trigger};
 pub use camera::{Camera, CameraTween};

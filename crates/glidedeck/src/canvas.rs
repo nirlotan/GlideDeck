@@ -926,16 +926,32 @@ impl GlideDeckApp {
             if !rect.intersects(bounds) || bounds.width().min(bounds.height()) < 60.0 {
                 continue;
             }
-            let status = self.renderer.video_status(&m.path);
+            let status = self.renderer.video_status(m.source());
             let playing = matches!(status, glide_render::VideoStatus::Ready { playing: true, .. });
             let hovered = pointer.is_some_and(|p| bounds.contains(p));
             let center = bounds.center();
             let button = egui::Rect::from_center_size(center, egui::vec2(56.0, 56.0));
             let show = hovered || self.selection.contains(&el.id) || !playing;
             if let glide_render::VideoStatus::Unavailable(reason) = &status {
-                if hovered {
+                // Web videos that can't play here offer the browser instead.
+                if m.url.is_some() {
+                    let over = pointer.is_some_and(|p| button.contains(p));
+                    painter.circle_filled(center, 28.0, Color32::from_black_alpha(if over { 190 } else { 140 }));
+                    painter.text(center, egui::Align2::CENTER_CENTER, icon::ARROW_SQUARE_OUT, egui::FontId::new(24.0, egui::FontFamily::Name("phosphor-fill".into())), Color32::WHITE);
+                    if hovered {
+                        let tip = format!("{reason}. Click to open it in the browser");
+                        painter.text(center + egui::vec2(0.0, 44.0), egui::Align2::CENTER_CENTER, tip, theme::semibold(12.0), Color32::WHITE);
+                    }
+                    self.video_buttons.push((button, el.id.clone()));
+                } else if hovered {
                     painter.text(center, egui::Align2::CENTER_CENTER, format!("{}  {reason}", icon::WARNING), theme::semibold(12.0), Color32::WHITE);
                 }
+                continue;
+            }
+            if matches!(status, glide_render::VideoStatus::Loading) {
+                painter.circle_filled(center, 28.0, Color32::from_black_alpha(140));
+                painter.text(center, egui::Align2::CENTER_CENTER, icon::HOURGLASS_MEDIUM, egui::FontId::new(24.0, egui::FontFamily::Name("phosphor-fill".into())), Color32::WHITE);
+                self.video_buttons.push((button, el.id.clone()));
                 continue;
             }
             if show {
@@ -969,7 +985,7 @@ impl GlideDeckApp {
         egui::Area::new(egui::Id::new("zoom-pill"))
             .fixed_pos(rect.right_bottom() - egui::vec2(12.0, 12.0))
             .pivot(egui::Align2::RIGHT_BOTTOM)
-            .order(egui::Order::Foreground)
+            .order(egui::Order::Background)
             .show(ui.ctx(), |ui| {
                 pill.show(ui, |ui| {
                     ui.horizontal(|ui| {
@@ -999,6 +1015,8 @@ impl GlideDeckApp {
                 });
             });
 
+        let now = ui.input(|i| i.time);
+        let toast = self.toast().filter(|(_, until)| now < *until).map(|(msg, _)| format!("{}  {msg}", icon::CHECK_CIRCLE));
         let hint = match self.tool {
             Tool::Frame => Some("Drag to draw a frame (16:9 · hold Alt for free aspect) — or click for a default frame"),
             Tool::Rect | Tool::Ellipse => Some("Drag to draw · click for default size"),
@@ -1006,11 +1024,13 @@ impl GlideDeckApp {
             Tool::Hand => Some("Drag to pan"),
             Tool::Select => None,
         };
+        // A message about what just happened wins over the tool hint.
+        let hint = toast.as_deref().or(hint);
         if let Some(hint) = hint {
             egui::Area::new(egui::Id::new("tool-hint"))
                 .fixed_pos(rect.center_bottom() - egui::vec2(0.0, 14.0))
                 .pivot(egui::Align2::CENTER_BOTTOM)
-                .order(egui::Order::Foreground)
+                .order(egui::Order::Background)
                 .interactable(false)
                 .show(ui.ctx(), |ui| {
                     egui::Frame::new()

@@ -260,7 +260,7 @@ pub fn layout_elements(kind: LayoutKind, theme: &Theme) -> Vec<Element> {
                 v.push(named(circle(76.0, Some(a[i % 4]), None), "Number chip", at(-20.0, y)));
                 let mut n = text(theme, TextRole::Heading, &(i + 1).to_string(), Some(34.0), TextAlign::Center, None);
                 if let ElementKind::Text(t) = &mut n {
-                    t.color = Color::WHITE;
+                    t.color = glide_core::theme::ink_on(a[i % 4]);
                     t.role = None;
                 }
                 v.push(named(n, "Number", at(-20.0, y)));

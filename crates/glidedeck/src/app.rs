@@ -10,7 +10,7 @@ use eframe::wgpu;
 use glam::DVec2;
 use std::path::{Path, PathBuf};
 use glide_core::{
-    assets, Aabb, Camera, CameraTween, Color, Document, Easing, Element, ElementKind, Frame, IconStyle, Shadow, Step, TextRole,
+    assets, Aabb, Camera, CameraTween, Color, Document, Easing, Element, ElementKind, Frame, IconStyle, Step, TextRole,
     Theme, Transform,
 };
 use glide_render::{CanvasRenderer, RenderStats, RenderTarget};
@@ -62,18 +62,9 @@ impl Tool {
     pub const ALL: [Tool; 6] = [Tool::Select, Tool::Hand, Tool::Frame, Tool::Rect, Tool::Ellipse, Tool::Text];
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RibbonTab {
-    Home,
-    Insert,
-    Design,
-    Transitions,
-    Animate,
-    Present,
-    View,
-}
+pub use crate::shell::SideTab;
 
-/// Everything the user can trigger from the ribbon, menus, panels or keyboard.
+/// Everything the user can trigger from the menus, panels, command search or keyboard.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     New,
@@ -96,6 +87,7 @@ pub enum Action {
     SetTool(Tool),
     InsertImage,
     InsertVideo,
+    InsertWebVideo,
     FrameFromView,
     AddSelectedFrameToPath,
     GoToStep(usize),
@@ -104,6 +96,8 @@ pub enum Action {
     RemoveStep(usize),
     ImportPptx,
     ExportPdf,
+    /// A self-contained web page that plays like the show.
+    ExportHtml,
     /// Opens the "Arrange slides" dialog.
     ShowArrange,
     OpenRecent(PathBuf),
@@ -140,9 +134,6 @@ pub enum Action {
     ApplyTheme(usize),
     Align(AlignOp),
     InsertText(TextRole),
-    ApplyTextRole(TextRole),
-    SetShadow(Option<Shadow>),
-    ToggleGradient,
     /// Edit the selected text box in place.
     EditText,
     // In-slide animations.
@@ -152,6 +143,10 @@ pub enum Action {
     RemoveSelectionAnimations,
     /// Plays the current slide's animations on the canvas.
     PreviewAnimations,
+    /// Opens the command search.
+    OpenPalette,
+    /// Shows a tab of the side panel.
+    SetSideTab(SideTab),
 }
 
 const fn sc(modifiers: Modifiers, key: Key) -> KeyboardShortcut {
@@ -198,11 +193,13 @@ pub const SC_COPY: KeyboardShortcut = sc(Modifiers::COMMAND, Key::C);
 pub const SC_PASTE: KeyboardShortcut = sc(Modifiers::COMMAND, Key::V);
 pub const SC_ICONS: KeyboardShortcut = sc(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::K);
 pub const SC_LAYOUTS: KeyboardShortcut = sc(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::L);
+pub const SC_PALETTE: KeyboardShortcut = sc(Modifiers::COMMAND, Key::K);
 
 pub struct GlideDeckApp {
     pub doc: Document,
     pub path: Option<PathBuf>,
-    saved: Document,
+    /// The document as last saved (or opened), to tell unsaved changes.
+    pub(crate) saved: Document,
     pub history: History,
     pub camera: Camera,
     pub nav: Navigation,
@@ -219,13 +216,17 @@ pub struct GlideDeckApp {
     pub show_frames: bool,
     /// Trackpad-friendly navigation: scroll pans, Ctrl/Cmd+scroll zooms.
     pub scroll_pans: bool,
+    /// The path strip under the canvas.
     pub show_slides: bool,
+    /// The side panel (Slide / Design / Animate).
     pub show_inspector: bool,
-    /// The speaker notes panel under the canvas.
-    pub show_notes: bool,
     /// About GlideDeck and the update check.
     pub updater: crate::update::Updater,
-    pub ribbon_tab: RibbonTab,
+    pub side_tab: SideTab,
+    /// The command search (Ctrl/Cmd+K).
+    pub palette: crate::shell::CommandPalette,
+    /// The selection the side panel last reacted to.
+    seen_selection: Vec<String>,
     pub stats: RenderStats,
     pub canvas_rect: egui::Rect,
     pub cursor_world: Option<DVec2>,
@@ -247,7 +248,11 @@ pub struct GlideDeckApp {
     /// Clickable frame name tags drawn on the canvas last frame.
     pub frame_tags: Vec<(egui::Rect, String)>,
     /// Asset folder for documents that have not been saved yet.
-    session_dir: PathBuf,
+    pub(crate) session_dir: PathBuf,
+    /// AutoSave and crash-recovery copies.
+    pub autosave: crate::autosave::AutoSave,
+    /// The Recover dialog is open (work left behind by an earlier session).
+    pub show_recovery: bool,
     /// A paste event already handled the current Ctrl+V press.
     pub paste_consumed: bool,
     pub show_shortcuts: bool,
@@ -260,6 +265,9 @@ pub struct GlideDeckApp {
     pub guides: Vec<(bool, f32)>,
     /// Play/pause buttons drawn over videos last frame: (rect, element id).
     pub video_buttons: Vec<(egui::Rect, String)>,
+    /// Web videos whose details are being fetched.
+    pub web_videos: Vec<crate::webvideo::Pending>,
+    pub web_video_dialog: crate::webvideo::Dialog,
     /// In-place text editing on the canvas.
     pub text_edit: Option<crate::textedit::TextEditSession>,
     /// How new animations start (Animate tab).
@@ -315,9 +323,10 @@ impl GlideDeckApp {
             scroll_pans: false,
             show_slides: true,
             show_inspector: true,
-            show_notes: true,
             updater: Default::default(),
-            ribbon_tab: RibbonTab::Home,
+            side_tab: SideTab::Slide,
+            palette: Default::default(),
+            seen_selection: Vec::new(),
             stats: RenderStats::default(),
             canvas_rect: egui::Rect::NOTHING,
             cursor_world: None,
@@ -332,6 +341,8 @@ impl GlideDeckApp {
             presenting: None,
             frame_tags: Vec::new(),
             session_dir,
+            autosave: crate::autosave::AutoSave::load(),
+            show_recovery: true,
             paste_consumed: false,
             show_shortcuts: false,
             icon_picker: IconPicker::default(),
@@ -341,6 +352,8 @@ impl GlideDeckApp {
             previews: Previews::default(),
             guides: Vec::new(),
             video_buttons: Vec::new(),
+            web_videos: Vec::new(),
+            web_video_dialog: Default::default(),
             text_edit: None,
             anim_trigger: glide_core::Trigger::OnClick,
             anim_together: false,
@@ -446,6 +459,22 @@ impl GlideDeckApp {
 
     pub fn toast(&self) -> Option<&(String, f64)> {
         self.toast.as_ref()
+    }
+
+    /// Shows the side-panel tab that fits a new selection: Slide for a frame
+    /// on the path, Design for anything else. The Animate tab stays put,
+    /// since animating means picking objects.
+    fn follow_selection(&mut self) {
+        if self.selection == self.seen_selection {
+            return;
+        }
+        self.seen_selection = self.selection.clone();
+        let Some(first) = self.selection.first() else { return };
+        if self.side_tab == SideTab::Animate {
+            return;
+        }
+        let on_path = self.doc.path.iter().any(|s| s.frame == *first);
+        self.side_tab = if on_path { SideTab::Slide } else { SideTab::Design };
     }
 
     // --- camera helpers ------------------------------------------------------
@@ -554,8 +583,14 @@ impl GlideDeckApp {
     /// Toggles playback of a video element. Returns the new playing state.
     pub fn toggle_video(&mut self, id: &str) -> bool {
         let Some(glide_core::Element { kind: ElementKind::Video(m), .. }) = self.doc.get(id).cloned() else { return false };
-        let playing = matches!(self.renderer.video_status(&m.path), glide_render::VideoStatus::Ready { playing: true, .. });
-        self.renderer.video_set_playing(&m.path, !playing, m.looping, m.muted)
+        let status = self.renderer.video_status(m.source());
+        // A web video that can't play here opens in the browser instead.
+        if m.url.is_some() && matches!(status, glide_render::VideoStatus::Unavailable(_)) {
+            crate::webvideo::open_in_browser(m.source());
+            return false;
+        }
+        let playing = matches!(status, glide_render::VideoStatus::Ready { playing: true, .. } | glide_render::VideoStatus::Loading);
+        self.renderer.video_set_playing(m.source(), !playing, m.looping, m.muted)
     }
 
     /// Wraps the selection in a new invisible 16:9 frame (aligned with the
@@ -603,7 +638,12 @@ impl GlideDeckApp {
         match action {
             Action::New => {
                 if self.confirm_discard() {
-                    self.replace_document(Document::new("Untitled"), None);
+                    // New decks start in the house style; the Design tab changes it in one click.
+                    let mut doc = Document::new("Untitled");
+                    if let Some(theme) = glide_core::theme::theme_named(glide_core::theme::HOUSE_DARK) {
+                        glide_core::theme::apply_theme(&mut doc, &theme);
+                    }
+                    self.replace_document(doc, None);
                 }
             }
             Action::Open => {
@@ -629,6 +669,7 @@ impl GlideDeckApp {
             }
             Action::ExportPptx => self.export_pptx(ctx),
             Action::ExportPdf => self.export_pdf(ctx),
+            Action::ExportHtml => self.export_html(ctx),
             Action::ImportPptx => {
                 if self.confirm_discard()
                     && let Some(p) = rfd::FileDialog::new().add_filter("PowerPoint presentation", &["pptx"]).pick_file()
@@ -701,6 +742,7 @@ impl GlideDeckApp {
                     self.import_image_files(ctx, &files, None);
                 }
             }
+            Action::InsertWebVideo => self.web_video_dialog.open = true,
             Action::InsertVideo => {
                 if let Some(files) = rfd::FileDialog::new().add_filter("Videos", crate::media::VIDEO_EXTS).pick_files() {
                     self.import_video_files(ctx, &files, None);
@@ -772,7 +814,15 @@ impl GlideDeckApp {
             Action::ToggleFrameOutlines => self.show_frames = !self.show_frames,
             Action::ToggleSlides => self.show_slides = !self.show_slides,
             Action::ToggleInspector => self.show_inspector = !self.show_inspector,
-            Action::ToggleNotes => self.show_notes = !self.show_notes,
+            Action::ToggleNotes => {
+                self.show_inspector = true;
+                self.side_tab = SideTab::Slide;
+            }
+            Action::OpenPalette => self.palette.show(),
+            Action::SetSideTab(tab) => {
+                self.show_inspector = true;
+                self.side_tab = tab;
+            }
             Action::SetTheme(t) => ctx.set_theme(t),
             Action::ToggleShortcuts => self.show_shortcuts = !self.show_shortcuts,
             Action::ShowAbout => self.updater.open = true,
@@ -800,44 +850,11 @@ impl GlideDeckApp {
                 crate::design::align(&mut self.doc, &mut self.renderer.text, &ids, op, self.camera.rotation);
             }
             Action::InsertText(role) => self.insert_text_role(role),
-            Action::ApplyTextRole(role) => {
-                let theme = self.theme();
-                for id in self.selection.clone() {
-                    if let Some(ElementKind::Text(t)) = self.doc.get_mut(&id).map(|e| &mut e.kind) {
-                        theme.apply_role(t, role);
-                    }
-                }
-            }
-            Action::SetShadow(shadow) => {
-                for id in self.selection.clone() {
-                    if let Some(el) = self.doc.get_mut(&id) {
-                        el.shadow = shadow;
-                    }
-                }
-            }
             Action::EditText => {
                 if let [id] = self.selection.as_slice() {
                     let id = id.clone();
                     if matches!(self.doc.get(&id).map(|e| &e.kind), Some(ElementKind::Text(_))) {
                         self.start_text_edit(&id, None);
-                    }
-                }
-            }
-            Action::ToggleGradient => {
-                let theme = self.theme();
-                for id in self.selection.clone() {
-                    let Some(el) = self.doc.get_mut(&id) else { continue };
-                    let (fill, gradient) = match &mut el.kind {
-                        ElementKind::Rect(r) => (&mut r.fill, &mut r.gradient),
-                        ElementKind::Ellipse(e) => (&mut e.fill, &mut e.gradient),
-                        _ => continue,
-                    };
-                    if gradient.is_some() {
-                        *gradient = None;
-                    } else {
-                        let from = *fill.get_or_insert(theme.accents[0]);
-                        let to = theme.accents.iter().copied().find(|c| *c != from).unwrap_or(theme.accents[1]);
-                        *gradient = Some(glide_core::Gradient { to, angle: 45.0 });
                     }
                 }
             }
@@ -946,7 +963,7 @@ impl GlideDeckApp {
                     msg.push_str(&format!(" · skipped {}", imported.skipped.join(", ")));
                 }
                 if slides > 2 {
-                    msg.push_str(" · Try Design → Arrange slides for a zooming path");
+                    msg.push_str(" · Try Arrange on the path strip for a zooming path");
                 }
                 self.notify(ctx, msg);
             }
@@ -954,7 +971,7 @@ impl GlideDeckApp {
         }
     }
 
-    fn replace_document(&mut self, doc: Document, path: Option<PathBuf>) {
+    pub(crate) fn replace_document(&mut self, doc: Document, path: Option<PathBuf>) {
         self.saved = doc.clone();
         self.history.reset(&doc);
         self.current_step = (!doc.path.is_empty()).then_some(0);
@@ -1055,6 +1072,30 @@ impl GlideDeckApp {
         }
     }
 
+    fn export_html(&mut self, ctx: &egui::Context) {
+        if self.doc.path.is_empty() {
+            self.notify(ctx, "Add a frame first — every frame on the path is a slide");
+            return;
+        }
+        let name = if self.doc.title.trim().is_empty() { "Presentation".to_owned() } else { self.doc.title.clone() };
+        let Some(out) = rfd::FileDialog::new().add_filter("Web page", &["html"]).set_file_name(format!("{name}.html")).save_file() else {
+            return;
+        };
+        self.renderer.ensure_document_fonts(&self.doc);
+        let base = self.base_dir();
+        match crate::html_export::export(&self.doc, &mut self.renderer.text, Some(&base), &out) {
+            Ok(r) => {
+                let size = r.bytes as f64 / 1_048_576.0;
+                let mut msg = format!("Exported {} slides to {} ({size:.1} MB). Open it in any browser to present", r.slides, out.display());
+                if !r.missing_media.is_empty() {
+                    msg.push_str(&format!("; {} media file(s) were missing", r.missing_media.len()));
+                }
+                self.notify(ctx, msg);
+            }
+            Err(e) => self.error_dialog(&format!("HTML export failed: {e}")),
+        }
+    }
+
     fn export_png(&mut self, ctx: &egui::Context) {
         let Some(out) = rfd::FileDialog::new().add_filter("PNG image", &["png"]).set_file_name("view.png").save_file()
         else {
@@ -1113,7 +1154,7 @@ impl GlideDeckApp {
 
     fn collect_shortcuts(&mut self, ctx: &egui::Context) -> Vec<Action> {
         let mut actions = Vec::new();
-        let typing = ctx.text_edit_focused() || self.text_edit.is_some();
+        let typing = ctx.text_edit_focused() || self.text_edit.is_some() || self.palette.open;
         ctx.input_mut(|i| {
             // File shortcuts work even while a text field has focus.
             for (s, a) in [
@@ -1128,6 +1169,10 @@ impl GlideDeckApp {
                 if i.consume_shortcut(&s) {
                     actions.push(a);
                 }
+            }
+            // Ctrl/Cmd+K opens the command search (with Shift it is the icon library).
+            if !i.modifiers.shift && i.consume_shortcut(&SC_PALETTE) {
+                actions.push(Action::OpenPalette);
             }
             if typing {
                 return;
@@ -1238,7 +1283,9 @@ impl GlideDeckApp {
     fn handle_close(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.viewport().close_requested()) && !self.allow_close && self.is_dirty() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            if self.confirm_discard() {
+            // With AutoSave on, a presentation that has a file just saves.
+            let autosaved = self.autosave.enabled && self.path.is_some() && self.save();
+            if autosaved || self.confirm_discard() {
                 self.allow_close = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
@@ -1308,10 +1355,18 @@ impl GlideDeckApp {
 }
 
 impl eframe::App for GlideDeckApp {
+    /// Closing normally: the work was saved or deliberately discarded.
+    fn on_exit(&mut self) {
+        self.autosave.discard_copy();
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.handle_close(&ctx);
         self.handle_dropped_files(&ctx);
+        self.poll_web_videos(&ctx);
+        self.autosave_tick(&ctx);
+        crate::autosave::recover_window(self, &ctx);
 
         if let Some(p) = self.import_on_start.take() {
             self.import_pptx(&ctx, &p);
@@ -1329,44 +1384,40 @@ impl eframe::App for GlideDeckApp {
         actions.extend(self.handle_paste_events(&ctx));
         let p = theme::palette(&ctx);
 
-        egui::Panel::top("ribbon")
-            .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin { left: 10, right: 10, top: 6, bottom: 0 }))
-            .show_separator_line(false)
-            .show(ui, |ui| actions.extend(crate::ribbon::ribbon(self, ui)));
-        egui::Panel::bottom("status")
-            .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(12, 4)))
-            .show_separator_line(false)
-            .show(ui, |ui| crate::ribbon::status_bar(self, ui));
+        egui::Panel::top("top-bar")
+            .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(12, 8)))
+            .show(ui, |ui| actions.extend(crate::shell::top_bar(self, ui)));
         if self.show_slides {
-            egui::Panel::left("slides")
-                .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(10, 10)))
-                .show_separator_line(false)
-                .resizable(true)
-                .default_size(232.0)
-                .size_range(180.0..=380.0)
-                .show(ui, |ui| actions.extend(crate::slides::slides_panel(self, ui, frame)));
+            egui::Panel::bottom("path-strip")
+                .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin { left: 14, right: 0, top: 10, bottom: 8 }))
+                .show(ui, |ui| actions.extend(crate::slides::path_strip(self, ui, frame)));
         }
+        egui::Panel::left("tool-rail")
+            .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(8, 10)))
+            .resizable(false)
+            .exact_size(56.0)
+            .show(ui, |ui| actions.extend(crate::shell::tool_rail(self, ui)));
         if self.show_inspector {
-            egui::Panel::right("inspector")
-                .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(14, 10)))
-                .show_separator_line(false)
+            egui::Panel::right("side-panel")
+                .frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::symmetric(12, 10)))
                 .resizable(true)
                 .default_size(300.0)
-                .size_range(260.0..=440.0)
-                .show(ui, |ui| actions.extend(crate::inspector::inspector(self, ui)));
+                .size_range(264.0..=440.0)
+                .show(ui, |ui| actions.extend(crate::shell::side_panel(self, ui)));
         }
-        crate::notes::notes_panel(self, ui);
         egui::CentralPanel::no_frame()
-            .frame(egui::Frame::new().fill(p.app_bg).inner_margin(egui::Margin::same(8)))
+            .frame(egui::Frame::new().fill(p.app_bg).inner_margin(egui::Margin::same(10)))
             .show(ui, |ui| actions.extend(self.canvas_ui(ui, frame)));
+        actions.extend(crate::shell::command_palette(self, &ctx));
 
         for a in actions {
             self.perform(&ctx, a);
         }
         if self.show_shortcuts {
-            crate::ribbon::shortcuts_window(self, &ctx);
+            crate::shell::shortcuts_window(self, &ctx);
         }
         crate::galleries::icon_picker(self, &ctx);
+        crate::webvideo::dialog(self, &ctx);
         crate::arrange_ui::arrange_window(self, &ctx);
         crate::update::about_window(self, &ctx);
         crate::galleries::design_check_window(self, &ctx);
@@ -1376,6 +1427,7 @@ impl eframe::App for GlideDeckApp {
             self.perform(&ctx, a);
         }
 
+        self.follow_selection();
         let busy = ctx.input(|i| i.pointer.any_down()) || ctx.text_edit_focused() || self.text_edit.is_some();
         // Animations of deleted objects go with them.
         crate::anim::prune(&mut self.doc);

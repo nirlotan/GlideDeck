@@ -33,7 +33,7 @@ pub const SEMIBOLD: &str = "ui-semibold";
 pub struct Palette {
     /// Window background behind panels (also canvas surround).
     pub app_bg: Color32,
-    /// Ribbon, sidebars.
+    /// Top bar, tool rail, side panel, path strip.
     pub surface: Color32,
     /// Hover fills, inputs, cards on surfaces.
     pub surface_alt: Color32,
@@ -46,29 +46,31 @@ pub struct Palette {
     pub danger: Color32,
 }
 
+/// Daylight: white panels on cool grey, one cobalt accent.
 pub const LIGHT: Palette = Palette {
-    app_bg: Color32::from_rgb(0xEE, 0xEE, 0xF2),
+    app_bg: Color32::from_rgb(0xE9, 0xEC, 0xEB),
     surface: Color32::from_rgb(0xFF, 0xFF, 0xFF),
-    surface_alt: Color32::from_rgb(0xF4, 0xF4, 0xF7),
-    border: Color32::from_rgb(0xE3, 0xE3, 0xE9),
-    text: Color32::from_rgb(0x18, 0x18, 0x1B),
-    text_muted: Color32::from_rgb(0x6E, 0x6E, 0x7A),
-    accent: Color32::from_rgb(0x5B, 0x4F, 0xE9),
-    accent_soft: Color32::from_rgb(0xEC, 0xEA, 0xFE),
+    surface_alt: Color32::from_rgb(0xF1, 0xF3, 0xF2),
+    border: Color32::from_rgb(0xDD, 0xE1, 0xDF),
+    text: Color32::from_rgb(0x14, 0x18, 0x1A),
+    text_muted: Color32::from_rgb(0x64, 0x6D, 0x71),
+    accent: Color32::from_rgb(0x1F, 0x4F, 0xFF),
+    accent_soft: Color32::from_rgb(0xE8, 0xEE, 0xFF),
     on_accent: Color32::WHITE,
-    danger: Color32::from_rgb(0xDC, 0x26, 0x26),
+    danger: Color32::from_rgb(0xD9, 0x2D, 0x20),
 };
 
+/// Flightpath: deep navy panels, one aqua accent.
 pub const DARK: Palette = Palette {
-    app_bg: Color32::from_rgb(0x0E, 0x0E, 0x11),
-    surface: Color32::from_rgb(0x17, 0x17, 0x1B),
-    surface_alt: Color32::from_rgb(0x22, 0x22, 0x28),
-    border: Color32::from_rgb(0x2B, 0x2B, 0x33),
-    text: Color32::from_rgb(0xEC, 0xEC, 0xF1),
-    text_muted: Color32::from_rgb(0x9A, 0x9A, 0xA8),
-    accent: Color32::from_rgb(0x8B, 0x80, 0xFF),
-    accent_soft: Color32::from_rgb(0x2A, 0x26, 0x50),
-    on_accent: Color32::WHITE,
+    app_bg: Color32::from_rgb(0x0A, 0x11, 0x1D),
+    surface: Color32::from_rgb(0x11, 0x1B, 0x2C),
+    surface_alt: Color32::from_rgb(0x18, 0x25, 0x3B),
+    border: Color32::from_rgb(0x22, 0x32, 0x4E),
+    text: Color32::from_rgb(0xE6, 0xED, 0xF4),
+    text_muted: Color32::from_rgb(0x8F, 0xA2, 0xB8),
+    accent: Color32::from_rgb(0x35, 0xD0, 0xBA),
+    accent_soft: Color32::from_rgb(0x12, 0x3A, 0x40),
+    on_accent: Color32::from_rgb(0x06, 0x20, 0x1B),
     danger: Color32::from_rgb(0xF8, 0x71, 0x71),
 };
 
@@ -185,12 +187,12 @@ pub fn install_fonts(ctx: &egui::Context) {
 
 fn visuals(p: &Palette, dark: bool) -> Visuals {
     let mut v = if dark { Visuals::dark() } else { Visuals::light() };
-    let r = CornerRadius::same(7);
+    let r = CornerRadius::same(6);
     v.panel_fill = p.surface;
     v.window_fill = p.surface;
     v.window_stroke = Stroke::new(1.0, p.border);
-    v.window_corner_radius = CornerRadius::same(12);
-    v.menu_corner_radius = CornerRadius::same(10);
+    v.window_corner_radius = CornerRadius::same(10);
+    v.menu_corner_radius = CornerRadius::same(8);
     v.extreme_bg_color = p.surface_alt;
     v.text_edit_bg_color = Some(p.surface_alt);
     v.faint_bg_color = p.surface_alt;
@@ -200,11 +202,11 @@ fn visuals(p: &Palette, dark: bool) -> Visuals {
     let shadow_alpha = if dark { 120 } else { 28 };
     v.window_shadow = Shadow { offset: [0, 10], blur: 28, spread: 0, color: Color32::from_black_alpha(shadow_alpha) };
     v.popup_shadow = Shadow { offset: [0, 6], blur: 18, spread: 0, color: Color32::from_black_alpha(shadow_alpha) };
-    v.selection.bg_fill = if dark { p.accent.gamma_multiply(0.45) } else { p.accent_soft };
+    v.selection.bg_fill = if dark { p.accent.gamma_multiply(0.35) } else { p.accent_soft };
     v.selection.stroke = Stroke::new(1.0, p.accent);
     v.slider_trailing_fill = true;
 
-    let hover = if dark { Color32::from_rgb(0x2C, 0x2C, 0x34) } else { Color32::from_rgb(0xEB, 0xEB, 0xF0) };
+    let hover = if dark { Color32::from_rgb(0x22, 0x32, 0x4E) } else { Color32::from_rgb(0xE6, 0xEA, 0xE8) };
     let w = &mut v.widgets;
     w.noninteractive.bg_fill = p.surface;
     w.noninteractive.weak_bg_fill = p.surface;

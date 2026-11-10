@@ -26,6 +26,8 @@ struct PlacedGlyph {
     y: f32,
     /// Formatted color, when it differs from the text box's.
     color: Option<Color>,
+    /// Byte offset of the glyph's character in the text (None for list markers).
+    start: Option<usize>,
 }
 
 /// An underline or strikethrough bar (reference units, block top-left origin).
@@ -36,6 +38,18 @@ struct Decoration {
     y: f32,
     thickness: f32,
     color: Option<Color>,
+    /// Byte offset of the first character it underlines.
+    start: Option<usize>,
+}
+
+/// One glyph (or decoration bar) of laid-out text, as an outline in local
+/// space centred on the origin. Used by exporters that animate characters.
+pub struct GlyphOutline {
+    /// Byte offset of the character in the text; None for list markers.
+    pub start: Option<usize>,
+    /// The formatted color, or None for the text box's own color.
+    pub color: Option<Color>,
+    pub path: Path,
 }
 
 /// A shaped buffer plus the geometry needed to place it.
@@ -252,6 +266,74 @@ impl TextEngine {
         )
     }
 
+    /// Every font family available for text: the fonts installed on this
+    /// computer plus any loaded from files, sorted by name.
+    pub fn families(&self) -> Vec<String> {
+        let icon_ids: Vec<cosmic_text::fontdb::ID> = self.icon_fonts.values().copied().collect();
+        let mut names: Vec<String> = self
+            .fonts
+            .db()
+            .faces()
+            .filter(|f| !icon_ids.contains(&f.id))
+            .filter_map(|f| f.families.first().map(|(n, _)| n.clone()))
+            .filter(|n| !n.is_empty() && !n.starts_with('.') && !n.to_lowercase().starts_with("phosphor"))
+            .collect();
+        names.sort_by_key(|n| n.to_lowercase());
+        names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+        names
+    }
+
+    /// Whether a family is available (installed or loaded).
+    pub fn has_family(&self, name: &str) -> bool {
+        let want = name.trim();
+        self.fonts.db().faces().any(|f| f.families.iter().any(|(n, _)| n.eq_ignore_ascii_case(want)))
+    }
+
+    /// Loads a font file (TTF, OTF or a TTC collection) so its families can
+    /// be used; returns their names. Cached layouts are dropped, since text
+    /// that fell back to another font may now shape differently.
+    pub fn load_font_data(&mut self, bytes: Vec<u8>) -> Vec<String> {
+        let ids = self.fonts.db_mut().load_font_source(cosmic_text::fontdb::Source::Binary(Arc::new(bytes)));
+        let mut names: Vec<String> = ids
+            .iter()
+            .filter_map(|id| self.fonts.db().face(*id))
+            .filter_map(|f| f.families.first().map(|(n, _)| n.clone()))
+            .collect();
+        names.dedup();
+        self.layouts.clear();
+        names
+    }
+
+    /// Glyph-by-glyph outlines (plus underline and strikethrough bars), in
+    /// local space centred on the origin, for exporters that animate
+    /// individual characters.
+    pub fn glyph_outlines(&mut self, layout: &TextLayout) -> Vec<GlyphOutline> {
+        let k = layout.scale as f32;
+        let half = (layout.size * 0.5).as_vec2();
+        let mut out = Vec::with_capacity(layout.glyphs.len() + layout.decorations.len());
+        for (i, g) in layout.glyphs.iter().enumerate() {
+            let path = self.glyph_path_at(layout, i).build();
+            out.push(GlyphOutline { start: g.start, color: g.color, path });
+        }
+        for d in &layout.decorations {
+            let (x0, x1) = (d.x0 * k - half.x, d.x1 * k - half.x);
+            let (y0, y1) = (d.y * k - half.y, (d.y + d.thickness) * k - half.y);
+            let mut b = Path::builder();
+            b.begin(point(x0, y0));
+            b.line_to(point(x1, y0));
+            b.line_to(point(x1, y1));
+            b.line_to(point(x0, y1));
+            b.end(true);
+            out.push(GlyphOutline { start: d.start, color: d.color, path: b.build() });
+        }
+        out
+    }
+
+    fn glyph_path_at(&mut self, layout: &TextLayout, index: usize) -> lyon::path::path::Builder {
+        let target: *const PlacedGlyph = &layout.glyphs[index];
+        self.glyph_path(layout, |g| std::ptr::eq(g, target))
+    }
+
     /// The concrete installed family a generic name (`sans-serif`, …) maps to.
     pub fn resolve_family(&self, family: &str) -> String {
         let f = family_of(family);
@@ -378,7 +460,7 @@ impl TextEngine {
             width = width.max(run.line_w);
             for g in run.glyphs {
                 let phys = g.physical((0.0, 0.0), 1.0);
-                glyphs.push(PlacedGlyph { key: phys.cache_key, x: g.x, y: g.y, color: None });
+                glyphs.push(PlacedGlyph { key: phys.cache_key, x: g.x, y: g.y, color: None, start: None });
             }
         }
         (glyphs, width)
@@ -386,6 +468,7 @@ impl TextEngine {
 
     fn shape(&mut self, text: &TextBlock) -> TextLayout {
         let built = self.build(text);
+        let line_starts: Vec<usize> = std::iter::once(0).chain(text.content.match_indices('\n').map(|(i, _)| i + 1)).collect();
         let mut glyphs = Vec::new();
         let mut decorations = Vec::new();
         let mut lines: Vec<[f32; 4]> = Vec::new();
@@ -408,6 +491,7 @@ impl TextEngine {
                     x: dx + g.x + g.font_size * g.x_offset,
                     y: run.line_y + g.y - g.font_size * g.y_offset,
                     color: to_color(g.color_opt),
+                    start: line_starts.get(run.line_i).map(|l| l + g.start),
                 });
             }
             // Underlines and strikethroughs, placed with the font's own metrics.
@@ -421,13 +505,14 @@ impl TextEngine {
                 let d = &span.data;
                 let fs = span.font_size;
                 let color = to_color(span.color_opt);
+                let start = gs.first().and_then(|g| line_starts.get(run.line_i).map(|l| l + g.start));
                 if d.text_decoration.underline != cosmic_text::UnderlineStyle::None {
                     let thickness = (d.underline_metrics.thickness * fs).max(fs * 0.04);
-                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.underline_metrics.offset * fs, thickness, color });
+                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.underline_metrics.offset * fs, thickness, color, start });
                 }
                 if d.text_decoration.strikethrough {
                     let thickness = (d.strikethrough_metrics.thickness * fs).max(fs * 0.04);
-                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.strikethrough_metrics.offset * fs, thickness, color });
+                    decorations.push(Decoration { x0: dx + x0, x1: dx + x1, y: run.line_y - d.strikethrough_metrics.offset * fs, thickness, color, start });
                 }
             }
             if run.line_i != last_line {
@@ -453,7 +538,7 @@ impl TextEngine {
             } else {
                 REFERENCE_SIZE * 0.2
             };
-            glyphs.extend(mg.into_iter().map(|g| PlacedGlyph { key: g.key, x: x0 + g.x, y: line_y + g.y, color: None }));
+            glyphs.extend(mg.into_iter().map(|g| PlacedGlyph { key: g.key, x: x0 + g.x, y: line_y + g.y, color: None, start: None }));
         }
         TextLayout {
             size: DVec2::new(built.box_w() as f64 * built.scale, built.height as f64 * built.scale),

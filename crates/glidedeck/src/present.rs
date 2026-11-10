@@ -93,6 +93,19 @@ impl GlideDeckApp {
             return;
         }
         self.stop_text_edit();
+        // Look up web videos' streams now, so they start promptly when played.
+        let web: Vec<String> = self
+            .doc
+            .elements
+            .iter()
+            .filter_map(|e| match &e.kind {
+                glide_core::ElementKind::Video(m) if m.url.is_some() && !e.hidden => Some(m.source().to_owned()),
+                _ => None,
+            })
+            .collect();
+        for url in web {
+            self.renderer.video_prepare(&url);
+        }
         let step = start.min(self.doc.path.len() - 1);
         let was_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
         let displays = crate::displays::list();
@@ -184,7 +197,7 @@ impl GlideDeckApp {
         for (pos, m) in videos {
             let l = inv.transform_point2(pos);
             let inside = l.x.abs() <= size.x / 2.0 && l.y.abs() <= size.y / 2.0;
-            self.renderer.video_set_playing(&m.path, inside && m.autoplay, m.looping, m.muted);
+            self.renderer.video_set_playing(m.source(), inside && m.autoplay, m.looping, m.muted);
         }
     }
 
@@ -777,7 +790,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
             ui.set_min_size(ui.available_size());
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 if notes.trim().is_empty() {
-                    ui.label(RichText::new("No notes for this slide. Add them in the editor, in the Speaker notes panel under the canvas.").size(notes_size * 0.75).color(ink::MUTED));
+                    ui.label(RichText::new("No notes for this slide. Add them in the editor, in the Slide tab, under Speaker notes.").size(notes_size * 0.75).color(ink::MUTED));
                 } else {
                     notes_markdown(ui, &notes, notes_size);
                 }
@@ -907,7 +920,7 @@ fn notes_markdown(ui: &mut egui::Ui, notes: &str, size: f32) {
             }
         }
         job.wrap.max_width = ui.available_width();
-        ui.label(job);
+        crate::bidi::label(ui, job);
     }
 }
 

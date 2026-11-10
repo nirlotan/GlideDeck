@@ -16,9 +16,44 @@ the GlideDeck editor later to edit and present it, or export it to PowerPoint.
 If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `create_presentation`, `get_presentation`, `add_slide`, `update_elements`,
 `add_text`, `add_image`, `set_theme`, `remove_slide`, `render_slide`,
-`export_pptx`, `export_pdf`, `import_pptx`, `arrange_slides`, `animate`,
+`export_pptx`, `export_pdf`, `export_html`, `import_pptx`, `arrange_slides`, `animate`,
 `auto_animate`, `set_transitions`, `set_notes`, `clear_animations`, `save_as`,
-`open_in_editor`, `search_icons` and `edit_presentation`. Prefer them.
+`open_in_editor`, `search_icons`, `list_fonts`, `add_font`, `add_web_video`
+and `edit_presentation`. Prefer them.
+
+## House style
+
+GlideDeck has its own look, shared by the app, its welcome deck and these
+tools. Use it unless the user asks for something else:
+
+- **Darkroom** (the default): a flat graphite canvas, bone-white type and one
+  signal yellow. A blank deck starts in it; for a template pass
+  `theme: "darkroom"` to `create_presentation`.
+- **Daylight**: its light twin, cool white with a cobalt accent. Use it for
+  bright rooms, print, or when the user asks for a light deck.
+
+`catalog` returns both under `house_style` and marks them in `themes`.
+
+Stay inside the style:
+
+- Flat backgrounds. No decorative gradients, glows or glass panels.
+- Short, heavy headings and plenty of empty space. One idea per slide.
+- One accent per slide, on the thing that matters: a number, a word or a
+  single shape. Do not let several accent colors compete.
+- Let the camera do the showing: tilt or scale a slide on the canvas and vary
+  the camera moves, instead of adding ornaments.
+
+If the user names a brand color or another theme, follow the user.
+
+**Videos from the web:** `add_web_video` with a YouTube, Vimeo or Loom link (or
+a direct link to a video file) places the video on a slide with its title and
+poster. It plays in the web page export (`export_html`) in the site's player,
+and in GlideDeck itself.
+
+**Fonts:** any font installed on the user's computer works. Find exact family
+names with `list_fonts` (e.g. `query: "serif"`), then set one per text box with
+`update_elements` (`font`). If the user gives you a font file, `add_font` copies
+it into the project so it travels with the presentation.
 
 **Starting from an existing PowerPoint file?** Call `import_pptx`. It turns
 every slide into a frame with its text, pictures and notes, laid out as a plain
@@ -44,7 +79,9 @@ Follow this workflow:
    - `lecture`, `chapters`, `workshop` or `cycle` for teaching;
    - `blank` to build slide by slide.
 
-   Pick a theme too if the user cares about the look.
+   Pass `theme: "darkroom"` (or `"daylight"` for a light deck) so the deck is
+   in the house style; pick another theme only if the user asks for a
+   different look.
 3. **`create_presentation`.** Pass a descriptive path, e.g.
    `q3-results.glide.json` in the user's working folder, plus the template and
    a title. The result lists every slide with element ids and placeholder text.
@@ -82,7 +119,9 @@ Follow this workflow:
 8. **Finish.** Tell the user where the project file is. Mention they can
    present it with F5; with a second display, presenter view shows the speaker
    notes (Alt+F5 rehearses with them on one screen). Offer `export_pptx`
-   for PowerPoint, `export_pdf` for a PDF, and `open_in_editor` to open it in
+   for PowerPoint, `export_pdf` for a PDF, `export_html` for a web page that
+   plays the whole show in a browser with every effect intact (the best way to
+   share it with people who don't have GlideDeck), and `open_in_editor` to open it in
    GlideDeck. Use `save_as`
    to keep a separate copy or version.
 
@@ -171,6 +210,7 @@ glidedeck show talk.glide.json                       # list element ids and name
 glidedeck apply talk.glide.json ops.json             # atomic batch of JSON edit operations
 glidedeck render talk.glide.json -o s1.png --step 1  # render a slide to check it
 glidedeck export-pptx talk.glide.json -o talk.pptx   # PowerPoint with Morph transitions
+glidedeck export-html talk.glide.json -o talk.html   # web page that plays the show exactly
 ```
 
 Animations live on each path step as `builds`. With `apply`, set them with

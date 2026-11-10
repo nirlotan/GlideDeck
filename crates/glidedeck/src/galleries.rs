@@ -9,7 +9,6 @@ use eframe::egui::{self, Color32, FontFamily, FontId, RichText, Sense, StrokeKin
 use eframe::wgpu;
 use glam::DVec2;
 use std::collections::HashMap;
-use glide_core::theme::builtin_themes;
 use glide_core::{Camera, Color, Document, IconStyle, Theme};
 use glide_render::{RenderOptions, RenderTarget, TextEngine, ICONS};
 
@@ -388,19 +387,6 @@ pub fn theme_card(ui: &mut egui::Ui, theme: &Theme, selected: bool, size: egui::
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
     resp.on_hover_text(&theme.name)
-}
-
-pub fn themes_row(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
-    let current = app.doc.theme.as_ref().map(|t| t.name.clone()).unwrap_or_else(|| "Paper".into());
-    for (i, t) in builtin_themes().iter().enumerate() {
-        ui.vertical(|ui| {
-            ui.spacing_mut().item_spacing.y = 2.0;
-            if theme_card(ui, t, t.name == current, egui::vec2(66.0, 44.0)).clicked() {
-                out.push(Action::ApplyTheme(i));
-            }
-            ui.label(RichText::new(&t.name).size(10.5));
-        });
-    }
 }
 
 // --- design check --------------------------------------------------------------------

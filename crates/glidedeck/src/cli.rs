@@ -116,6 +116,13 @@ pub enum Command {
         #[arg(long, default_value_t = 2560)]
         width: u32,
     },
+    /// Export the presentation as a self-contained web page (.html) that plays
+    /// like the show: same transitions, animations and parallax.
+    ExportHtml {
+        file: PathBuf,
+        #[arg(short, long)]
+        out: PathBuf,
+    },
     /// Run the MCP server on stdio, so AI assistants (Claude, GitHub Copilot, …)
     /// can create and edit presentations.
     Mcp {
@@ -209,6 +216,14 @@ pub fn run(cmd: Command) -> Result<()> {
             let opts = crate::pdf::PdfOptions { width_px: width, ..Default::default() };
             let report = crate::pdf::export(&mut r.canvas, &doc, &out, opts).map_err(|e| anyhow::anyhow!(e))?;
             println!("{}", json!({ "written": out, "pages": report.pages, "bytes": report.bytes }));
+        }
+        Command::ExportHtml { file, out } => {
+            let doc = Document::load(&file)?;
+            let base = file.parent().map(Path::to_path_buf);
+            let mut text = glide_render::TextEngine::new();
+            crate::html_export::load_document_fonts(&mut text, &doc, base.as_deref());
+            let report = crate::html_export::export(&doc, &mut text, base.as_deref(), &out).map_err(|e| anyhow::anyhow!(e))?;
+            println!("{}", json!({ "written": out, "slides": report.slides, "bytes": report.bytes, "media_files": report.media_files, "missing_media": report.missing_media }));
         }
         Command::Mcp { root } => {
             let root = match root {

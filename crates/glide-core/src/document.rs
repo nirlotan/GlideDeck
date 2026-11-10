@@ -145,6 +145,10 @@ pub struct Document {
     /// The presentation path: the ordered waypoints (slides).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub path: Vec<Step>,
+    /// Font files that travel with the document (relative paths into its
+    /// assets folder), for typefaces that may not be installed elsewhere.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fonts: Vec<String>,
 }
 
 impl Default for Document {
@@ -157,6 +161,7 @@ impl Default for Document {
             theme: None,
             elements: Vec::new(),
             path: Vec::new(),
+            fonts: Vec::new(),
         }
     }
 }

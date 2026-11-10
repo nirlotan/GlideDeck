@@ -10,10 +10,10 @@
 //! and presented in the GlideDeck editor afterwards.
 
 use crate::layouts::{layout_elements, place_layout, slot_after, LayoutKind, LAYOUT_W};
-use crate::templates::{build_template_with, Template};
+use crate::templates::{build_template_themed, Template};
 use anyhow::{bail, Context, Result};
 use glam::DVec2;
-use glide_core::theme::{apply_theme, builtin_themes, default_theme};
+use glide_core::theme::{apply_theme, builtin_themes, default_theme, HOUSE_DARK, HOUSE_LIGHT};
 use glide_core::{assets, ops::apply_all, Aabb, Camera, Color, Document, Element, ElementKind, Media, Op, Step, TextAlign, TextRole, Theme, Transform};
 use glide_render::{HeadlessRenderer, TextEngine, ICONS};
 use serde_json::{json, Value};
@@ -28,7 +28,13 @@ immediately, which the user can later open and edit in the GlideDeck app (or wit
 Workflow: `catalog` → `create_presentation` (pick a template that fits the story) → `get_presentation` to see \
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
-`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+`export_pptx` / `export_pdf` if the user wants PowerPoint or PDF, or `export_html` for a web page that plays the show in a browser with every effect intact. To show a YouTube, Vimeo or Loom video on a slide, use `add_web_video`. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+HOUSE STYLE: GlideDeck's own look is the Darkroom theme: a flat graphite canvas, bone-white type and ONE signal \
+yellow, with no gradients, glows or glass. Daylight is its light twin (cool white, cobalt accent) for bright rooms and \
+print. Unless the user asks for another look, pass theme \"darkroom\" (or \"daylight\") to `create_presentation`; a blank \
+deck uses Darkroom by itself. Stay inside the theme: short, heavy headings, generous empty space, the accent on the one \
+thing that matters per slide (a number, a word, one shape), never several accent colors competing. Do not add \
+decorative gradients or drop shadows to text. \
 Write speaker notes for every slide with `set_notes` (what to say, the number to stress); the presenter sees them in presenter view. \
 MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
 (1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
@@ -156,6 +162,7 @@ impl Server {
             "update_elements" => self.update_elements(args),
             "add_text" => self.add_text(args),
             "add_image" => self.add_image(args),
+            "add_web_video" => self.add_web_video(args),
             "set_theme" => {
                 let path = self.project_path(args, "path")?;
                 let mut doc = load(&path)?;
@@ -187,6 +194,49 @@ impl Server {
                 Ok(vec![text_json(&json!({
                     "written": out, "slides": report.slides, "shapes": report.shapes, "skipped_media": report.skipped,
                 }))])
+            }
+            "export_html" => {
+                let path = self.project_path(args, "path")?;
+                let doc = load(&path)?;
+                let out = match args.get("out").and_then(Value::as_str) {
+                    Some(o) => self.resolve(o),
+                    None => with_suffix(&path, "html"),
+                };
+                let base = base_dir(&path);
+                crate::html_export::load_document_fonts(self.text(), &doc, Some(&base));
+                let report = crate::html_export::export(&doc, self.text(), Some(&base), &out).map_err(|e| anyhow::anyhow!(e))?;
+                Ok(vec![text_json(&json!({
+                    "written": out, "slides": report.slides, "elements": report.elements, "bytes": report.bytes,
+                    "media_files": report.media_files, "missing_media": report.missing_media,
+                }))])
+            }
+            "list_fonts" => {
+                if let Some(rel) = args.get("path").and_then(Value::as_str) {
+                    let path = self.project_path(&json!({ "path": rel }), "path")?;
+                    let doc = load(&path)?;
+                    crate::html_export::load_document_fonts(self.text(), &doc, Some(&base_dir(&path)));
+                }
+                let query = args.get("query").and_then(Value::as_str).unwrap_or("").to_lowercase();
+                let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(200) as usize;
+                let all = self.text().families();
+                let matches: Vec<&String> = all.iter().filter(|f| f.to_lowercase().contains(&query)).collect();
+                Ok(vec![text_json(&json!({ "total": matches.len(), "fonts": matches.into_iter().take(limit).collect::<Vec<_>>() }))])
+            }
+            "add_font" => {
+                let path = self.project_path(args, "path")?;
+                let mut doc = load(&path)?;
+                let src = self.resolve(str_arg(args, "font")?);
+                let reference = assets::import_file(&base_dir(&path), &src).with_context(|| format!("copying {}", src.display()))?;
+                let bytes = std::fs::read(&src).with_context(|| format!("reading {}", src.display()))?;
+                let families = self.text().load_font_data(bytes);
+                if families.is_empty() {
+                    bail!("{} is not a font file GlideDeck can read (ttf, otf, ttc, otc)", src.display());
+                }
+                if !doc.fonts.contains(&reference) {
+                    doc.fonts.push(reference.clone());
+                }
+                save(&doc, &path)?;
+                Ok(vec![text_json(&json!({ "added": reference, "families": families }))])
             }
             "save_as" => self.save_as(args),
             "import_pptx" => {
@@ -393,9 +443,17 @@ impl Server {
             Some(t) => find_template(t)?,
             None => Template::Blank,
         };
-        let mut doc = build_template_with(template, self.text());
-        if let Some(theme) = args.get("theme").and_then(Value::as_str) {
-            apply_theme(&mut doc, &find_theme(theme)?);
+        // An explicit theme wins; a blank deck starts in the house style;
+        // a template keeps the theme it was designed in.
+        let theme = match args.get("theme").and_then(Value::as_str) {
+            Some(name) => Some(find_theme(name)?),
+            None if template == Template::Blank => Some(find_theme(HOUSE_DARK)?),
+            None => None,
+        };
+        let doc_theme = theme.clone();
+        let mut doc = build_template_themed(template, self.text(), theme);
+        if let Some(theme) = doc_theme.filter(|t| doc.theme.as_ref() != Some(t)) {
+            apply_theme(&mut doc, &theme);
         }
         doc.title = args.get("title").and_then(Value::as_str).map(str::to_owned).unwrap_or_else(|| template.label().to_owned());
         if let Some(dir) = path.parent() {
@@ -451,6 +509,16 @@ impl Server {
                 let ElementKind::Text(block) = &mut el.kind else { bail!("{id} is not a text element") };
                 set_text(block, t, u.get("markdown").and_then(Value::as_bool).unwrap_or(false));
             }
+            if let Some(font) = u.get("font").and_then(Value::as_str) {
+                if !self.text().has_family(font) {
+                    bail!("the font {font:?} is not installed; see `list_fonts`, or add a font file with `add_font`");
+                }
+                let el = doc.get_mut(id).with_context(|| format!("no element with id {id:?}"))?;
+                let ElementKind::Text(block) = &mut el.kind else { bail!("{id} is not a text element") };
+                block.font_family = font.to_owned();
+                block.role = None;
+            }
+            let el = doc.get_mut(id).with_context(|| format!("no element with id {id:?}"))?;
             if let Some(name) = u.get("icon").and_then(Value::as_str) {
                 let ElementKind::Icon(icon) = &mut el.kind else { bail!("{id} is not an icon") };
                 check_icon(name)?;
@@ -531,6 +599,31 @@ impl Server {
         let id = doc.add(Element::new(kind).with_transform(on_slide(&frame, local, width / w.max(1.0))));
         save(&doc, &path)?;
         Ok(vec![text_json(&json!({ "added": id, "note": "The image was copied into the project's assets/ folder." }))])
+    }
+
+    fn add_web_video(&mut self, args: &Value) -> Result<Vec<Value>> {
+        let path = self.project_path(args, "path")?;
+        let mut doc = load(&path)?;
+        let frame = slide_frame(&doc, args)?;
+        let meta = crate::webvideo::fetch(str_arg(args, "url")?).map_err(|e| anyhow::anyhow!(e))?;
+        let (w, h) = meta.size;
+        let mut media = Media::new(crate::webvideo::store_poster(&base_dir(&path), &meta), w, h);
+        media.url = Some(meta.url.clone());
+        media.corner_radius = w.min(h) * 0.03;
+        media.autoplay = args.get("autoplay").and_then(Value::as_bool).unwrap_or(false);
+        let width = args.get("width").and_then(Value::as_f64).unwrap_or(1000.0);
+        let local = DVec2::new(args.get("x").and_then(Value::as_f64).unwrap_or(0.0), args.get("y").and_then(Value::as_f64).unwrap_or(0.0));
+        let mut el = Element::new(ElementKind::Video(media)).with_transform(on_slide(&frame, local, width / w.max(1.0)));
+        el.name = meta.title.clone();
+        el.shadow = Some(glide_core::Shadow::lifted());
+        let id = doc.add(el);
+        save(&doc, &path)?;
+        Ok(vec![text_json(&json!({
+            "added": id,
+            "title": meta.title,
+            "poster": meta.poster.is_some(),
+            "note": "The poster was saved in assets/. The video streams when played: in GlideDeck (FFmpeg, plus yt-dlp for YouTube, Vimeo and Loom) and in the export_html web page. PowerPoint gets the poster linked to the video.",
+        }))])
     }
 
     fn remove_slide(&mut self, args: &Value) -> Result<Vec<Value>> {
@@ -832,7 +925,10 @@ fn catalog() -> Value {
         .collect();
     let themes: Vec<Value> = builtin_themes()
         .into_iter()
-        .map(|t| json!({ "name": t.name, "dark": t.is_dark(), "heading_font": t.heading_font, "body_font": t.body_font }))
+        .map(|t| {
+            let house = t.name == HOUSE_DARK || t.name == HOUSE_LIGHT;
+            json!({ "name": t.name, "dark": t.is_dark(), "house_style": house, "heading_font": t.heading_font, "body_font": t.body_font })
+        })
         .collect();
     let arrangements: Vec<Value> = crate::arrange::Arrangement::ALL
         .into_iter()
@@ -856,6 +952,13 @@ fn catalog() -> Value {
         "templates": templates,
         "layouts": layouts,
         "themes": themes,
+        "house_style": {
+            "dark": HOUSE_DARK,
+            "light": HOUSE_LIGHT,
+            "default": HOUSE_DARK,
+            "guidance": "GlideDeck's own look, shared by the app and its welcome deck. Use it unless the user asks for \
+                         another theme: flat backgrounds, heavy short headings, one accent color per slide.",
+        },
         "arrangements": arrangements,
         "effects": effects,
         "transitions": transitions,
@@ -1007,7 +1110,7 @@ fn inline_markdown(src: &str) -> (String, Vec<glide_core::TextSpan>) {
     (out, block.spans)
 }
 
-fn base64(bytes: &[u8]) -> String {
+pub(crate) fn base64(bytes: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
@@ -1047,7 +1150,7 @@ fn tool_definitions() -> Vec<Value> {
     });
     vec![
         tool("catalog", "List templates, layouts and themes",
-            "Lists the presentation templates, slide layouts (with the text fields and icon slots each one has) and color themes. Call this first.",
+            "Lists the presentation templates, slide layouts (with the text fields and icon slots each one has), color themes and the house style (the default look). Call this first.",
             json!({}), &[], true),
         tool("search_icons", "Search icons",
             "Searches the ~1,500 bundled Phosphor icon names (e.g. 'rocket', 'chart', 'users').",
@@ -1058,7 +1161,7 @@ fn tool_definitions() -> Vec<Value> {
                 "path": path_prop(),
                 "template": { "type": "string", "description": "Template id from `catalog`, e.g. pitch-deck, roadmap, orbit, journey, blank." },
                 "title": { "type": "string" },
-                "theme": { "type": "string", "description": "Optional theme name from `catalog` (overrides the template's)." },
+                "theme": { "type": "string", "description": "Theme name from `catalog`. Prefer the house style, \"darkroom\" (or \"daylight\" for a light deck), unless the user asks for another look. Without it a blank deck uses Darkroom and a template keeps its own theme." },
                 "overwrite": { "type": "boolean", "default": false },
             }), &["path"], false),
         tool("get_presentation", "Read a presentation",
@@ -1075,11 +1178,12 @@ fn tool_definitions() -> Vec<Value> {
                 "name": { "type": "string", "description": "Slide name shown in the slide list." },
             }), &["path", "layout"], false),
         tool("update_elements", "Update text, icons or colors",
-            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes, `parallax` for depth in the show (0.3–0.7 far backdrop that drifts slower, negative = near, moves faster).",
+            "Changes elements by id: `text` for text boxes (use \\n for new paragraphs; with `markdown: true`, **bold**, *italic*, __underline__ and ~~strike~~ become formatting), `icon` for icons, `color` (#RRGGBB) for text, icons and shapes, `font` (a family from `list_fonts`) for text boxes, `parallax` for depth in the show (0.3–0.7 far backdrop that drifts slower, negative = near, moves faster).",
             json!({
                 "path": path_prop(),
                 "updates": { "type": "array", "items": { "type": "object", "properties": {
                     "id": { "type": "string" }, "text": { "type": "string" }, "icon": { "type": "string" }, "color": { "type": "string" },
+                    "font": { "type": "string", "description": "Font family for a text box: any font on this computer or added with `add_font` (see `list_fonts`)." },
                     "parallax": { "type": "number", "description": "Parallax depth: 0 = on the canvas, up to 0.95 = far away, negative = near." },
                     "markdown": { "type": "boolean", "description": "Read **bold**, *italic*, __underline__ and ~~strike~~ in `text` as formatting." },
                 }, "required": ["id"] } },
@@ -1107,6 +1211,16 @@ fn tool_definitions() -> Vec<Value> {
                 "x": { "type": "number", "default": 0 }, "y": { "type": "number", "default": 0 },
                 "width": { "type": "number", "default": 800 },
             }), &["path", "image"], false),
+        tool("add_web_video", "Add a web video",
+            "Places a YouTube, Vimeo or Loom video (or a direct link to a video file) on a slide, with its title and poster image. It plays in GlideDeck and in the export_html web page (in the site's own player). Slide units: 1600 × 900, origin at the center.",
+            json!({
+                "path": path_prop(),
+                "url": { "type": "string", "description": "Link to the video, e.g. https://www.youtube.com/watch?v=…" },
+                "step": { "type": "integer" },
+                "x": { "type": "number", "default": 0 }, "y": { "type": "number", "default": 0 },
+                "width": { "type": "number", "default": 1000 },
+                "autoplay": { "type": "boolean", "default": false, "description": "Start playing when its slide is reached in the show." },
+            }), &["path", "url"], false),
         tool("set_theme", "Change the theme",
             "Restyles the whole presentation with a theme from `catalog` (colors, fonts and background).",
             json!({ "path": path_prop(), "theme": { "type": "string" } }), &["path", "theme"], false),
@@ -1127,6 +1241,19 @@ fn tool_definitions() -> Vec<Value> {
         tool("export_pptx", "Export to PowerPoint",
             "Exports the presentation to .pptx: one slide per step, with Morph transitions. Defaults to the project's name with .pptx.",
             json!({ "path": path_prop(), "out": { "type": "string" } }), &["path"], false),
+        tool("export_html", "Export to a web page",
+            "Exports the presentation to a single self-contained .html file that plays the show in any browser exactly like the app: the same camera moves, transitions, builds, parallax and effects, with text as vector outlines (no fonts needed) and images embedded. Videos are copied to a `<name>_media` folder next to it. Defaults to the project's name with .html.",
+            json!({ "path": path_prop(), "out": { "type": "string" } }), &["path"], false),
+        tool("list_fonts", "List fonts",
+            "Lists the font families available for text: the fonts installed on this computer plus, when `path` is given, the font files added to that presentation.",
+            json!({
+                "query": { "type": "string", "description": "Only families whose name contains this (case-insensitive)." },
+                "path": { "type": "string", "description": "Optional project, to include its added fonts." },
+                "limit": { "type": "integer", "default": 200 },
+            }), &[], true),
+        tool("add_font", "Add a font file",
+            "Copies a .ttf/.otf/.ttc/.otc font file into the project's assets/ folder so it travels with the presentation, and returns its family names for `update_elements` (`font`).",
+            json!({ "path": path_prop(), "font": { "type": "string", "description": "The font file." } }), &["path", "font"], false),
         tool("import_pptx", "Import a PowerPoint file",
             "Converts a .pptx into a GlideDeck project: each slide becomes a frame with its text (with formatting), shapes, pictures, background and speaker notes, in slide order. Tables, charts and SmartArt are listed as skipped. Returns the slides like get_presentation.",
             json!({
@@ -1216,7 +1343,7 @@ mod tests {
         assert!(s.handle(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none(), "notifications get no reply");
         let tools = call(&mut s, 2, "tools/list", json!({}));
         let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
+        for expected in ["catalog", "create_presentation", "add_slide", "update_elements", "render_slide", "export_pptx", "export_pdf", "export_html", "list_fonts", "add_font", "add_web_video", "import_pptx", "arrange_slides", "animate", "auto_animate", "set_transitions", "set_notes", "clear_animations", "save_as", "open_in_editor"] {
             assert!(names.contains(&expected), "{expected} in {names:?}");
         }
         let unknown = call(&mut s, 3, "nope", json!({}));
@@ -1262,6 +1389,19 @@ mod tests {
         let bad = tools(&mut s, 4, "add_slide", json!({ "path": "deck", "layout": "venn", "text": { "Nope": "x" } }));
         assert_eq!(bad["result"]["isError"], true, "unknown fields are reported");
 
+        // A blank deck starts in the house style, and the catalog names it.
+        let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
+        assert_eq!(doc.theme.as_ref().unwrap().name, HOUSE_DARK);
+        let cat: Value = serde_json::from_str(&tool_text(&tools(&mut s, 40, "catalog", json!({})))).unwrap();
+        assert_eq!(cat["house_style"]["default"], HOUSE_DARK);
+        let house: Vec<&str> = cat["themes"].as_array().unwrap().iter().filter(|t| t["house_style"] == true).filter_map(|t| t["name"].as_str()).collect();
+        assert_eq!(house, [HOUSE_DARK, HOUSE_LIGHT]);
+        // A template can be built straight in the house style.
+        tool_text(&tools(&mut s, 41, "create_presentation", json!({ "path": "pitch", "template": "pitch-deck", "theme": "daylight" })));
+        let pitch = Document::load(&dir.join("pitch.glide.json")).unwrap();
+        assert_eq!(pitch.theme.as_ref().unwrap().name, HOUSE_LIGHT);
+        assert_eq!(pitch.background, pitch.theme.as_ref().unwrap().background);
+
         tool_text(&tools(&mut s, 5, "add_text", json!({ "path": "deck", "text": "Footnote", "role": "caption", "y": 380 })));
         tool_text(&tools(&mut s, 6, "set_theme", json!({ "path": "deck", "theme": "midnight" })));
         let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
@@ -1272,6 +1412,22 @@ mod tests {
         let pptx = tools(&mut s, 7, "export_pptx", json!({ "path": "deck" }));
         tool_text(&pptx);
         assert!(dir.join("deck.pptx").exists());
+
+        let html: Value = serde_json::from_str(&tool_text(&tools(&mut s, 30, "export_html", json!({ "path": "deck" })))).unwrap();
+        assert_eq!(html["slides"], 2);
+        let page = std::fs::read_to_string(dir.join("deck.html")).unwrap();
+        assert!(page.contains("Q3 review") && page.contains("<script"));
+
+        let fonts: Value = serde_json::from_str(&tool_text(&tools(&mut s, 31, "list_fonts", json!({ "path": "deck" })))).unwrap();
+        assert!(!fonts["fonts"].as_array().unwrap().iter().any(|f| f.as_str().unwrap().starts_with("Phosphor")));
+        if let Some(family) = fonts["fonts"][0].as_str() {
+            tool_text(&tools(&mut s, 32, "update_elements", json!({ "path": "deck", "updates": [{ "id": title_id, "font": family }] })));
+            let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
+            let ElementKind::Text(t) = &doc.get(&title_id).unwrap().kind else { panic!() };
+            assert_eq!(t.font_family, family);
+        }
+        let missing = tools(&mut s, 33, "update_elements", json!({ "path": "deck", "updates": [{ "id": title_id, "font": "No Such Font 123" }] }));
+        assert_eq!(missing["result"]["isError"], true);
 
         tool_text(&tools(&mut s, 8, "save_as", json!({ "path": "deck", "new_path": "copies/deck-v2" })));
         assert!(dir.join("copies/deck-v2.glide.json").exists());

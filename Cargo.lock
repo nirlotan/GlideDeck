@@ -1555,7 +1555,7 @@ dependencies = [
 
 [[package]]
 name = "glide-core"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "glam",
  "serde",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "glide-pptx"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "glam",
  "glide-core",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "glide-render"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "cosmic-text",
@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "glidedeck"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1616,7 +1616,9 @@ dependencies = [
  "png",
  "rfd",
  "roxmltree 0.21.1",
+ "serde",
  "serde_json",
+ "unicode-bidi",
  "winresource",
  "zip",
 ]

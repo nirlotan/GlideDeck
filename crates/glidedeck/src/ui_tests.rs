@@ -69,9 +69,7 @@ fn canvas_center(h: &Harness<'_, GlideDeckApp>) -> Pos2 {
 #[test]
 fn drawing_shapes_by_drag_and_click() {
     let mut h = harness(Some(Document::new("Shapes")));
-    // Pick the rectangle tool from the ribbon, then drag it out.
-    h.get_by_label("Insert").click();
-    h.run_steps(2);
+    // Pick the rectangle tool from the tool rail, then drag it out.
     h.get_by_label("Rectangle").click();
     h.run_steps(2);
     assert_eq!(h.state().tool, Tool::Rect);
@@ -179,7 +177,7 @@ fn demo_overview_snapshot() {
     let mut h = harness(None);
     h.run_steps(6);
     snapshot(&mut h, "editor");
-    h.get_by_label("Transitions").click();
+    h.get_by_label("Slide").click();
     h.run_steps(2);
     h.state_mut().go_to_step(6);
     for _ in 0..90 {
@@ -196,8 +194,6 @@ fn demo_overview_snapshot() {
 #[test]
 fn icon_library_inserts_vector_icons() {
     let mut h = harness(Some(Document::new("Icons")));
-    h.get_by_label("Insert").click();
-    h.run_steps(2);
     h.get_by_label("Icons").click();
     h.run_steps(3);
     assert!(h.state().icon_picker.open);
@@ -222,8 +218,6 @@ fn icon_library_inserts_vector_icons() {
 fn layouts_themes_and_templates() {
     let mut h = harness(Some(Document::new("Design")));
     // Insert a layout: it becomes a frame + content and a new slide.
-    h.get_by_label("Insert").click();
-    h.run_steps(2);
     h.get_by_label("Layouts").click();
     h.run_steps(4);
     snapshot(&mut h, "layout-gallery");
@@ -248,7 +242,8 @@ fn layouts_themes_and_templates() {
     assert_eq!(h.state().doc.path.len(), 2);
     assert_eq!(h.state().doc.elements.iter().filter(|e| matches!(e.name.as_str(), "Set 1" | "Set 2" | "Set 3")).count(), 3, "three Venn sets");
 
-    // Switch theme from the Design tab.
+    // Switch theme from the Design tab (deck design shows with nothing selected).
+    h.state_mut().selection.clear();
     h.get_by_label("Design").click();
     h.run_steps(2);
     h.get_by_label("Theme Midnight").click();
@@ -376,9 +371,7 @@ fn in_place_editing_types_hebrew_and_bullets() {
     h.key_press(Key::Escape);
     h.run_steps(2);
     assert!(h.state().text_edit.is_none());
-    // Bullets from the ribbon's contextual text group.
-    h.get_by_label("Home").click();
-    h.run_steps(2);
+    // Bullets, with the text box's properties showing in the Design tab.
     h.state_mut().selection = vec!["t".into()];
     h.run_steps(2);
     let ctx = h.ctx.clone();
@@ -489,9 +482,10 @@ fn readme_screenshots() {
     // 2. Design tab + a themed template in dark mode.
     let mut h = build(Some(crate::design::build_template(crate::design::Template::PitchDeck)));
     h.ctx.set_theme(egui::ThemePreference::Dark);
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
     h.state_mut().go_to_step(2);
     settle(&mut h);
+    h.state_mut().selection.clear();
+    h.state_mut().side_tab = crate::app::SideTab::Design;
     shot(&mut h, "design-dark");
 
     // 3. Template gallery.
@@ -503,7 +497,6 @@ fn readme_screenshots() {
 
     // 4. Slide layouts.
     let mut h = build(Some(crate::design::build_template(crate::design::Template::Blank)));
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Insert;
     h.state_mut().show_layouts = true;
     for _ in 0..3 {
         shot(&mut h, "layouts");
@@ -511,22 +504,23 @@ fn readme_screenshots() {
 
     // 5. Icon library.
     let mut h = build(Some(crate::design::build_template(crate::design::Template::Blank)));
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Insert;
     h.state_mut().icon_picker.open = true;
     h.state_mut().icon_picker.query = "chart".into();
     h.state_mut().icon_picker.style = glide_core::IconStyle::Fill;
     shot(&mut h, "icons");
 
-    // 6. Right-to-left editing in place, with bullets.
-    let theme = glide_core::theme::default_theme();
-    let mut doc = Document::new("עברית");
+    // 6. Editing text in place, with numbering.
+    let theme = glide_core::theme::theme_named(glide_core::theme::HOUSE_DARK).unwrap();
+    let mut doc = Document::new("Launch plan");
+    glide_core::theme::apply_theme(&mut doc, &theme);
     let mut heading = theme.text_style(glide_core::TextRole::Heading);
-    heading.content = "תוכנית העבודה".into();
+    heading.content = "Launch plan".into();
+    heading.weight = 800;
     let mut h1 = glide_core::Element::new(ElementKind::Text(heading)).with_transform(glide_core::Transform { x: 0.0, y: -120.0, scale: 1.0, rotation: 0.0 });
     h1.id = "h".into();
     doc.add(h1);
     let mut body = theme.text_style(glide_core::TextRole::Body);
-    body.content = "חזון ומטרות\nלוח זמנים ואבני דרך\nצוות ותקציב".into();
+    body.content = "Vision and goals\nTimeline and milestones\nTeam and budget".into();
     body.list = glide_core::ListStyle::Numbered;
     body.font_size = 40.0;
     let mut b1 = glide_core::Element::new(ElementKind::Text(body)).with_transform(glide_core::Transform { x: 0.0, y: 40.0, scale: 1.0, rotation: 0.0 });
@@ -538,7 +532,7 @@ fn readme_screenshots() {
     h.key_press(Key::Enter);
     h.run_steps(2);
     h.key_press_modifiers(Modifiers::COMMAND, Key::End);
-    shot(&mut h, "rtl-editing");
+    shot(&mut h, "text-editing");
 
     // 7. Presenting (fullscreen show, mid-path).
     let mut h = build(Some(crate::design::build_template(crate::design::Template::MindMap)));
@@ -553,7 +547,7 @@ fn readme_screenshots() {
         t.color = glide_core::Color::rgb(0xFF, 0xE8, 0xE0);
     }
     let mut h = build(Some(doc));
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
+    h.state_mut().side_tab = crate::app::SideTab::Design;
     h.state_mut().design_check.open = true;
     shot(&mut h, "design-check");
 
@@ -570,7 +564,7 @@ fn readme_screenshots() {
     let mut doc = crate::design::build_template(crate::design::Template::PitchDeck);
     doc.path[2].builds = crate::anim::auto_builds(&doc, 2, &mut glide_render::TextEngine::new());
     let mut h = build(Some(doc));
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Animate;
+    h.state_mut().side_tab = crate::app::SideTab::Animate;
     h.state_mut().go_to_step(2);
     settle(&mut h);
     shot(&mut h, "animate");
@@ -596,7 +590,6 @@ fn readme_screenshots() {
     h.run_steps(3);
     let opts = crate::arrange::ArrangeOptions { tilt: false, ..Default::default() };
     crate::arrange::arrange(&mut h.state_mut().doc, crate::arrange::Arrangement::Carousel, &opts).unwrap();
-    h.state_mut().ribbon_tab = crate::app::RibbonTab::Design;
     h.state_mut().fit_all(false);
     settle(&mut h);
     shot(&mut h, "pptx-carousel");
@@ -621,9 +614,7 @@ fn delete_works_after_dragging_and_clicking_buttons() {
     h.key_press(Key::Delete);
     h.run_steps(2);
     assert!(h.state().doc.get("a").is_none(), "Delete removes the dragged object");
-    // Click a ribbon button (it keeps keyboard focus), select on the canvas, press Backspace.
-    h.get_by_label("Home").click();
-    h.run_steps(2);
+    // Click a panel button (it keeps keyboard focus), select on the canvas, press Backspace.
     let at = screen_of(&h, glam::DVec2::new(300.0, 0.0));
     click(&mut h, at);
     let button = h.get_by_label_contains("Bring to front").rect();
@@ -923,8 +914,7 @@ fn arrange_slides_dialog_rearranges_an_imported_deck() {
     h.run_steps(3);
     let before = h.state().doc.clone();
 
-    h.get_by_label("Design").click();
-    h.run_steps(2);
+    // Arrange sits on the path strip.
     h.get_by_label("Arrange").click();
     h.run_steps(3);
     assert!(h.state().arrange_dialog.is_some());
@@ -968,7 +958,7 @@ fn animate_tab_adds_builds_previews_and_the_show_plays_them() {
     }
     assert!(h.state().anim_preview.is_none(), "the preview ends by itself");
 
-    // Spotlight the first object on a click, from the ribbon menu.
+    // Spotlight the first object on a click, from the Animate tab's menu.
     let target = auto[0].element.clone();
     h.state_mut().selection = vec![target.clone()];
     h.run_steps(2);
@@ -1037,7 +1027,7 @@ fn speaker_notes_panel_about_window_and_single_screen_presenter_view() {
     let mut h = harness(Some(doc));
     h.state_mut().go_to_step(1);
     h.run_steps(8);
-    // The notes panel under the canvas edits the current slide's notes.
+    // The Slide tab edits the current slide's notes.
     assert!(h.query_all(egui_kittest::kittest::By::new().label_contains("Speaker notes")).count() >= 1);
     let field = h.query_all(egui_kittest::kittest::By::new().role(egui::accesskit::Role::MultilineTextInput)).map(|n| n.rect()).next_back().expect("notes field");
     click(&mut h, egui::pos2(field.center().x, field.center().y));
@@ -1075,4 +1065,306 @@ fn speaker_notes_panel_about_window_and_single_screen_presenter_view() {
     h.key_press(Key::Escape);
     h.run_steps(2);
     assert!(h.state().presenting.is_none());
+}
+
+#[test]
+fn font_picker_lists_computer_fonts_and_sets_one() {
+    let t = glide_core::TextBlock::new("Hello");
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    let families = h.state().renderer.text.families();
+    let Some(family) = families.iter().find(|f| f.as_str() != "sans-serif").cloned() else { return };
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(3);
+    h.get_by_label_contains("sans-serif").click();
+    h.run_steps(3);
+    // The popup's search box is the newest text field.
+    snapshot(&mut h, "font-picker-open");
+    h.get_all_by_role(egui::accesskit::Role::TextInput).last().unwrap().type_text(&family);
+    h.run_steps(3);
+    snapshot(&mut h, "font-picker");
+    h.get_by_label(&format!("Font {family}")).click();
+    h.run_steps(3);
+    let ElementKind::Text(t) = &h.state().doc.get("t").unwrap().kind else { unreachable!() };
+    assert_eq!(t.font_family, family);
+    // The web page export sits next to the other exports.
+    h.get_by_label_contains("Share").click();
+    h.run_steps(2);
+    let _ = h.get_by_label_contains("Web page");
+}
+
+#[test]
+fn hebrew_in_the_properties_field_edits_in_visual_order() {
+    let t = glide_core::TextBlock::new("שלום");
+    let mut h = harness(Some(one_element(ElementKind::Text(t), "t")));
+    h.state_mut().camera = glide_core::Camera::default();
+    h.state_mut().selection = vec!["t".into()];
+    h.run_steps(4);
+    let field = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("שלום"));
+    let field = field.unwrap_or_else(|| h.get_all_by_role(egui::accesskit::Role::TextInput).find(|n| n.value().as_deref() == Some("שלום")).expect("text field"));
+    // The line is right-aligned, so clicking the empty left part lands at the end.
+    let r = field.rect();
+    h.event(Event::PointerMoved(Pos2::new(r.left() + 12.0, r.top() + 10.0)));
+    h.event(Event::PointerButton { pos: Pos2::new(r.left() + 12.0, r.top() + 10.0), button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
+    h.event(Event::PointerButton { pos: Pos2::new(r.left() + 12.0, r.top() + 10.0), button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+    h.run_steps(3);
+    h.event(Event::Text("!".into()));
+    h.run_steps(2);
+    let content = |h: &Harness<'_, GlideDeckApp>| match &h.state().doc.get("t").unwrap().kind {
+        ElementKind::Text(t) => t.content.clone(),
+        _ => unreachable!(),
+    };
+    assert_eq!(content(&h), "שלום!");
+    // → walks right on screen, which is backwards through Hebrew.
+    h.key_press(Key::ArrowRight);
+    h.run_steps(1);
+    h.key_press(Key::ArrowRight);
+    h.run_steps(1);
+    h.event(Event::Text("-".into()));
+    h.run_steps(2);
+    assert_eq!(content(&h), "שלו-ם!");
+    snapshot(&mut h, "hebrew-properties");
+}
+
+#[test]
+fn autosave_writes_the_file_once_changes_settle() {
+    let dir = std::env::temp_dir().join(format!("gd-autosave-ui-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("talk.glide.json");
+    let doc = Document::new("Talk");
+    doc.save(&file).unwrap();
+    let mut h = harness(Some(doc.clone()));
+    h.state_mut().path = Some(file.clone());
+    h.state_mut().saved = doc;
+    h.run_steps(2);
+    h.state_mut().insert_text_role(glide_core::TextRole::Title);
+    h.state_mut().focus_text_editor = false;
+    h.run_steps(2);
+    assert!(h.state().is_dirty());
+    // A quarter of a second per step: give it a few seconds.
+    for _ in 0..16 {
+        h.run_steps(1);
+    }
+    assert!(!h.state().is_dirty(), "saved by AutoSave");
+    assert_eq!(Document::load(&file).unwrap().elements.len(), 1);
+
+    // Turned off, changes wait for an explicit save.
+    h.state_mut().autosave.enabled = false;
+    h.state_mut().insert_text_role(glide_core::TextRole::Body);
+    h.state_mut().focus_text_editor = false;
+    for _ in 0..16 {
+        h.run_steps(1);
+    }
+    assert!(h.state().is_dirty());
+    assert_eq!(Document::load(&file).unwrap().elements.len(), 1);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn web_videos_show_their_poster_and_offer_the_browser() {
+    let mut h = harness(Some(Document::new("Web")));
+    h.state_mut().camera = glide_core::Camera::default();
+    let meta = crate::webvideo::WebVideoMeta { url: "https://youtu.be/dQw4w9WgXcQ".into(), title: "A talk".into(), poster: None, size: (1280.0, 720.0) };
+    let id = h.state_mut().add_web_video(meta, None);
+    h.run_steps(4);
+    let el = h.state().doc.get(&id).unwrap().clone();
+    let ElementKind::Video(m) = &el.kind else { panic!("a video") };
+    assert_eq!(m.url.as_deref(), Some("https://youtu.be/dQw4w9WgXcQ"));
+    assert_eq!(el.name, "A talk");
+    assert!(!m.path.is_empty(), "a poster is stored even without a thumbnail");
+    // Nothing goes over the network just by showing it.
+    assert!(!matches!(h.state_mut().renderer.video_status(m.source()), glide_render::VideoStatus::Loading));
+    for _ in 0..20 {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    snapshot(&mut h, "web-video");
+}
+
+#[test]
+fn unsaved_work_is_kept_and_recovered_after_a_crash() {
+    let dir = std::env::temp_dir().join(format!("gd-recovery-ui-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // A session with unsaved work keeps a recovery copy.
+    let mut h = harness(Some(Document::new("Draft")));
+    h.state_mut().autosave = crate::autosave::AutoSave::new(Some(dir.clone()));
+    h.run_steps(2);
+    h.state_mut().insert_text_role(glide_core::TextRole::Title);
+    h.state_mut().focus_text_editor = false;
+    for _ in 0..28 {
+        h.run_steps(1);
+    }
+    let copies = || std::fs::read_dir(dir.join("recovery")).map(|d| d.count()).unwrap_or(0);
+    assert_eq!(copies(), 2, "a copy and its details");
+    // Closing normally removes it.
+    h.state_mut().autosave.discard_copy();
+    assert_eq!(copies(), 0);
+
+    // A copy left behind by a session that crashed is offered on the next start.
+    let mut lost = Document::new("Lost talk");
+    lost.add(glide_core::Element::new(ElementKind::Text(glide_core::TextBlock::new("Keep me"))));
+    let old = crate::autosave::now_unix() - 3600;
+    let meta = crate::autosave::Meta { original: None, base_dir: dir.clone(), title: "Lost talk".into(), saved: old, heartbeat: old, pid: 1 };
+    crate::autosave::write_copy(&dir, "1-1", &lost, &meta).unwrap();
+    let mut h = harness(None);
+    h.state_mut().autosave = crate::autosave::AutoSave::new(Some(dir.clone()));
+    h.run_steps(3);
+    snapshot(&mut h, "recover-dialog");
+    h.get_by_label("Recover").click();
+    h.run_steps(3);
+    assert_eq!(h.state().doc.title, "Lost talk");
+    assert!(h.state().is_dirty(), "recovered work is unsaved until saved");
+    assert!(h.state().autosave.found.is_empty());
+    assert!(h.query_by_label("Recover unsaved work").is_none());
+    std::fs::remove_dir_all(dir).ok();
+}
+
+/// `GLIDEDECK_WEB_VIDEO=<direct video link> cargo test -p glidedeck web_video_plays -- --ignored`
+#[test]
+#[ignore = "needs the network and FFmpeg"]
+fn web_video_plays_in_the_editor() {
+    let Some(url) = std::env::var_os("GLIDEDECK_WEB_VIDEO") else { return };
+    let mut h = harness(Some(Document::new("Web")));
+    h.state_mut().camera = glide_core::Camera::default();
+    let meta = crate::webvideo::WebVideoMeta { url: url.to_string_lossy().into_owned(), title: "Clip".into(), poster: None, size: (640.0, 360.0) };
+    let id = h.state_mut().add_web_video(meta, None);
+    h.run_steps(2);
+    assert!(h.state_mut().toggle_video(&id), "asked to play");
+    let source = url.to_string_lossy().into_owned();
+    let mut playing = false;
+    for _ in 0..100 {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        if let glide_render::VideoStatus::Ready { playing: true, position, .. } = h.state_mut().renderer.video_status(&source)
+            && position > 0.5
+        {
+            playing = true;
+            break;
+        }
+    }
+    snapshot(&mut h, "web-video-playing");
+    assert!(playing, "streams and plays");
+}
+
+#[test]
+fn command_search_finds_commands_and_slides() {
+    let doc = crate::design::build_template(crate::design::Template::PitchDeck);
+    let mut h = harness(Some(doc));
+    h.state_mut().current_step = Some(0);
+    h.run_steps(2);
+    // Ctrl/Cmd+K opens it; typing narrows the list; Enter runs the first match.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::K);
+    h.run_steps(3);
+    assert!(h.state().palette.open);
+    h.event(Event::Text("caro".into()));
+    h.run_steps(3);
+    h.get_by_label_contains("Run Arrange slides");
+    snapshot(&mut h, "command-search");
+    h.key_press(Key::Enter);
+    h.run_steps(3);
+    assert!(!h.state().palette.open, "running a command closes the search");
+    assert!(h.state().arrange_dialog.is_some(), "the command ran");
+    h.state_mut().arrange_dialog = None;
+
+    // The button in the top bar opens it too, and slides are found by name.
+    h.get_by_label("Search or run a command").click();
+    h.run_steps(3);
+    assert!(h.state().palette.open);
+    h.event(Event::Text("slide 3".into()));
+    h.run_steps(3);
+    h.get_by_label_contains("Run Go to slide 3").click();
+    h.run_steps(3);
+    assert_eq!(h.state().current_step, Some(2));
+
+    // Escape closes it without running anything.
+    h.key_press_modifiers(Modifiers::COMMAND, Key::K);
+    h.run_steps(3);
+    h.key_press(Key::Escape);
+    h.run_steps(3);
+    assert!(!h.state().palette.open);
+}
+
+/// Records the README animations as PNG frame sequences (one folder each):
+/// `GLIDEDECK_GIF_FRAMES=<dir> cargo test -p glidedeck readme_gif_frames -- --ignored`
+/// then `docs/make-gifs.sh <dir>` turns them into GIFs with FFmpeg.
+#[test]
+#[ignore = "writes frames for the README GIFs; run explicitly"]
+fn readme_gif_frames() {
+    let Some(dir) = std::env::var_os("GLIDEDECK_GIF_FRAMES") else { return };
+    let dir = std::path::PathBuf::from(dir);
+    let build = |size: egui::Vec2| {
+        let mut h = Harness::builder().with_size(size).with_pixels_per_point(1.0).wgpu().build_eframe(move |cc| GlideDeckApp::new(cc, None).expect("app starts"));
+        h.ctx.set_theme(egui::ThemePreference::Dark);
+        h.run_steps(8);
+        h
+    };
+    /// Captures every fourth step (15 frames a second) for `seconds`.
+    struct Recorder {
+        dir: std::path::PathBuf,
+        n: usize,
+    }
+    impl Recorder {
+        fn new(dir: std::path::PathBuf) -> Self {
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Recorder { dir, n: 0 }
+        }
+        fn roll(&mut self, h: &mut Harness<'_, GlideDeckApp>, seconds: f32) {
+            for _ in 0..(seconds * 15.0).round() as usize {
+                for _ in 0..4 {
+                    h.step();
+                }
+                h.render().expect("render").save(self.dir.join(format!("{:04}.png", self.n))).expect("save");
+                self.n += 1;
+            }
+        }
+    }
+
+    // 1. The tour: the show flies from the overview into each tilted slab.
+    let mut h = build(egui::vec2(960.0, 540.0));
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 0, Some(false));
+    let mut rec = Recorder::new(dir.join("tour"));
+    rec.roll(&mut h, 1.2);
+    for hold in [2.6, 1.0, 2.4, 2.0, 2.0, 2.0] {
+        h.key_press(Key::ArrowRight);
+        rec.roll(&mut h, hold);
+    }
+
+    // 2. Zooming: into the portal, a million times deeper, and back out.
+    let mut h = build(egui::vec2(960.0, 540.0));
+    let ctx = h.ctx.clone();
+    h.state_mut().start_presenting(&ctx, 7, Some(false));
+    for _ in 0..200 {
+        h.step();
+    }
+    let mut rec = Recorder::new(dir.join("zoom"));
+    rec.roll(&mut h, 0.6);
+    for hold in [2.2, 3.0, 3.0, 3.0, 2.6] {
+        h.key_press(Key::ArrowRight);
+        rec.roll(&mut h, hold);
+    }
+
+    // 3. The editor: pick stops on the path strip, then switch the app between dark and light from the command search.
+    let mut h = build(egui::vec2(1200.0, 750.0));
+    let mut rec = Recorder::new(dir.join("editor"));
+    rec.roll(&mut h, 1.0);
+    for stop in ["Slide 3: Infinite canvas", "Slide 9: Portal", "Slide 1: Overview"] {
+        let at = h.get_by_label(stop).rect().center();
+        click(&mut h, at);
+        rec.roll(&mut h, 2.0);
+    }
+    for query in ["light theme", "dark theme"] {
+        h.key_press_modifiers(Modifiers::COMMAND, Key::K);
+        rec.roll(&mut h, 0.5);
+        for ch in query.chars() {
+            h.event(Event::Text(ch.to_string()));
+            rec.roll(&mut h, 0.14);
+        }
+        rec.roll(&mut h, 0.6);
+        h.key_press(Key::Enter);
+        rec.roll(&mut h, 1.8);
+    }
 }
