@@ -81,10 +81,11 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY }}
           NOTARY_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          if [ -z "$APPLE_API_KEY_P8" ] || [ -z "$NOTARY_KEY_ID" ] || [ -z "$NOTARY_ISSUER" ]; then
-            echo "::error::Missing notarization secrets APPLE_API_KEY_P8 / APPLE_API_KEY / APPLE_API_ISSUER."
+          if [ -z "$APPLE_API_KEY_P8" ] || [ -z "$NOTARY_KEY_ID" ]; then
+            echo "::error::Missing notarization secrets APPLE_API_KEY_P8 / APPLE_API_KEY."
             exit 1
           fi
+          # APPLE_API_ISSUER is needed for Team keys; leave it unset for an Individual key.
           export NOTARY_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
           printf '%s\n' "$APPLE_API_KEY_P8" > "$NOTARY_KEY_PATH"
           UNIVERSAL=1 packaging/macos/build-dmg.sh
@@ -98,7 +99,7 @@ jobs:
           xcrun stapler validate "dist/GlideDeck-$v.dmg"
           spctl -a -vv -t install "dist/GlideDeck-$v.dmg"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: glidedeck-macos
           if-no-files-found: error
@@ -139,7 +140,7 @@ jobs:
           Get-FileHash $msi.FullName -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $($msi.Name)" } |
             Out-File -FilePath "$($msi.FullName).sha256" -Encoding ascii
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: glidedeck-windows
           if-no-files-found: error

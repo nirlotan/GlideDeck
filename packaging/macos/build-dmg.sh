@@ -9,6 +9,7 @@
 #   NOTARY_PROFILE="glidedeck-notary"   # created with `xcrun notarytool store-credentials`
 # or, for CI, an App Store Connect API key instead of NOTARY_PROFILE:
 #   NOTARY_KEY_PATH=AuthKey_XXXX.p8 NOTARY_KEY_ID=XXXX NOTARY_ISSUER=<issuer id>
+#   (leave NOTARY_ISSUER empty for an *Individual* API key; Team keys need it)
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -72,7 +73,8 @@ if [[ -n "${SIGN_IDENTITY:-}" ]]; then
   codesign --force --timestamp --sign "$SIGN_IDENTITY" "$dmg"
 fi
 if [[ -n "${NOTARY_KEY_PATH:-}" ]]; then
-  notary_auth=(--key "$NOTARY_KEY_PATH" --key-id "${NOTARY_KEY_ID:?set NOTARY_KEY_ID}" --issuer "${NOTARY_ISSUER:?set NOTARY_ISSUER}")
+  notary_auth=(--key "$NOTARY_KEY_PATH" --key-id "${NOTARY_KEY_ID:?set NOTARY_KEY_ID}")
+  [[ -n "${NOTARY_ISSUER:-}" ]] && notary_auth+=(--issuer "$NOTARY_ISSUER")
 elif [[ -n "${NOTARY_PROFILE:-}" ]]; then
   notary_auth=(--keychain-profile "$NOTARY_PROFILE")
 fi
