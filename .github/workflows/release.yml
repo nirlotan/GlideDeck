@@ -1,0 +1,174 @@
+name: Release
+
+# Push a tag like v0.1.7 (matching the version in Cargo.toml) to build, sign and
+# publish a release. Run it by hand (Actions → Release → Run workflow) to build
+# and sign without publishing; the installers are then under the run's Artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS DMG (signed + notarized)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the tag matches Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the version in Cargo.toml ($v)."
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Import the Developer ID certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "::error::Missing secrets APPLE_CERTIFICATE / APPLE_SIGNING_IDENTITY."
+            exit 1
+          fi
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KCP="$(openssl rand -hex 16)"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12" || {
+            echo "::error::APPLE_CERTIFICATE isn't valid base64."; exit 1; }
+          security create-keychain -p "$KCP" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCP" "$KC"
+          if ! security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign >/dev/null; then
+            echo "::error::Couldn't import APPLE_CERTIFICATE: wrong APPLE_CERTIFICATE_PASSWORD, or the .p12 has no private key."
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCP" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+
+          echo "Identities in the certificate:"
+          security find-identity -p codesigning "$KC"
+          if ! security find-identity -p codesigning "$KC" | grep -qF "\"$APPLE_SIGNING_IDENTITY\""; then
+            echo "::error::APPLE_SIGNING_IDENTITY doesn't match the certificate. It must be a 'Developer ID Application: …' identity (see the list above)."
+            exit 1
+          fi
+          if ! security find-identity -v -p codesigning "$KC" | grep -qF "\"$APPLE_SIGNING_IDENTITY\""; then
+            echo "Installing Apple's Developer ID intermediate certificates."
+            for c in DeveloperIDG2CA.cer DeveloperIDCA.cer; do
+              curl -fsSL "https://www.apple.com/certificateauthority/$c" -o "$RUNNER_TEMP/$c" &&
+                sudo security import "$RUNNER_TEMP/$c" -k /Library/Keychains/System.keychain || true
+            done
+            security find-identity -v -p codesigning "$KC" | grep -qF "\"$APPLE_SIGNING_IDENTITY\"" || {
+              echo "::error::The signing certificate isn't valid (expired or revoked?)."; exit 1; }
+          fi
+          echo "KEYCHAIN_PATH=$KC" >> "$GITHUB_ENV"
+
+      - name: Build, sign and notarize
+        env:
+          SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          NOTARY_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          if [ -z "$APPLE_API_KEY_P8" ] || [ -z "$NOTARY_KEY_ID" ] || [ -z "$NOTARY_ISSUER" ]; then
+            echo "::error::Missing notarization secrets APPLE_API_KEY_P8 / APPLE_API_KEY / APPLE_API_ISSUER."
+            exit 1
+          fi
+          export NOTARY_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$NOTARY_KEY_PATH"
+          UNIVERSAL=1 packaging/macos/build-dmg.sh
+          rm -f "$NOTARY_KEY_PATH"
+
+      - name: Verify signature and notarization
+        run: |
+          v="$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          codesign --verify --strict --verbose=2 dist/GlideDeck.app
+          lipo -archs dist/GlideDeck.app/Contents/MacOS/GlideDeck
+          xcrun stapler validate "dist/GlideDeck-$v.dmg"
+          spctl -a -vv -t install "dist/GlideDeck-$v.dmg"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: glidedeck-macos
+          if-no-files-found: error
+          path: |
+            dist/GlideDeck-*.dmg
+            dist/GlideDeck-*.dmg.sha256
+
+      - name: Remove the signing keychain
+        if: always()
+        run: |
+          [ -n "${KEYCHAIN_PATH:-}" ] && security delete-keychain "$KEYCHAIN_PATH" || true
+
+  windows:
+    name: Windows MSI
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Get WiX Toolset 3
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "wix314-binaries.zip"
+          $dir = Join-Path $env:RUNNER_TEMP "wix314"
+          Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dir
+          "WIX_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build the MSI
+        shell: pwsh
+        run: |
+          & .\packaging\windows\build-msi.ps1 -WixDir $env:WIX_DIR
+          $msi = Get-ChildItem dist\GlideDeck-*-x64.msi | Select-Object -First 1
+          if (-not $msi) { throw "No MSI was produced." }
+          # Same file under a name that never changes (README's download link).
+          Copy-Item $msi.FullName dist\GlideDeck-x64.msi
+          Get-FileHash $msi.FullName -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $($msi.Name)" } |
+            Out-File -FilePath "$($msi.FullName).sha256" -Encoding ascii
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: glidedeck-windows
+          if-no-files-found: error
+          path: |
+            dist/*.msi
+            dist/*.msi.sha256
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          path: release
+          merge-multiple: true
+      - name: Release notes and stable macOS name
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          notes="packaging/release-notes-${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then cp "$notes" notes.md; else printf '## GlideDeck %s\n' "$v" > notes.md; fi
+          # Same DMG under a name that never changes (README's download link).
+          cp "release/GlideDeck-$v.dmg" release/GlideDeck.dmg
+          ls -la release
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: GlideDeck ${{ github.ref_name }}
+          body_path: notes.md
+          make_latest: true
+          files: release/*

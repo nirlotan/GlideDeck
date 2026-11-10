@@ -4,9 +4,11 @@
 #   packaging/macos/build-dmg.sh              # build for this Mac's architecture
 #   UNIVERSAL=1 packaging/macos/build-dmg.sh  # Apple Silicon + Intel universal binary
 #
-# Optional signing / notarization (see README → "Creating a macOS DMG"):
+# Optional signing / notarization (see README → "macOS DMG"):
 #   SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 #   NOTARY_PROFILE="glidedeck-notary"   # created with `xcrun notarytool store-credentials`
+# or, for CI, an App Store Connect API key instead of NOTARY_PROFILE:
+#   NOTARY_KEY_PATH=AuthKey_XXXX.p8 NOTARY_KEY_ID=XXXX NOTARY_ISSUER=<issuer id>
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -69,10 +71,24 @@ rm -rf "$staging"
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
   codesign --force --timestamp --sign "$SIGN_IDENTITY" "$dmg"
 fi
-if [[ -n "${NOTARY_PROFILE:-}" ]]; then
+if [[ -n "${NOTARY_KEY_PATH:-}" ]]; then
+  notary_auth=(--key "$NOTARY_KEY_PATH" --key-id "${NOTARY_KEY_ID:?set NOTARY_KEY_ID}" --issuer "${NOTARY_ISSUER:?set NOTARY_ISSUER}")
+elif [[ -n "${NOTARY_PROFILE:-}" ]]; then
+  notary_auth=(--keychain-profile "$NOTARY_PROFILE")
+fi
+if [[ -n "${notary_auth+x}" ]]; then
   echo "==> Notarizing (this can take a few minutes)"
-  xcrun notarytool submit "$dmg" --keychain-profile "$NOTARY_PROFILE" --wait
+  result="$(xcrun notarytool submit "$dmg" "${notary_auth[@]}" --wait 2>&1)" || true
+  echo "$result"
+  if ! grep -q "status: Accepted" <<<"$result"; then
+    id="$(awk '/^ *id:/ {print $2; exit}' <<<"$result")"
+    [[ -n "$id" ]] && xcrun notarytool log "$id" "${notary_auth[@]}" || true
+    echo "Notarization failed." >&2
+    exit 1
+  fi
   xcrun stapler staple "$dmg"
 fi
+
+(cd "$dist" && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
 
 echo "==> Done: $dmg"

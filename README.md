@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%2010%2F11-4f46e5?style=for-the-badge&logo=windows&logoColor=white"></a>
-  <a href="https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg"><img alt="Download for macOS (Apple Silicon and Intel)" src="https://img.shields.io/badge/Download-macOS%20(Universal)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck.dmg"><img alt="Download for macOS (Apple Silicon and Intel)" src="https://img.shields.io/badge/Download-macOS%20(Universal)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
 </p>
 
 ![GlideDeck: the welcome canvas in the editor](docs/screenshots/editor.png)
@@ -39,7 +39,7 @@
 | Your computer | Download | How to install |
 |---|---|---|
 | **Windows 10 / 11** (64-bit) | **[⬇ GlideDeck-x64.msi](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi)** (always the latest version) | Double-click the file and follow the installer. It adds GlideDeck to the Start menu. |
-| **Mac with Apple Silicon or Intel** | **[⬇ GlideDeck-0.1.6.dmg](https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg)** | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
+| **Mac with Apple Silicon or Intel** | **[⬇ GlideDeck.dmg](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck.dmg)** (always the latest version) | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
 | Other versions | [All releases](https://github.com/nirlotan/GlideDeck/releases) | Every version, with release notes and SHA-256 checksums. |
 
 - **Already installed?** Choose **ⓘ → Check for updates** (or **File → Check for updates**).
@@ -398,6 +398,30 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=glid
 Find your identity with `security find-identity -v -p codesigning`. Without signing, ad-hoc
 signed apps run on the Mac that built them. On other Macs, right-click the app and choose
 **Open** the first time.
+
+For CI, notarize with an App Store Connect API key instead of a stored profile:
+`NOTARY_KEY_PATH=AuthKey_XXXX.p8 NOTARY_KEY_ID=XXXX NOTARY_ISSUER=<issuer id>`.
+
+</details>
+
+<details>
+<summary><b>Releases with GitHub Actions</b></summary>
+
+`.github/workflows/release.yml` builds the signed and notarized universal DMG on macOS and the
+MSI on Windows. To publish a release:
+
+1. Bump `version` in `Cargo.toml` and add `packaging/release-notes-v<version>.md` (used as the
+   release text).
+2. Commit, then tag and push: `git tag v0.1.7 && git push && git push origin v0.1.7`.
+
+The release gets `GlideDeck-<version>.dmg`, `GlideDeck-<version>-x64.msi`, SHA-256 files, and
+stable-name copies `GlideDeck.dmg` / `GlideDeck-x64.msi` for the download links above. To test
+signing without publishing, run the workflow by hand (**Actions → Release → Run workflow**)
+and download the installers from the run's **Artifacts**.
+
+Signing needs these repository secrets: `APPLE_CERTIFICATE` (Developer ID Application `.p12`,
+base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, and for notarization
+`APPLE_API_ISSUER`, `APPLE_API_KEY` (key ID) and `APPLE_API_KEY_P8` (the `.p8` contents).
 
 </details>
 
