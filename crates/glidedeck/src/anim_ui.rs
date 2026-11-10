@@ -1,9 +1,9 @@
-//! Editing in-slide animations: the Animate ribbon tab, the Properties cards,
+//! Editing in-slide animations: the Animate tab of the side panel, its cards,
 //! numbered badges on the canvas and the on-canvas preview.
 
 use crate::anim::{self, BuildClock};
 use crate::app::{Action, GlideDeckApp};
-use crate::ribbon::{big, column, group, small};
+use crate::inspector::card;
 use crate::theme::{self, icon};
 use eframe::egui::{self, Color32, RichText};
 use glide_core::{Build, BuildKind, Direction, Effect, Trigger};
@@ -68,86 +68,113 @@ fn targets(app: &GlideDeckApp) -> Vec<String> {
     app.selection.iter().filter(|id| app.doc.get(id).is_some_and(|e| !e.kind.is_frame())).cloned().collect()
 }
 
-// --- ribbon -----------------------------------------------------------------------------
+// --- side panel -------------------------------------------------------------------------
 
-pub fn animate_tab(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
+/// The Animate tab of the side panel.
+pub fn animate_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, out: &mut Vec<Action>) {
     let p = theme::palette(ui.ctx());
-    let any = !targets(app).is_empty();
-    group(ui, "Add to selected objects", |ui| {
-        for kind in KINDS {
-            let r = big(ui, kind_icon(kind), kind_label(kind), false, any).on_hover_text(match kind {
-                BuildKind::Appear => "How the selected objects come in",
-                BuildKind::Emphasis => "Draw attention to the selected objects: spotlight, highlight, pulse…",
-                BuildKind::Disappear => "How the selected objects leave",
-            });
-            if any
-                && let Some(Some(e)) = egui::Popup::menu(&r).show(|ui| effect_menu(ui, kind)).map(|r| r.inner)
-            {
-                out.push(Action::AddAnimation(e));
+    let ids = targets(app);
+    let any = !ids.is_empty();
+    card(ui, "Add to the selected objects", |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            let w = (ui.available_width() - 8.0) / 3.0;
+            for kind in KINDS {
+                let (rect, resp) = ui.allocate_exact_size(egui::vec2(w, 52.0), if any { egui::Sense::click() } else { egui::Sense::hover() });
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, any, kind_label(kind)));
+                let hovered = any && resp.hovered();
+                ui.painter().rect_filled(rect, 8, if hovered { ui.visuals().widgets.hovered.bg_fill } else { p.surface });
+                ui.painter().rect_stroke(rect, 8, egui::Stroke::new(1.0, p.border), egui::StrokeKind::Inside);
+                let fade = if any { 1.0 } else { 0.45 };
+                ui.painter().text(rect.center_top() + egui::vec2(0.0, 18.0), egui::Align2::CENTER_CENTER, kind_icon(kind), egui::FontId::proportional(18.0), kind_color(kind).gamma_multiply(fade));
+                ui.painter().text(rect.center_bottom() - egui::vec2(0.0, 13.0), egui::Align2::CENTER_CENTER, kind_label(kind), egui::FontId::proportional(12.0), p.text.gamma_multiply(fade));
+                let resp = resp.on_hover_text(match kind {
+                    BuildKind::Appear => "How the selected objects come in",
+                    BuildKind::Emphasis => "Draw attention to the selected objects: spotlight, highlight, pulse…",
+                    BuildKind::Disappear => "How the selected objects leave",
+                });
+                if any
+                    && let Some(Some(e)) = egui::Popup::menu(&resp).show(|ui| effect_menu(ui, kind)).map(|r| r.inner)
+                {
+                    out.push(Action::AddAnimation(e));
+                }
             }
+        });
+        if !any {
+            ui.add_space(2.0);
+            ui.label(RichText::new("Select objects on a slide to animate them.").size(11.5).color(p.text_muted));
         }
-    });
-    group(ui, "Start", |ui| {
-        column(ui, |ui| {
+        ui.add_space(6.0);
+        ui.label(RichText::new("Start").size(11.5).color(p.text_muted));
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
             for t in Trigger::ALL {
-                let glyph = match t {
-                    Trigger::OnClick => icon::CURSOR_CLICK,
-                    Trigger::WithPrevious => icon::STACK,
-                    Trigger::AfterPrevious => icon::TIMER,
-                };
-                if small(ui, glyph, t.label(), app.anim_trigger == t, true).clicked() {
+                if ui.add(egui::Button::selectable(app.anim_trigger == t, RichText::new(format!("{}  {}", trigger_glyph(t), t.label())).size(12.0))).clicked() {
                     app.anim_trigger = t;
                 }
             }
         });
-        column(ui, |ui| {
-            ui.label(RichText::new("Several objects").size(11.5).color(p.text_muted));
-            if small(ui, icon::LIST_NUMBERS, "One by one", !app.anim_together, true).on_hover_text("Each object gets its own turn").clicked() {
+        ui.add_space(4.0);
+        ui.label(RichText::new("Several objects").size(11.5).color(p.text_muted));
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            if ui.add(egui::Button::selectable(!app.anim_together, RichText::new(format!("{}  One by one", icon::LIST_NUMBERS)).size(12.0))).on_hover_text("Each object gets its own turn").clicked() {
                 app.anim_together = false;
             }
-            if small(ui, icon::SQUARES_FOUR, "All together", app.anim_together, true).on_hover_text("The objects animate at the same time").clicked() {
+            if ui.add(egui::Button::selectable(app.anim_together, RichText::new(format!("{}  All together", icon::SQUARES_FOUR)).size(12.0))).on_hover_text("The objects animate at the same time").clicked() {
                 app.anim_together = true;
             }
         });
     });
-    let has_slide = app.current_step.is_some_and(|i| i < app.doc.path.len());
-    let slide_builds = app.current_step.and_then(|i| app.doc.path.get(i)).map_or(0, |s| s.builds.len());
-    let any_builds = app.doc.path.iter().any(|s| !s.builds.is_empty());
-    group(ui, "Smart", |ui| {
-        if big(ui, icon::MAGIC_WAND, "Auto-animate", false, has_slide)
+
+    let step = app.current_step.filter(|i| *i < app.doc.path.len());
+    let slide_builds = step.map_or(0, |i| app.doc.path[i].builds.len());
+    card(ui, "This slide", |ui| {
+        if crate::shell::wide_button(ui, icon::MAGIC_WAND, "Auto-animate", true, step.is_some())
             .on_hover_text("Bring this slide's content in with a tasteful cascade: titles focus, text rises, icons pop, pictures zoom, numbers count up")
             .clicked()
         {
             out.push(Action::AutoAnimate { all: false });
         }
-        column(ui, |ui| {
-            if small(ui, icon::SPARKLE, "Auto-animate all slides", false, !app.doc.path.is_empty()).clicked() {
-                out.push(Action::AutoAnimate { all: true });
-            }
-            if small(ui, icon::X, "Remove from selection", false, any).clicked() {
-                out.push(Action::RemoveSelectionAnimations);
-            }
-            if small(ui, icon::TRASH, "Clear this slide", false, slide_builds > 0).clicked() {
-                out.push(Action::ClearAnimations { all: false });
-            }
-            if small(ui, icon::TRASH, "Clear all slides", false, any_builds).clicked() {
-                out.push(Action::ClearAnimations { all: true });
-            }
-        });
-    });
-    group(ui, "Preview", |ui| {
-        let playing = app.anim_preview.is_some();
-        if big(ui, icon::PLAY_CIRCLE, "Preview", playing, slide_builds > 0).on_hover_text("Play this slide's animations on the canvas").clicked() {
+        ui.add_space(4.0);
+        if crate::shell::wide_button(ui, icon::PLAY_CIRCLE, "Preview", false, slide_builds > 0).on_hover_text("Play this slide's animations on the canvas").clicked() {
             out.push(Action::PreviewAnimations);
         }
-        column(ui, |ui| {
-            let text = match slide_builds {
-                0 => "No animations on this slide".to_owned(),
-                1 => "1 animation on this slide".to_owned(),
-                n => format!("{n} animations on this slide"),
-            };
-            ui.label(RichText::new(text).size(11.5).color(p.text_muted));
-            ui.label(RichText::new("Numbers on the canvas show the click order").size(11.5).color(p.text_muted));
+        ui.add_space(4.0);
+        let text = match slide_builds {
+            0 => "No animations on this slide".to_owned(),
+            1 => "1 animation on this slide".to_owned(),
+            n => format!("{n} animations on this slide"),
+        };
+        ui.label(RichText::new(format!("{text}. Numbers on the canvas show the click order.")).size(11.5).color(p.text_muted));
+    });
+
+    // The animations of each selected object, then the slide's whole list.
+    for id in ids.iter().take(3) {
+        element_card(app, ui, id);
+    }
+    if let Some(i) = step
+        && slide_builds > 0
+    {
+        slide_card(app, ui, i, out);
+    }
+
+    let any_builds = app.doc.path.iter().any(|s| !s.builds.is_empty());
+    card(ui, "Whole deck", |ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
+            if ui.add_enabled(!app.doc.path.is_empty(), egui::Button::new(format!("{}  Auto-animate every slide", icon::SPARKLE))).clicked() {
+                out.push(Action::AutoAnimate { all: true });
+            }
+            if ui.add_enabled(any, egui::Button::new(format!("{}  Remove from selection", icon::X))).clicked() {
+                out.push(Action::RemoveSelectionAnimations);
+            }
+            if ui.add_enabled(slide_builds > 0, egui::Button::new(format!("{}  Clear this slide", icon::TRASH))).clicked() {
+                out.push(Action::ClearAnimations { all: false });
+            }
+            if ui.add_enabled(any_builds, egui::Button::new(format!("{}  Clear every slide", icon::TRASH))).clicked() {
+                out.push(Action::ClearAnimations { all: true });
+            }
         });
     });
 }
@@ -320,10 +347,12 @@ fn build_editor(ui: &mut egui::Ui, b: &mut Build, salt: (usize, usize)) -> bool 
 }
 
 /// The "Animation" card for one selected object.
-pub fn element_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, id: &str, actions: &mut Vec<Action>) {
+pub fn element_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, id: &str) {
     let p = theme::palette(ui.ctx());
     let mut preview: Option<(usize, usize)> = None;
-    crate::inspector::card(ui, "Animation", |ui| {
+    let name = app.doc.get(id).map(|e| e.display_name()).unwrap_or_default();
+    let title: String = name.chars().take(26).collect();
+    card(ui, &title, |ui| {
         let mut remove: Option<(usize, usize)> = None;
         let mut any = false;
         let n_steps = app.doc.path.len();
@@ -352,17 +381,8 @@ pub fn element_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, id: &str, actions
             app.doc.path[si].builds.remove(bi);
         }
         if !any {
-            ui.label(RichText::new("No animation yet. Make it appear, stand out or leave on a click:").color(p.text_muted));
+            ui.label(RichText::new("No animation yet. Add one above: make it appear, stand out or leave.").color(p.text_muted));
         }
-        ui.horizontal_wrapped(|ui| {
-            for kind in KINDS {
-                ui.menu_button(RichText::new(format!("{}  {}", icon::PLUS, kind_label(kind))).color(kind_color(kind)), |ui| {
-                    if let Some(e) = effect_menu(ui, kind) {
-                        actions.push(Action::AddAnimation(e));
-                    }
-                });
-            }
-        });
     });
     if let Some((si, bi)) = preview {
         let ctx = ui.ctx().clone();
@@ -378,7 +398,7 @@ pub fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, step: usize, action
     let mut select: Option<String> = None;
     let mut swap: Option<(usize, usize)> = None;
     let mut remove: Option<usize> = None;
-    crate::inspector::card(ui, &format!("Slide {} animations", step + 1), |ui| {
+    card(ui, &format!("Slide {} animations", step + 1), |ui| {
         if count == 0 {
             ui.label(RichText::new("Nothing animates on this slide yet.").color(p.text_muted));
         }
@@ -414,17 +434,9 @@ pub fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, step: usize, action
                 });
             });
         }
-        ui.add_space(4.0);
-        ui.horizontal_wrapped(|ui| {
-            if ui.button(format!("{}  Auto-animate", icon::MAGIC_WAND)).on_hover_text("Replace with a cascade built from the slide's content").clicked() {
-                app.current_step = Some(step);
-                actions.push(Action::AutoAnimate { all: false });
-            }
-            if count > 0 && ui.button(format!("{}  Preview", icon::PLAY)).clicked() {
-                app.current_step = Some(step);
-                actions.push(Action::PreviewAnimations);
-            }
-        });
+        if count == 0 && ui.button(format!("{}  Open Animate", icon::MAGIC_WAND)).on_hover_text("Add animations in the Animate tab").clicked() {
+            actions.push(Action::SetSideTab(crate::shell::SideTab::Animate));
+        }
     });
     let builds = &mut app.doc.path[step].builds;
     if let Some((a, b)) = swap {
@@ -443,7 +455,7 @@ pub fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, step: usize, action
 /// Numbered badges (click order) on the current slide's animated objects,
 /// shown while the Animate tab is open.
 pub fn paint_badges(app: &mut GlideDeckApp, painter: &egui::Painter, rect: egui::Rect) {
-    if app.ribbon_tab != crate::app::RibbonTab::Animate || app.anim_preview.is_some() {
+    if app.side_tab != crate::shell::SideTab::Animate || !app.show_inspector || app.anim_preview.is_some() {
         return;
     }
     let Some(step) = app.current_step.filter(|i| *i < app.doc.path.len()) else { return };

@@ -10,10 +10,10 @@
 //! and presented in the GlideDeck editor afterwards.
 
 use crate::layouts::{layout_elements, place_layout, slot_after, LayoutKind, LAYOUT_W};
-use crate::templates::{build_template_with, Template};
+use crate::templates::{build_template_themed, Template};
 use anyhow::{bail, Context, Result};
 use glam::DVec2;
-use glide_core::theme::{apply_theme, builtin_themes, default_theme};
+use glide_core::theme::{apply_theme, builtin_themes, default_theme, HOUSE_DARK, HOUSE_LIGHT};
 use glide_core::{assets, ops::apply_all, Aabb, Camera, Color, Document, Element, ElementKind, Media, Op, Step, TextAlign, TextRole, Theme, Transform};
 use glide_render::{HeadlessRenderer, TextEngine, ICONS};
 use serde_json::{json, Value};
@@ -29,6 +29,12 @@ Workflow: `catalog` → `create_presentation` (pick a template that fits the sto
 each slide's placeholder text with element ids → `update_elements` to replace ALL placeholder text → \
 `add_slide` with a layout and its text fields for more slides → `render_slide` to check every slide visually → \
 `export_pptx` / `export_pdf` if the user wants PowerPoint or PDF, or `export_html` for a web page that plays the show in a browser with every effect intact. To show a YouTube, Vimeo or Loom video on a slide, use `add_web_video`. To start from an existing PowerPoint file, use `import_pptx`, then `arrange_slides` to give it a zooming path. Keep slide text short: one idea per slide. \
+HOUSE STYLE: GlideDeck's own look is the Darkroom theme: a flat graphite canvas, bone-white type and ONE signal \
+yellow, with no gradients, glows or glass. Daylight is its light twin (cool white, cobalt accent) for bright rooms and \
+print. Unless the user asks for another look, pass theme \"darkroom\" (or \"daylight\") to `create_presentation`; a blank \
+deck uses Darkroom by itself. Stay inside the theme: short, heavy headings, generous empty space, the accent on the one \
+thing that matters per slide (a number, a word, one shape), never several accent colors competing. Do not add \
+decorative gradients or drop shadows to text. \
 Write speaker notes for every slide with `set_notes` (what to say, the number to stress); the presenter sees them in presenter view. \
 MAKE IT OUTSTANDING: unless the user wants a plain deck, finish every presentation with all three of these. \
 (1) Shape the journey: `arrange_slides` with a layout that fits the story (orbits or a tree for a hub and its topics, \
@@ -437,9 +443,17 @@ impl Server {
             Some(t) => find_template(t)?,
             None => Template::Blank,
         };
-        let mut doc = build_template_with(template, self.text());
-        if let Some(theme) = args.get("theme").and_then(Value::as_str) {
-            apply_theme(&mut doc, &find_theme(theme)?);
+        // An explicit theme wins; a blank deck starts in the house style;
+        // a template keeps the theme it was designed in.
+        let theme = match args.get("theme").and_then(Value::as_str) {
+            Some(name) => Some(find_theme(name)?),
+            None if template == Template::Blank => Some(find_theme(HOUSE_DARK)?),
+            None => None,
+        };
+        let doc_theme = theme.clone();
+        let mut doc = build_template_themed(template, self.text(), theme);
+        if let Some(theme) = doc_theme.filter(|t| doc.theme.as_ref() != Some(t)) {
+            apply_theme(&mut doc, &theme);
         }
         doc.title = args.get("title").and_then(Value::as_str).map(str::to_owned).unwrap_or_else(|| template.label().to_owned());
         if let Some(dir) = path.parent() {
@@ -911,7 +925,10 @@ fn catalog() -> Value {
         .collect();
     let themes: Vec<Value> = builtin_themes()
         .into_iter()
-        .map(|t| json!({ "name": t.name, "dark": t.is_dark(), "heading_font": t.heading_font, "body_font": t.body_font }))
+        .map(|t| {
+            let house = t.name == HOUSE_DARK || t.name == HOUSE_LIGHT;
+            json!({ "name": t.name, "dark": t.is_dark(), "house_style": house, "heading_font": t.heading_font, "body_font": t.body_font })
+        })
         .collect();
     let arrangements: Vec<Value> = crate::arrange::Arrangement::ALL
         .into_iter()
@@ -935,6 +952,13 @@ fn catalog() -> Value {
         "templates": templates,
         "layouts": layouts,
         "themes": themes,
+        "house_style": {
+            "dark": HOUSE_DARK,
+            "light": HOUSE_LIGHT,
+            "default": HOUSE_DARK,
+            "guidance": "GlideDeck's own look, shared by the app and its welcome deck. Use it unless the user asks for \
+                         another theme: flat backgrounds, heavy short headings, one accent color per slide.",
+        },
         "arrangements": arrangements,
         "effects": effects,
         "transitions": transitions,
@@ -1126,7 +1150,7 @@ fn tool_definitions() -> Vec<Value> {
     });
     vec![
         tool("catalog", "List templates, layouts and themes",
-            "Lists the presentation templates, slide layouts (with the text fields and icon slots each one has) and color themes. Call this first.",
+            "Lists the presentation templates, slide layouts (with the text fields and icon slots each one has), color themes and the house style (the default look). Call this first.",
             json!({}), &[], true),
         tool("search_icons", "Search icons",
             "Searches the ~1,500 bundled Phosphor icon names (e.g. 'rocket', 'chart', 'users').",
@@ -1137,7 +1161,7 @@ fn tool_definitions() -> Vec<Value> {
                 "path": path_prop(),
                 "template": { "type": "string", "description": "Template id from `catalog`, e.g. pitch-deck, roadmap, orbit, journey, blank." },
                 "title": { "type": "string" },
-                "theme": { "type": "string", "description": "Optional theme name from `catalog` (overrides the template's)." },
+                "theme": { "type": "string", "description": "Theme name from `catalog`. Prefer the house style, \"darkroom\" (or \"daylight\" for a light deck), unless the user asks for another look. Without it a blank deck uses Darkroom and a template keeps its own theme." },
                 "overwrite": { "type": "boolean", "default": false },
             }), &["path"], false),
         tool("get_presentation", "Read a presentation",
@@ -1364,6 +1388,19 @@ mod tests {
 
         let bad = tools(&mut s, 4, "add_slide", json!({ "path": "deck", "layout": "venn", "text": { "Nope": "x" } }));
         assert_eq!(bad["result"]["isError"], true, "unknown fields are reported");
+
+        // A blank deck starts in the house style, and the catalog names it.
+        let doc = Document::load(&dir.join("deck.glide.json")).unwrap();
+        assert_eq!(doc.theme.as_ref().unwrap().name, HOUSE_DARK);
+        let cat: Value = serde_json::from_str(&tool_text(&tools(&mut s, 40, "catalog", json!({})))).unwrap();
+        assert_eq!(cat["house_style"]["default"], HOUSE_DARK);
+        let house: Vec<&str> = cat["themes"].as_array().unwrap().iter().filter(|t| t["house_style"] == true).filter_map(|t| t["name"].as_str()).collect();
+        assert_eq!(house, [HOUSE_DARK, HOUSE_LIGHT]);
+        // A template can be built straight in the house style.
+        tool_text(&tools(&mut s, 41, "create_presentation", json!({ "path": "pitch", "template": "pitch-deck", "theme": "daylight" })));
+        let pitch = Document::load(&dir.join("pitch.glide.json")).unwrap();
+        assert_eq!(pitch.theme.as_ref().unwrap().name, HOUSE_LIGHT);
+        assert_eq!(pitch.background, pitch.theme.as_ref().unwrap().background);
 
         tool_text(&tools(&mut s, 5, "add_text", json!({ "path": "deck", "text": "Footnote", "role": "caption", "y": 380 })));
         tool_text(&tools(&mut s, 6, "set_theme", json!({ "path": "deck", "theme": "midnight" })));

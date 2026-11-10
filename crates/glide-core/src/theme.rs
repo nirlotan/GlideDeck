@@ -125,7 +125,21 @@ pub fn builtin_themes() -> Vec<Theme> {
         // daylight twin on a warm cloud white.
         t("Dusk", 0x0E0B1F, Some(0x1E1646), 0x1A1536, 0xF5F2EA, 0xE4E0F2, 0x9C95BD, [0x8F7BFF, 0x2EE6C5, 0xFF7A5C, 0xE4FF6B], "sans-serif", "sans-serif"),
         t("Cloud", 0xF4F1EA, Some(0xECE7F6), 0xFFFFFF, 0x1B1733, 0x2B2740, 0x625E7A, [0x5B47E0, 0x0E9E8C, 0xF0643C, 0xD9A21B], "sans-serif", "sans-serif"),
+        // The house style, matching the app itself: flat graphite with one
+        // signal yellow, and its daylight twin on cool white with cobalt.
+        t("Darkroom", 0x0F1113, None, 0x1D2125, 0xF1EFE9, 0xDAD8D2, 0x8F969C, [0xFFD23F, 0x35D0BA, 0xFF6B4A, 0x9DA7FF], "sans-serif", "sans-serif"),
+        t("Daylight", 0xF4F5F3, None, 0xFFFFFF, 0x14181A, 0x2A3033, 0x5C666B, [0x1F4FFF, 0xFF5A36, 0x0C9F7A, 0xFFB81F], "sans-serif", "sans-serif"),
     ]
+}
+
+/// The house style: the themes an assistant or a new user should reach for
+/// first. They match the look of the GlideDeck app and its welcome deck.
+pub const HOUSE_DARK: &str = "Darkroom";
+pub const HOUSE_LIGHT: &str = "Daylight";
+
+/// A built-in theme by name (case-insensitive).
+pub fn theme_named(name: &str) -> Option<Theme> {
+    builtin_themes().into_iter().find(|t| t.name.eq_ignore_ascii_case(name.trim()))
 }
 
 pub fn default_theme() -> Theme {
@@ -220,6 +234,12 @@ pub fn contrast_ratio(a: Color, b: Color) -> f64 {
     (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
 }
 
+/// Text color for a label that sits on `bg`: white where it reads well
+/// enough, a near-black ink on light fills such as a signal yellow.
+pub fn ink_on(bg: Color) -> Color {
+    if contrast_ratio(Color::WHITE, bg) >= 3.0 { Color::WHITE } else { Color::rgb(0x14, 0x11, 0x0A) }
+}
+
 /// Blends `top` (with its alpha) over an opaque `bottom`.
 pub fn blend_over(top: Color, bottom: Color) -> Color {
     let a = top.a() as f64 / 255.0;
@@ -255,6 +275,18 @@ mod tests {
         assert_eq!(r.fill, Some(custom), "hand-picked colors are preserved");
         assert_eq!(doc.background, midnight.background);
         assert_eq!(doc.background_to, midnight.background_to);
+    }
+
+    #[test]
+    fn house_themes_exist_and_labels_stay_readable() {
+        for name in [HOUSE_DARK, HOUSE_LIGHT] {
+            let t = theme_named(name).expect("a house theme");
+            for a in t.accents {
+                assert!(contrast_ratio(ink_on(a), a) >= 3.0, "{name}: a label on {a:?}");
+            }
+        }
+        assert!(theme_named(HOUSE_DARK).unwrap().is_dark() && !theme_named(HOUSE_LIGHT).unwrap().is_dark());
+        assert_eq!(theme_named("  darkroom ").map(|t| t.name), Some("Darkroom".to_owned()));
     }
 
     #[test]

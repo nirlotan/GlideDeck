@@ -985,7 +985,7 @@ impl GlideDeckApp {
         egui::Area::new(egui::Id::new("zoom-pill"))
             .fixed_pos(rect.right_bottom() - egui::vec2(12.0, 12.0))
             .pivot(egui::Align2::RIGHT_BOTTOM)
-            .order(egui::Order::Foreground)
+            .order(egui::Order::Background)
             .show(ui.ctx(), |ui| {
                 pill.show(ui, |ui| {
                     ui.horizontal(|ui| {
@@ -1015,6 +1015,8 @@ impl GlideDeckApp {
                 });
             });
 
+        let now = ui.input(|i| i.time);
+        let toast = self.toast().filter(|(_, until)| now < *until).map(|(msg, _)| format!("{}  {msg}", icon::CHECK_CIRCLE));
         let hint = match self.tool {
             Tool::Frame => Some("Drag to draw a frame (16:9 · hold Alt for free aspect) — or click for a default frame"),
             Tool::Rect | Tool::Ellipse => Some("Drag to draw · click for default size"),
@@ -1022,11 +1024,13 @@ impl GlideDeckApp {
             Tool::Hand => Some("Drag to pan"),
             Tool::Select => None,
         };
+        // A message about what just happened wins over the tool hint.
+        let hint = toast.as_deref().or(hint);
         if let Some(hint) = hint {
             egui::Area::new(egui::Id::new("tool-hint"))
                 .fixed_pos(rect.center_bottom() - egui::vec2(0.0, 14.0))
                 .pivot(egui::Align2::CENTER_BOTTOM)
-                .order(egui::Order::Foreground)
+                .order(egui::Order::Background)
                 .interactable(false)
                 .show(ui.ctx(), |ui| {
                     egui::Frame::new()

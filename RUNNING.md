@@ -77,7 +77,7 @@ double-clicked); CLI subcommands still print to the terminal that launched them.
   `xattr -d com.apple.quarantine ./glidedeck`.
 - **Trackpads:** pinch to zoom works out of the box. Two-finger scrolling zooms by
   default, matching a mouse wheel. To make two-finger scroll pan instead, turn on
-  **View → Trackpad Mode** (⌘-scroll then zooms).
+  **View → Trackpad mode** (⌘-scroll then zooms).
 - Shortcuts use **⌘** wherever this guide says Ctrl.
 
 ### Windows notes
@@ -91,18 +91,34 @@ double-clicked); CLI subcommands still print to the terminal that launched them.
 
 ## 3. Using the editor
 
-The window has a PowerPoint-style **ribbon** (File · Home · Insert · Design · Transitions ·
-Animate · Present · View), the **Slides** strip on the left, the canvas in the middle,
-**Properties** on the right and **Speaker notes** under the canvas. The app follows your
-system's light/dark setting; the sun/moon button switches it. The ⓘ button (or
-**File → About GlideDeck**) shows the version, a link to GitHub and **Check for updates**.
+The window has a **top bar**, a **tool rail** on the left, the canvas in the middle, a
+**side panel** on the right and the **path strip** along the bottom.
+
+- **Top bar:** the menus (File · Edit · Insert · View), the deck name with the AutoSave
+  state next to it, the command search, Undo and Redo, the light/dark switch, the **Share**
+  menu and the **Present** button. The caret next to Present offers From the start, From
+  this slide and Presenter view.
+- **Command search** (Ctrl/⌘+K, or click **Search or run a command**): type a few letters,
+  then pick a command or a slide.
+- **Tool rail:** Select, Hand, Frame, Layouts, Text, Rectangle, Ellipse, Picture, Icons,
+  Video and Templates.
+- **Side panel**, with three tabs. **Slide** is the current stop on the path: its camera
+  move, its animation list and its speaker notes. **Design** shows the properties of the
+  selection, or the deck's title, theme, fonts and canvas background when nothing is
+  selected. **Animate** adds and edits animations.
+- **Path strip:** every stop as a thumbnail, with the camera move and its duration between
+  stops, and `+` and **Arrange** at its left end.
+
+The zoom control floats at the bottom right of the canvas, and short messages appear at the
+bottom centre. The app follows your system's light/dark setting; the half-circle button in
+the top bar switches it, as does **View → Light theme / Dark theme / Match the system**.
+**File → About GlideDeck** shows the version, a link to GitHub and **Check for updates**.
 
 ### Speaker notes
 
-The **Speaker notes** panel under the canvas holds the notes for the current slide (the one
-selected in the Slides strip). Only the presenter sees them, in presenter view. They support
-`# headings`, `- bullets`, `1. numbers` and `**bold**`. Collapse the panel with its ˅ button,
-or toggle it with **View → Speaker notes** or **Present → Speaker notes**. Notes imported
+**Speaker notes** in the **Slide** tab of the side panel holds the notes for the current
+slide (the one selected in the path strip). Only the presenter sees them, in presenter
+view. They support `# headings`, `- bullets`, `1. numbers` and `**bold**`. Notes imported
 from PowerPoint appear here too.
 
 ### Updates
@@ -114,29 +130,30 @@ drag the new app into Applications. GlideDeck makes no other network requests.
 
 ### Slides are frames
 
-- **Insert → Frame** (`F`), then drag on the canvas to draw a 16:9 frame (hold Alt for any
-  aspect ratio). Click instead of dragging to get a default-sized frame. **Frame view**
-  (Ctrl/⌘+Shift+F, or `+` in the Slides strip) frames exactly what you're looking at.
+- Pick the **Frame** tool on the tool rail (`F`), then drag on the canvas to draw a 16:9
+  frame (hold Alt for any aspect ratio). Click instead of dragging to get a default-sized
+  frame. **New slide from this view** (Ctrl/⌘+Shift+F, or `+` on the path strip) frames
+  exactly what you're looking at.
 - Each new frame is added to the presentation path and appears as a slide thumbnail.
-  Drag thumbnails to reorder them; right-click for Duplicate, Move, Remove from path, or
-  Present from here. Click a thumbnail to fly there; PageUp/PageDown step through slides.
+  Drag thumbnails to reorder them; right-click for Present from here, Duplicate, Move
+  earlier, Move later or Remove from path. Click a thumbnail to fly there; PageUp/PageDown step through slides.
 - Frames are **invisible** by default. In the editor they only show a dashed outline and a
   name tag when you hover over or select them, and they never appear in the show or the
-  export. Set *Properties → Frame → Border* or *Filled* to make one visible.
+  export. Set *Design tab → Frame → Border* or *Filled* to make one visible.
 - Moving a frame moves everything inside it, so a frame works as a logical group.
   Select several objects and choose **Frame them** to wrap them in a new slide.
-- The **Transitions** tab (or Properties → Slide) sets how the camera enters each slide:
+- **Camera move** in the **Slide** tab sets how the camera enters each slide:
   **Smooth zoom** (a cinematic zoom-out-and-dive arc), **Direct**, **Swoop** (a sideways
   arc with a gentle roll), **Spin** (a barrel roll), **Punch** (overshoots the zoom, then
   settles), **Fade** (dips through the background color) or **Cut**, plus the duration and
-  easing.
-- **Depth (parallax)**: Properties → Layout → Depth. In the show, objects with a depth above 0
+  easing. **Use for every slide** applies it to the whole path.
+- **Depth (parallax)**: Design tab → Layout → Depth. In the show, objects with a depth above 0
   are far away and drift slower than the slides as the camera travels; below 0 they are near
   and move faster. The effect fades out when the camera zooms out to an overview.
 
 ### Animating objects on a slide
 
-The **Animate** tab adds in-slide animations ("builds") to the selected objects:
+The **Animate** tab of the side panel adds in-slide animations ("builds") to the selected objects:
 
 | Kind | Effects |
 |---|---|
@@ -149,14 +166,15 @@ The **Animate** tab adds in-slide animations ("builds") to the selected objects:
   one* gives each its own turn and *All together* plays them at once.
 - **Auto-animate** builds an entrance cascade for the current slide in reading order:
   titles focus, text rises, short numbers count up, icons pop and pictures zoom. It plays
-  as soon as the camera arrives. **Auto-animate all slides** does every slide.
+  as soon as the camera arrives. **Auto-animate every slide** does every slide.
 - An object animates on the slide that shows it (the smallest one, so an overview doesn't
   take it). On the canvas, numbered badges show each object's click (green appear, amber
   emphasis, red disappear); **Preview** plays the slide's animations on the canvas.
-- **Properties → Animation** (an object selected) edits each animation: effect, start,
-  duration, delay and the direction for Fly in/out. **Properties → Slide N animations** (the
-  frame selected) lists them in order, with ↑ ↓ to reorder and ✕ to remove.
-- The slide strip shows ☆ and the number of animated objects on each slide.
+- With an object selected, the **Animate** tab lists its animations and edits each one:
+  effect, start, duration, delay and the direction for Fly in/out. Below them, the slide's
+  animation list shows them in order, with ↑ ↓ to reorder and ✕ to remove. The **Slide**
+  tab shows the same list.
+- The path strip shows ☆ and the number of animated objects on each slide.
 
 In the show, → / click plays the next animation before moving on (a second press finishes
 a running one at once); ← takes back the last one, then goes to the previous slide, which
@@ -166,7 +184,7 @@ as the editor does.
 
 ### Design tools
 
-- **Templates** (File → New from template, or Design → Templates): 17 complete zooming
+- **Templates** (Templates on the tool rail, or File → New from template…): 18 complete zooming
   stories, each with a theme, frames and a path. The previews are live renders.
   - **Business**:
     - *Pitch deck*: a grid of slides with an overview.
@@ -189,12 +207,15 @@ as the editor does.
     - *Workshop*: sticky-note clusters.
     - *Cycle*: six stages on a wheel.
   - Or start from a **blank canvas**.
-- **Themes** (Design tab): eight curated colour and font pairings, some with gradient
-  backgrounds. Switching theme restyles text by its role, and any colour taken from the
+- **Themes** (the Design tab of the side panel, with nothing selected): twelve curated
+  colour and font pairings, some with gradient backgrounds. Two are the house style:
+  **Darkroom** (flat graphite, bone-white type, one signal yellow) and **Daylight** (cool
+  white with a cobalt accent). New presentations (File → New, the blank template, and decks
+  made through the MCP server with no theme given) start in Darkroom. Switching theme restyles text by its role, and any colour taken from the
   previous theme moves to the matching colour in the new one. Colours you picked by hand
   are left alone. Theme colours also appear as one-click swatches next to every colour
   picker.
-- **Slide layouts** (Insert → Layouts, Ctrl/⌘+Shift+L): 20 layouts in four groups.
+- **Slide layouts** (Layouts on the tool rail, or Insert → Slide layout…, Ctrl/⌘+Shift+L): 20 layouts in four groups.
   - **Basics**: Title, Section, Quote, Big number, Image + text, Agenda.
   - **Grids**: Three points, Comparison, Quadrants, Bento grid, Dashboard, Team.
   - **Diagrams**: Hub & spokes, Cycle, Venn, Pyramid.
@@ -202,17 +223,17 @@ as the editor does.
 
   Each one is added as a new frame next to the current slide, styled by the theme, and
   added to the path.
-- **Icons** (Insert → Icons, Ctrl/⌘+Shift+K): about 1,500 Phosphor icons in Light, Regular,
+- **Icons** (Icons on the tool rail, or Insert → Icon…, Ctrl/⌘+Shift+K): about 1,500 Phosphor icons in Light, Regular,
   Bold and Fill weights, with search and categories. Icons are true vectors: crisp at any
   zoom, recolourable, and exported to PowerPoint as editable vector shapes.
-- **Text styles**: Insert → Title / Heading / Body, or select text and pick a style on Home
-  (Title, Heading, Subtitle, Body, Caption, Quote). Styled text follows theme changes.
+- **Text styles**: Insert → Title / Heading / Body, or select text and pick a role in
+  Design tab → Text (Title, Heading, Subtitle, Body, Caption, Quote). Styled text follows theme changes.
 - **Smart guides**: while dragging, edges and centres snap to nearby objects and red guide
-  lines appear. Hold Alt to move freely. **Align & distribute** is on Home → Align; with a
+  lines appear. Hold Alt to move freely. **Align & distribute** is in Design tab → Arrange (or Edit → Align and distribute); with a
   single object selected, it aligns to the frame that contains it.
-- **Effects** (Design tab or Properties → Effects): soft, lifted or crisp drop shadows,
+- **Effects** (Design tab → Effects, with the object selected): soft, lifted or crisp drop shadows,
   two-colour gradient fills, and rounded or circular masks for images.
-- **Design check** (Design → Design check): flags low-contrast text (WCAG), text too small to
+- **Design check** (Design tab → Review, with nothing selected, or Edit → Design check): flags low-contrast text (WCAG), text too small to
   read on its slide, empty slides, missing or low-resolution images, and too many fonts.
   Each issue has a *Show* button, and most have a one-click *Fix* (or *Fix all*).
 
@@ -234,11 +255,11 @@ audience view fullscreen on that display. Your screen becomes the presenter cons
 - Previous / Next, Black / White screen, **Swap displays** (if the show landed on the
   wrong screen) and End show.
 
-Keys and clickers work in either window. **Alt+F5** (Present → Presenter view) opens
+Keys and clickers work in either window. **Alt+F5** (the caret next to Present → Presenter view) opens
 presenter view on a single display too, for rehearsing: the console runs the show in its
 NOW pane (click it to advance). **Open audience window** adds a slides-only window you can
 drag to a projector or share in a video call, and then make fullscreen. Write the notes in
-the Speaker notes panel under the canvas. To open a file straight into the show:
+the Slide tab of the side panel, under Speaker notes. To open a file straight into the show:
 
 ```bash
 glidedeck present talk.glide.json --presenter-view
@@ -251,7 +272,7 @@ the canvas. Editing uses the same text engine that draws it, so Hebrew, Arabic a
 right-to-left / left-to-right text, word motion (Ctrl/⌥+arrows), selection
 (Shift+arrows, drag, double-click a word), clipboard and IME input all behave as in a word
 processor, at any zoom or rotation. **Esc** or clicking outside finishes; an emptied text
-box is removed. The multi-line field in Properties also edits text. It shows Hebrew and
+box is removed. The multi-line field in Design tab → Text also edits text. It shows Hebrew and
 Arabic in reading order, right-aligned, with ←/→ moving across the screen, as do the
 speaker notes and presenter view. Arabic letters there aren't joined, so the canvas is
 the better place to write Arabic.
@@ -268,17 +289,17 @@ applies to what you type next.
 | Clear formatting | Ctrl/⌘ + `\` |
 
 The bar also has the theme's colours. When a text box is selected but not being edited,
-the same commands (and the Home → Text format buttons) format the whole box. Formatting
+the same commands (and the Design tab → Format buttons) format the whole box. Formatting
 is exported to PowerPoint as real formatted text.
 
-**Fonts:** the Font control in Properties (and Design → Fonts for the theme's heading
-and body fonts) lists the theme's fonts, the fonts already used in the presentation and every
+**Fonts:** the Font control in Design tab → Text (and Design tab → Fonts, with nothing
+selected, for the theme's heading and body fonts) lists the theme's fonts, the fonts already used in the presentation and every
 font installed on this computer, each previewed in its own face, with a search box. **Add
 font file…** copies a `.ttf`, `.otf`, `.ttc` or `.otc` into `assets/` and lists it in the
 document's `fonts`, so the presentation renders the same on a computer without that font.
 
-**Bullets and numbering:** select a text box, then use the list buttons in Home → Text
-format (or Properties → List). Each paragraph gets a marker with a proper hanging indent,
+**Bullets and numbering:** select a text box, then use the list buttons in Design tab →
+Text. Each paragraph gets a marker with a proper hanging indent,
 placed on the right for right-to-left paragraphs. Lists export to PowerPoint as real
 bullets.
 
@@ -290,11 +311,11 @@ the opposite corner, so images, icons and SVGs never distort. Text boxes also ha
 fewer lines without changing size. Rectangles, ellipses and frames have a handle on each
 side to stretch just their width or height. Drag the **round knob**
 above the object to rotate it; hold **Shift** to snap to 15°. Exact values are always
-editable in Properties → Layout.
+editable in Design tab → Layout.
 
 ### Images, SVG, video, paste and drag & drop
 
-- **Insert → Image** (Ctrl/⌘+Shift+I) or **Insert → SVG**. You can also drag image or SVG
+- **Picture** on the tool rail (Ctrl/⌘+Shift+I), or **Insert → Picture or SVG…**. You can also drag image or SVG
   files onto the window, or paste with Ctrl/⌘+V: screenshots, images copied from a
   browser or another app, files copied in Explorer/Finder, plain text (which becomes a
   text box), and GlideDeck objects copied with Ctrl/⌘+C.
@@ -312,14 +333,14 @@ editable in Properties → Layout.
   came with it.
 - **SVGs** are parsed and drawn as true vectors: fills, strokes, linear and radial
   gradients, and text converted to outlines. They stay sharp at any zoom.
-- **Insert → Video** (MP4, MOV, WebM, MKV…). Videos sit on the canvas like a framed
+- **Video** on the tool rail **→ Video file…** (MP4, MOV, WebM, MKV…). Videos sit on the canvas like a framed
   screen with rounded corners and a shadow. Hover over one and click ▶ to play or pause;
-  a progress bar shows the position. In Properties → Video you can set **Autoplay in
+  a progress bar shows the position. In Design tab → Video you can set **Autoplay in
   show** (it plays when its slide is reached), **Loop** and **Mute**. In the show,
   clicking a video toggles playback instead of advancing. Audio plays through the system
   output. Videos need FFmpeg (see Prerequisites); without it they show as a poster
   placeholder.
-- **Insert → Web video** (or paste a link onto the canvas) adds a YouTube, Vimeo or Loom
+- **Video** on the tool rail **→ Web video link…** (or paste a link onto the canvas) adds a YouTube, Vimeo or Loom
   video, or a direct link to a video file (`.mp4`, `.webm`, an HLS `.m3u8`…). GlideDeck
   fetches its title and poster image, saves the poster in `assets/`, and keeps the link in
   the element (`"url"`). Nothing is fetched just by opening the presentation: the video
@@ -359,6 +380,7 @@ editable in Properties → Layout.
 | Z-order | Ctrl/⌘ + Shift + `]` / `[` |
 | Undo / redo | Ctrl/⌘ + `Z` · Ctrl/⌘ + Shift + `Z` (or Ctrl + `Y`) |
 | Save / open / new | Ctrl/⌘ + `S` (Shift for Save As) · `O` · `N` |
+| Search or run a command | Ctrl/⌘ + `K` |
 | All shortcuts | `F1` or File → Keyboard shortcuts |
 
 New objects are sized for the current zoom level and aligned with the current view
@@ -366,17 +388,17 @@ rotation, so you can zoom in and build nested "worlds".
 
 ### Exporting
 
-- **Present → PowerPoint** (or File → Export PowerPoint) writes a `.pptx` with one 16:9
+- **Share → PowerPoint (Morph)…** (or File → Export PowerPoint (Morph)…) writes a `.pptx` with one 16:9
   slide per step. SVGs are embedded natively (with a PNG fallback for older Office), and
   videos are embedded with a poster frame (click to play in PowerPoint). Every object keeps its identity as a shape named `!!<id>`, and slides are
   linked with PowerPoint's **Morph** transition, so PowerPoint itself animates the zooms,
   pans and rotations. Invisible frames are left out; bordered or filled frames are
   exported as shapes. Requires PowerPoint 2019 / Microsoft 365, or PowerPoint for Mac
   16.x. Older versions show a fade instead.
-- **Present → PDF** (or File → Export PDF) writes one page per slide on the path, rendered
+- **Share → PDF…** (or File → Export PDF…) writes one page per slide on the path, rendered
   exactly as in the show (2560 px wide images). It's handy for sharing a handout or
   printing.
-- **Present → Web page** (or File → Export web page (HTML)…) writes a single `.html` file
+- **Share → Web page (HTML)…** (or File → Export web page (HTML)…) writes a single `.html` file
   that plays the show in any modern browser exactly as the app does. The page carries the
   vectors the app draws (text as glyph outlines, so no fonts are needed), embedded images
   and SVGs, and a player that reproduces the camera (all transition styles), builds,
@@ -384,7 +406,7 @@ rotation, so you can zoom in and build nested "worlds".
   the app, with a Canvas 2D fallback. Videos are copied to a `<name>_media` folder next to
   the page. Keys: → / Space / click next, ← back, Home / End, F fullscreen, ? help; the
   mouse wheel zooms, and touch swipes work on phones and tablets.
-- **Present → PNG image** saves the current view at 2× resolution.
+- **Share → This view as PNG…** (or File → Export view as PNG…) saves the current view at 2× resolution.
 
 ### Importing PowerPoint
 
@@ -409,7 +431,7 @@ The import is unsaved until you save it; Save As stores its pictures next to the
 
 ### Arranging slides
 
-**Design → Arrange** (or the path button at the top of the slide list) moves every slide on
+The **Arrange** button on the path strip (or **Edit → Arrange slides…**) moves every slide on
 the path into a new layout. Each slide's content moves and turns with it, and the order of
 the path stays the same. The dialog draws each arrangement live for your number of slides:
 
@@ -448,8 +470,8 @@ glidedeck arrange deck.glide.json --layout orbits
 ### AutoSave and crash recovery
 
 - **AutoSave** (File → AutoSave, on by default): a presentation that has a file is saved
-  about two seconds after a change, once you stop dragging or typing. The status bar shows
-  *Saving…* / *Saved*. Closing with AutoSave on saves instead of asking. Untitled
+  about two seconds after a change, once you stop dragging or typing. The top bar shows
+  *Saving…* / *Saved* next to the deck name. Closing with AutoSave on saves instead of asking. Untitled
   presentations are not saved anywhere until you choose Save As.
 - **Crash recovery**: whenever there are unsaved changes (with or without AutoSave, saved or
   untitled), GlideDeck keeps a copy in the `recovery` folder of your settings folder, a few

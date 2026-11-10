@@ -1,26 +1,33 @@
 <p align="center">
-  <img src="assets/icon/glidedeck-256.png" width="112" alt="GlideDeck icon">
+  <img src="assets/icon/glidedeck-256.png" width="128" alt="GlideDeck icon">
 </p>
 
 <h1 align="center">GlideDeck</h1>
 
 <p align="center">
   <b>Presentations that move.</b><br>
-  Put your whole talk on one infinite canvas and glide, zoom and swoop between ideas.<br>
-  Works with your PowerPoint files. Free, fast and private: it runs entirely on your computer.
+  Stop flipping slides. Put your whole talk on one infinite canvas, then glide, swoop and zoom<br>
+  from the big picture down to the smallest detail, a million times deeper, still razor sharp.
 </p>
 
 <p align="center">
-  <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%2010%2F11-4f46e5?style=for-the-badge&logo=windows&logoColor=white"></a>
-  <a href="https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg"><img alt="Download for macOS (Apple Silicon and Intel)" src="https://img.shields.io/badge/Download-macOS%20(Universal)-17a398?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%2010%2F11-FFD23F?style=for-the-badge&logo=windows&logoColor=0F1113&labelColor=0F1113"></a>
+  <a href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck.dmg"><img alt="Download for macOS (Apple Silicon and Intel)" src="https://img.shields.io/badge/Download-macOS%20(Universal)-FFD23F?style=for-the-badge&logo=apple&logoColor=0F1113&labelColor=0F1113"></a>
 </p>
 
-![GlideDeck: the welcome canvas in the editor](docs/screenshots/editor.png)
+<p align="center">
+  Free and open source · Works with your PowerPoint files · 100% offline: it runs entirely on your computer
+</p>
+
+<p align="center">
+  <img src="docs/gifs/tour.gif" width="820" alt="A GlideDeck show flying from the overview into each tilted slide">
+</p>
 
 ---
 
 ## Contents
 
+- [See it move](#see-it-move)
 - [Download and install](#download-and-install)
 - [What you can do](#what-you-can-do)
 - [Get started in two minutes](#get-started-in-two-minutes)
@@ -34,15 +41,40 @@
 
 ---
 
+## See it move
+
+### One canvas, any depth
+
+A slide in GlideDeck is a *frame* on an endless canvas, and a frame can sit **inside** another
+frame. Put the summary on the surface and the proof a hundred times deeper. The show flies you
+in, and everything stays crisp, because it is all drawn as vectors on your graphics card.
+
+<p align="center">
+  <img src="docs/gifs/zoom.gif" width="820" alt="The camera zooms into a yellow portal, then 100 times, 10,000 times and further in, and back out to the overview">
+</p>
+
+### The whole story in one window
+
+Tools on the left, the slide you are working on in the middle, its details on the right, and
+your **path** along the bottom: every stop, with the camera move between each pair. Click a
+stop and the editor flies there. Press **Ctrl/⌘+K**, type a few letters and run any command.
+Dark or light, the layout is the same.
+
+<p align="center">
+  <img src="docs/gifs/editor.gif" width="900" alt="The editor: clicking stops on the path strip flies the canvas there, then the command search switches the app between dark and light">
+</p>
+
+![GlideDeck: the welcome canvas in the editor](docs/screenshots/editor.png)
+
 ## Download and install
 
 | Your computer | Download | How to install |
 |---|---|---|
 | **Windows 10 / 11** (64-bit) | **[⬇ GlideDeck-x64.msi](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi)** (always the latest version) | Double-click the file and follow the installer. It adds GlideDeck to the Start menu. |
-| **Mac with Apple Silicon or Intel** | **[⬇ GlideDeck-0.1.6.dmg](https://github.com/nirlotan/GlideDeck/releases/download/v0.1.6/GlideDeck-0.1.6.dmg)** | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
+| **Mac with Apple Silicon or Intel** | **[⬇ GlideDeck.dmg](https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck.dmg)** | Open the file and drag GlideDeck into **Applications**. The app is signed and notarized by Apple. |
 | Other versions | [All releases](https://github.com/nirlotan/GlideDeck/releases) | Every version, with release notes and SHA-256 checksums. |
 
-- **Already installed?** Choose **ⓘ → Check for updates** (or **File → Check for updates**).
+- **Already installed?** Choose **File → Check for updates…**.
   GlideDeck downloads the new installer for you, and installing it upgrades your copy in place.
 - **Windows says "Windows protected your PC"?** The installer isn't code-signed yet. Click
   **More info → Run anyway**.
@@ -54,6 +86,9 @@
 
 ## What you can do
 
+- **Tell a story with space.** Zoom out for the big picture, dive into a detail, turn a corner
+  to the next idea. Seven camera moves (smooth zoom, swoop, spin, punch and more) make each
+  step feel different.
 - **Import a PowerPoint deck and make it move.** Open any `.pptx`. Your slides, text,
   pictures and speaker notes come along. One click arranges them into a carousel, a spiral,
   orbits or a tree.
@@ -61,20 +96,23 @@
   transition, or a PDF to share.
 - **Share it as a web page.** Export a single `.html` file that plays the show in any browser
   exactly as GlideDeck does: every camera move, animation, parallax layer and effect.
+- **Bring slides to life.** Make text and pictures appear, take the spotlight and leave, with
+  a click or automatically. **Auto-animate** does a whole slide at once.
+- **Find anything in two keystrokes.** **Ctrl/⌘+K** opens the command search: type a few
+  letters to run a command or jump to a slide by its text.
+- **Start in style.** New decks open in **Darkroom**, the house look: flat graphite, bold type
+  and one signal yellow. **Daylight** is its bright twin. Ten more themes and 18 templates are
+  one click away.
 - **Put YouTube, Vimeo and Loom videos on a slide.** Paste a link onto the canvas. The video
   zooms and turns with your slides, and plays in the site's own player in the web page export.
+- **Present like a pro.** Presenter view shows your speaker notes, the next slide and a timer
+  on your screen while the audience sees only the show.
 - **Never lose work.** AutoSave keeps your file saved as you go, and if GlideDeck or your
   computer crashes, your unsaved changes are waiting for you next time.
 - **Use any font on your computer.** The font picker shows every installed font in its own
   face, and you can add a font file that then travels with the presentation.
-- **Start from a template.** 18 complete stories with a theme and a path, from a pitch deck to
-  a parallax **carousel**.
-- **Bring slides to life.** Make text and pictures appear, take the spotlight and leave, with
-  a click or automatically. **Auto-animate** does a whole slide at once.
-- **Present like a pro.** Presenter view shows your speaker notes, the next slide and a timer
-  on your screen while the audience sees only the show.
 - **Let AI do the first draft.** Claude and GitHub Copilot can build a complete GlideDeck
-  presentation for you, ready to edit.
+  presentation for you, in the same house style, ready to edit.
 
 | | |
 |---|---|
@@ -87,16 +125,17 @@
    see what's possible. Press → to move on and **Esc** to stop.
 2. **Start your own.** Use **File → New from template** (try **Carousel**), or
    **File → Import PowerPoint…**.
-3. **Edit.** Double-click any text to change it. Add slides with **Insert → Layouts**, or press
-   **F** and drag to draw a new slide (a *frame*) anywhere on the canvas.
-4. **Write your speaker notes** in the **Speaker notes** panel under the canvas.
+3. **Edit.** Double-click any text to change it. Add slides with **Layouts** on the tool rail
+   at the left, or press **F** and drag to draw a new slide (a *frame*) anywhere on the canvas.
+   To find any command, press **Ctrl/⌘+K** and type a few letters.
+4. **Write your speaker notes** in the **Slide** tab of the side panel, under **Speaker notes**.
 5. **Make it move.**
-   - **Transitions** sets how the camera flies into each slide.
-   - **Animate → Auto-animate** builds a slide's content in.
-   - **Design → Arrange** reshapes the whole path.
+   - **Camera move** in the **Slide** tab sets how the camera flies into each slide.
+   - **Auto-animate** in the **Animate** tab builds a slide's content in.
+   - **Arrange** on the path strip at the bottom reshapes the whole path.
 6. **Present** with **F5**. With a second screen or projector connected, presenter view starts
    automatically. On one screen, press **Alt+F5** to rehearse with your notes.
-7. **Share.** Use **Present → Web page**, **PowerPoint** or **PDF**, or just send the
+7. **Share.** Use **Share → Web page (HTML)…**, **PowerPoint (Morph)…** or **PDF…**, or just send the
    `.glide.json` file.
 
 | To… | Do this |
@@ -117,7 +156,7 @@
 - Shapes, pictures, slide backgrounds and master logos come along.
 - Speaker notes appear in presenter view.
 
-Then use **Design → Arrange** to turn the grid of slides into a story. Choose from a
+Then use **Arrange** on the path strip to turn the grid of slides into a story. Choose from a
 **carousel** with a parallax backdrop, a spiral, orbits, a tree, a zoom tunnel and more.
 (Tables, charts and SmartArt aren't converted yet; GlideDeck lists them for you.)
 
@@ -125,14 +164,14 @@ Then use **Design → Arrange** to turn the grid of slides into a story. Choose 
 arrive as editable text, shapes and pictures (Windows).
 
 **Send decks back out.**
-- **Present → PowerPoint** writes one slide per stop on your path, linked with **Morph**, so
+- **Share → PowerPoint (Morph)…** writes one slide per stop on your path, linked with **Morph**, so
   PowerPoint itself animates the zooms, pans and turns. Icons stay editable vectors; videos are
   embedded.
-- **Present → PDF** writes one page per slide, exactly as presented.
+- **Share → PDF…** writes one page per slide, exactly as presented.
 
 ## Share as a web page
 
-**Present → Web page** (or **File → Export web page (HTML)…**) writes one `.html` file that
+**Share → Web page (HTML)…** (or **File → Export web page (HTML)…**) writes one `.html` file that
 anyone can open in a browser. Nothing needs to be installed.
 
 - **The show is the same show.** Camera flights and all seven transition styles, builds
@@ -154,8 +193,9 @@ anyone can open in a browser. Nothing needs to be installed.
   razor sharp at every size.
 - Slides are **frames**: draw one around anything to make it a stop on your path. Frames are
   invisible in the show unless you give them a border, and moving a frame moves what's inside.
-- The **Slides** list on the left works like PowerPoint's. You get thumbnails, drag to
-  reorder, and right-click for more.
+- The **path strip** along the bottom shows every slide as a thumbnail, with the camera move
+  between them. Drag to reorder, and right-click for more.
+- **Command search:** press **Ctrl/⌘+K**, type a few letters, and pick a command or a slide.
 
 ### Motion
 - **Camera moves** between slides:
@@ -165,16 +205,16 @@ anyone can open in a browser. Nothing needs to be installed.
   - **Punch** overshoots, then settles.
   - **Fade** dips through the background.
   - **Direct** and **Cut** are plain moves.
-- **Animations inside a slide** (the **Animate** tab):
+- **Animations inside a slide** (the **Animate** tab of the side panel):
   - *appear* effects: fade, rise, focus, zoom, pop, drop, fly in, spin, typewriter, word by word and count up;
   - *emphasis*: spotlight, highlight marker, underline, color pop, pulse, glow and wiggle;
   - *disappear*: fade out, sink, zoom out, fly out and shrink.
 
   Numbers on the canvas show the click order, and **Preview** plays them in the editor.
-- **Arrange slides** (Design → Arrange) reshapes the whole path for any number of slides.
+- **Arrange slides** (the Arrange button on the path strip) reshapes the whole path for any number of slides.
   Choose a carousel, spiral, orbits, sunflower, ring, honeycomb, journey, wave, staircase,
   tree, zoom tunnel, snake or grid.
-- **Parallax:** give any object a **Depth** (Properties → Layout). In the show, far objects
+- **Parallax:** give any object a **Depth** (Design tab → Layout). In the show, far objects
   drift slower than the slides and near ones faster.
 
 ### Design that looks good by default
@@ -183,8 +223,10 @@ anyone can open in a browser. Nothing needs to be installed.
   - **Storytelling:** journey, summit, spiral, deep dive.
   - **Ideas & maps:** big picture, hive, orbit, mood board.
   - **Teaching:** lecture, chapters, workshop, cycle.
-- **Ten themes**, including the 2026 palettes **Dusk** (deep violet with aurora accents) and
-  **Cloud** (warm white with teal and coral). Switching themes restyles text and colours while
+- **Twelve themes**, including the house style, **Darkroom** (flat graphite, bone-white type,
+  one signal yellow) and **Daylight** (cool white with a cobalt accent), and the 2026 palettes
+  **Dusk** (deep violet with aurora accents) and **Cloud** (warm white with teal and coral).
+  New presentations start in Darkroom. Switching themes restyles text and colours while
   keeping the colours you picked by hand.
 - **20 slide layouts**, such as title, agenda, three points, comparison, dashboard, team,
   timeline, process, Venn and hub & spokes.
@@ -196,18 +238,18 @@ anyone can open in a browser. Nothing needs to be installed.
 - **Rich text:** bold, italic, underline, strikethrough, colours and sizes, bullets and
   numbering. Right-to-left languages (Hebrew, Arabic) work too.
 - **Fonts:** pick any font installed on your computer, previewed in its own face, for one text
-  box or for the whole theme (**Design → Fonts**). **Add font file…** copies a `.ttf` or
+  box or for the whole theme (**Design tab → Fonts**, with nothing selected). **Add font file…** copies a `.ttf` or
   `.otf` into the presentation, so it looks right on any computer.
 - **Pictures:** insert them, drag and drop, or paste screenshots and images from other apps.
 - **SVG graphics:** shown as true vectors.
 - **Video:** with sound, autoplay, loop and mute.
 - **Web video:** paste a YouTube, Vimeo or Loom link (or a link to a video file), or use
-  **Insert → Web video**. Its poster is saved with the presentation; the video streams when it
+  **Video → Web video link…** on the tool rail. Its poster is saved with the presentation; the video streams when it
   plays. In PowerPoint it becomes the poster, linked to the video.
 
 ### Your work is safe
 - **AutoSave** (File → AutoSave, on by default) saves a presentation that has a file a moment
-  after each change. The status bar shows when it's saved.
+  after each change. The top bar shows **Saved** next to the deck name.
 - **Crash recovery:** unsaved changes, even in a presentation you never saved, are kept in a
   recovery copy. If GlideDeck doesn't close normally, it offers them the next time it starts.
 
@@ -219,16 +261,16 @@ anyone can open in a browser. Nothing needs to be installed.
   - On a single screen, presenter view shows everything in one window, so you can rehearse.
   - **Open audience window** adds a separate slides-only window when you need one, for example
     to share in a video call.
-- **Speaker notes** live in the panel under the canvas. Use `# headings`, `- bullets` and
+- **Speaker notes** live in the **Slide** tab of the side panel. Use `# headings`, `- bullets` and
   `**bold**`.
 
 ### More screenshots
 
 | | |
 |---|---|
-| ![Themes and dark mode](docs/screenshots/design-dark.png) **Themes, slide strip and dark mode** | ![Templates](docs/screenshots/templates.png) **Start from a template** |
+| ![Themes and dark mode](docs/screenshots/design-dark.png) **Themes, path strip and dark mode** | ![Templates](docs/screenshots/templates.png) **Start from a template** |
 | ![Slide layouts](docs/screenshots/layouts.png) **Ready-made slide layouts** | ![Icon library](docs/screenshots/icons.png) **1,500 vector icons** |
-| ![Right-to-left editing](docs/screenshots/rtl-editing.png) **Right-to-left text and numbering** | ![Design check](docs/screenshots/design-check.png) **Design check with one-click fixes** |
+| ![Editing text in place](docs/screenshots/text-editing.png) **Edit text in place, with bullets and numbering** | ![Design check](docs/screenshots/design-check.png) **Design check with one-click fixes** |
 | ![Presenting](docs/screenshots/present.png) **Fullscreen presenting** | |
 
 ## Let Claude or GitHub Copilot build your deck
@@ -276,7 +318,7 @@ locked features. If it saves you time or helps a talk land, you can support its 
 - **Star the repo and share it.** It genuinely helps other people find GlideDeck.
 - **Report bugs and ideas** in [Issues](https://github.com/nirlotan/GlideDeck/issues).
 
-The **Support GlideDeck** button in the app (ⓘ → About) opens this section.
+The **Support GlideDeck** button in the app (File → About GlideDeck) opens this section.
 
 ## Privacy
 
@@ -290,14 +332,14 @@ only when you click **Check for updates**, and then only to GitHub.
 together with its `assets/` folder.
 
 **Do my viewers need GlideDeck?** No. Present from your computer, send a web page
-(**Present → Web page**) that plays the full show in any browser, or export to PowerPoint or PDF.
+(**Share → Web page (HTML)…**) that plays the full show in any browser, or export to PowerPoint or PDF.
 
 **Will my fonts look right on another computer?** In a web page export, yes: text is embedded
 as outlines. To edit on another computer, add the font with **Add font file…** in the font
 picker, and it travels in the presentation's `assets/` folder.
 
 **Where did my notes go after importing a PowerPoint?** They come along. You'll find them in the
-**Speaker notes** panel under the canvas and in presenter view.
+**Slide** tab of the side panel, under **Speaker notes**, and in presenter view.
 
 **Something's wrong or missing?** [Open an issue](https://github.com/nirlotan/GlideDeck/issues).
 
@@ -463,7 +505,7 @@ crates/
                  analytic shadows, offscreen MSAA targets, headless readback.
   glide-pptx     OpenXML writer: path → slides linked with Morph; vector icons,
                  native SVG, embedded video.
-  glidedeck      The app: eframe/egui editor (ribbon, slide strip, inspector, notes,
+  glidedeck      The app: eframe/egui editor (top bar, tool rail, side panel, path strip, command search,
                  galleries, design check), the show and presenter view, animations,
                  PowerPoint import, PDF export, the CLI and the MCP server.
 ```

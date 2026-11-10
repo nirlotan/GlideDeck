@@ -790,7 +790,7 @@ fn presenter_ui(app: &mut GlideDeckApp, ui: &mut egui::Ui, frame: &mut eframe::F
             ui.set_min_size(ui.available_size());
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 if notes.trim().is_empty() {
-                    ui.label(RichText::new("No notes for this slide. Add them in the editor, in the Speaker notes panel under the canvas.").size(notes_size * 0.75).color(ink::MUTED));
+                    ui.label(RichText::new("No notes for this slide. Add them in the editor, in the Slide tab, under Speaker notes.").size(notes_size * 0.75).color(ink::MUTED));
                 } else {
                     notes_markdown(ui, &notes, notes_size);
                 }

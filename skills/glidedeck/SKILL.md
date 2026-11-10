@@ -21,6 +21,30 @@ If the `glidedeck` MCP server is connected, its tools are available: `catalog`,
 `open_in_editor`, `search_icons`, `list_fonts`, `add_font`, `add_web_video`
 and `edit_presentation`. Prefer them.
 
+## House style
+
+GlideDeck has its own look, shared by the app, its welcome deck and these
+tools. Use it unless the user asks for something else:
+
+- **Darkroom** (the default): a flat graphite canvas, bone-white type and one
+  signal yellow. A blank deck starts in it; for a template pass
+  `theme: "darkroom"` to `create_presentation`.
+- **Daylight**: its light twin, cool white with a cobalt accent. Use it for
+  bright rooms, print, or when the user asks for a light deck.
+
+`catalog` returns both under `house_style` and marks them in `themes`.
+
+Stay inside the style:
+
+- Flat backgrounds. No decorative gradients, glows or glass panels.
+- Short, heavy headings and plenty of empty space. One idea per slide.
+- One accent per slide, on the thing that matters: a number, a word or a
+  single shape. Do not let several accent colors compete.
+- Let the camera do the showing: tilt or scale a slide on the canvas and vary
+  the camera moves, instead of adding ornaments.
+
+If the user names a brand color or another theme, follow the user.
+
 **Videos from the web:** `add_web_video` with a YouTube, Vimeo or Loom link (or
 a direct link to a video file) places the video on a slide with its title and
 poster. It plays in the web page export (`export_html`) in the site's player,
@@ -55,7 +79,9 @@ Follow this workflow:
    - `lecture`, `chapters`, `workshop` or `cycle` for teaching;
    - `blank` to build slide by slide.
 
-   Pick a theme too if the user cares about the look.
+   Pass `theme: "darkroom"` (or `"daylight"` for a light deck) so the deck is
+   in the house style; pick another theme only if the user asks for a
+   different look.
 3. **`create_presentation`.** Pass a descriptive path, e.g.
    `q3-results.glide.json` in the user's working folder, plus the template and
    a title. The result lists every slide with element ids and placeholder text.

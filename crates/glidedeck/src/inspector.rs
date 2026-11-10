@@ -1,22 +1,10 @@
-//! Right-hand panel: properties of the selection (or the document), slide
-//! settings for frames, and the layer list.
+//! Property cards for the selection and the layer list, shown in the Design
+//! tab of the side panel.
 
 use crate::app::{Action, GlideDeckApp};
-use crate::ribbon::easing_name;
 use crate::theme::{self, icon};
 use eframe::egui::{self, DragValue, RichText};
-use glide_core::{assets, Color, Easing, ElementKind, Gradient, IconStyle, Shadow, Stroke, TextAlign, TransitionStyle};
-
-const SWATCHES: [Color; 8] = [
-    Color::rgb(0xF7, 0xF6, 0xF2),
-    Color::rgb(0xFF, 0xFF, 0xFF),
-    Color::rgb(0xEE, 0xF2, 0xFF),
-    Color::rgb(0xEC, 0xFD, 0xF5),
-    Color::rgb(0xFF, 0xF7, 0xED),
-    Color::rgb(0x1F, 0x23, 0x2B),
-    Color::rgb(0x0B, 0x10, 0x20),
-    Color::rgb(0x2A, 0x1F, 0x3D),
-];
+use glide_core::{assets, Color, ElementKind, Gradient, IconStyle, Shadow, Stroke, TextAlign};
 
 pub(crate) fn card(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     let p = theme::palette(ui.ctx());
@@ -107,93 +95,31 @@ fn size_row(ui: &mut egui::Ui, w: &mut f64, h: &mut f64) {
     ui.end_row();
 }
 
-pub fn inspector(app: &mut GlideDeckApp, ui: &mut egui::Ui) -> Vec<Action> {
-    let mut actions = Vec::new();
+/// Property cards for the selection (the top of the Design tab).
+pub fn selection_cards(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
     let p = theme::palette(ui.ctx());
+    let chip = match app.selection.as_slice() {
+        [] => return,
+        [id] => app.doc.get(id).map(|e| e.kind.type_name().to_owned()).unwrap_or_default(),
+        many => format!("{} objects", many.len()),
+    };
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Properties").font(theme::semibold(15.0)));
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let chip = match app.selection.as_slice() {
-                [] => "Document".to_owned(),
-                [id] => app.doc.get(id).map(|e| e.kind.type_name().to_owned()).unwrap_or_default(),
-                many => format!("{} objects", many.len()),
-            };
-            egui::Frame::new().fill(p.accent_soft).corner_radius(6).inner_margin(egui::Margin::symmetric(8, 2)).show(ui, |ui| {
-                ui.label(RichText::new(chip).size(11.5).color(p.accent));
-            });
+        ui.label(RichText::new("Selection").font(theme::semibold(14.0)));
+        egui::Frame::new().fill(p.accent_soft).corner_radius(6).inner_margin(egui::Margin::symmetric(8, 2)).show(ui, |ui| {
+            ui.label(RichText::new(chip).size(11.5).color(p.accent));
         });
     });
-    ui.add_space(8.0);
-
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        match app.selection.len() {
-            0 => document_panel(app, ui),
-            1 => element_panel(app, ui, &mut actions),
-            n => {
-                card(ui, &format!("{n} objects"), |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        if ui.button(format!("{}  Frame them", icon::FRAME_CORNERS)).on_hover_text("Wrap the selection in a new frame and add it to the path").clicked() {
-                            app.frame_around_selection();
-                        }
-                        if ui.button(format!("{}  Zoom to", icon::MAGNIFYING_GLASS_PLUS)).clicked() {
-                            actions.push(Action::FitSelection);
-                        }
-                        if ui.button(format!("{}  Duplicate", icon::COPY)).clicked() {
-                            actions.push(Action::Duplicate);
-                        }
-                        if ui.button(RichText::new(format!("{}  Delete", icon::TRASH)).color(p.danger)).clicked() {
-                            actions.push(Action::Delete);
-                        }
-                    });
-                });
+    ui.add_space(6.0);
+    if app.selection.len() == 1 {
+        element_panel(app, ui, actions);
+    } else {
+        card(ui, "Group", |ui| {
+            if ui.button(format!("{}  Frame them", icon::FRAME_CORNERS)).on_hover_text("Wrap the selection in a new frame and add it to the path").clicked() {
+                app.frame_around_selection();
             }
-        }
-        layers(app, ui);
-    });
-    actions
-}
-
-fn document_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
-    let p = theme::palette(ui.ctx());
-    card(ui, "Presentation", |ui| {
-        grid(ui, "doc", |ui| {
-            label(ui, "Title");
-            crate::bidi::singleline(ui, "doc-title", &mut app.doc.title, |e| e.hint_text("Untitled").desired_width(f32::INFINITY));
-            ui.end_row();
-            label(ui, "Slides");
-            ui.label(format!("{}", app.doc.path.len()));
-            ui.end_row();
         });
-    });
-    card(ui, "Canvas background", |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
-            for c in SWATCHES {
-                let (rect, resp) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), egui::Sense::click());
-                let selected = app.doc.background == c;
-                ui.painter().rect_filled(rect, 6, egui::Color32::from_rgb(c.r(), c.g(), c.b()));
-                let stroke = if selected { egui::Stroke::new(2.0, p.accent) } else { egui::Stroke::new(1.0, p.border) };
-                ui.painter().rect_stroke(rect, 6, stroke, egui::StrokeKind::Outside);
-                if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-                    app.doc.background = c;
-                }
-            }
-            color_edit(ui, &mut app.doc.background);
-        });
-    });
-    card(ui, "Tips", |ui| {
-        for (g, t) in [
-            (icon::FRAME_CORNERS, "Draw frames (F) to build slides. They stay invisible in the show unless you give them a border."),
-            (icon::CLIPBOARD, "Paste screenshots, copied files or text with Ctrl/⌘+V, or drop images onto the canvas."),
-            (icon::FILE_PPT, "Present → PowerPoint exports one slide per frame, linked with Morph."),
-        ] {
-            ui.horizontal_top(|ui| {
-                ui.label(RichText::new(g).size(15.0).color(p.accent));
-                ui.add(egui::Label::new(RichText::new(t).size(12.5).color(p.text_muted)).wrap());
-            });
-            ui.add_space(2.0);
-        }
-    });
+    }
+    crate::shell::arrange_card(app, ui, actions);
 }
 
 fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
@@ -605,12 +531,6 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
     {
         t.font_family = family;
     }
-    if let Some(&first) = steps.first() {
-        slide_card(app, ui, first, &steps);
-        crate::anim_ui::slide_card(app, ui, first, actions);
-    } else if app.doc.get(&id).is_some_and(|e| !e.kind.is_frame()) {
-        crate::anim_ui::element_card(app, ui, &id, actions);
-    }
     if replace_image {
         replace_image_file(app, ui.ctx(), &id);
     }
@@ -633,7 +553,7 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
             }
             glide_render::VideoStatus::Unavailable(reason) if m.url.is_some() => {
                 ui.label(RichText::new(format!("{}  {reason}", icon::WARNING)).color(p.danger));
-                ui.label(RichText::new("It still plays in the web page export (Present → Web page), and clicking it opens it in the browser.").size(11.5).color(p.text_muted));
+                ui.label(RichText::new("It still plays in the web page export (Share → Web page), and clicking it opens it in the browser.").size(11.5).color(p.text_muted));
             }
             glide_render::VideoStatus::Unavailable(reason) => {
                 ui.label(RichText::new(format!("{}  {reason}", icon::WARNING)).color(p.danger));
@@ -650,58 +570,32 @@ fn element_panel(app: &mut GlideDeckApp, ui: &mut egui::Ui, actions: &mut Vec<Ac
         app.icon_picker.replace = Some(id.clone());
     }
 
-    ui.horizontal_wrapped(|ui| {
-        for (g, tip, a) in [
-            (icon::MAGNIFYING_GLASS_PLUS, "Zoom to", Action::FitSelection),
-            (icon::ARROW_LINE_UP, "Bring to front", Action::BringToFront),
-            (icon::ARROW_LINE_DOWN, "Send to back", Action::SendToBack),
-            (icon::COPY, "Duplicate", Action::Duplicate),
-        ] {
-            if ui.add(egui::Button::new(RichText::new(g).size(15.0)).min_size(egui::vec2(32.0, 28.0))).on_hover_text(tip).clicked() {
-                actions.push(a);
-            }
-        }
-        if ui
-            .add(egui::Button::new(RichText::new(icon::TRASH).size(15.0).color(p.danger)).min_size(egui::vec2(32.0, 28.0)))
-            .on_hover_text("Delete")
-            .clicked()
-        {
-            actions.push(Action::Delete);
-        }
-    });
-    ui.add_space(8.0);
-}
-
-/// Transition and speaker notes for a slide.
-fn slide_card(app: &mut GlideDeckApp, ui: &mut egui::Ui, index: usize, all: &[usize]) {
-    let p = theme::palette(ui.ctx());
-    let numbers: Vec<String> = all.iter().map(|i| (i + 1).to_string()).collect();
-    let title = format!("Slide {}", numbers.join(", "));
-    let step = &mut app.doc.path[index];
-    card(ui, &title, |ui| {
-        grid(ui, "slide", |ui| {
-            label(ui, "Transition");
-            egui::ComboBox::from_id_salt("tstyle").selected_text(step.transition.style.label()).show_ui(ui, |ui| {
-                for style in TransitionStyle::ALL {
-                    ui.selectable_value(&mut step.transition.style, style, style.label()).on_hover_text(style.description());
+    // Whole-box text formatting (while editing in place, the floating bar does this).
+    if app.text_edit.is_none() && matches!(app.doc.get(&id).map(|e| &e.kind), Some(ElementKind::Text(_))) {
+        let format = app.current_format_state().unwrap_or_default();
+        card(ui, "Format", |ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 2.0;
+                use crate::textformat::TextFormat as F;
+                for (on, glyph, f, tip) in [
+                    (format.bold, icon::TEXT_B, F::Bold, "Bold"),
+                    (format.italic, icon::TEXT_ITALIC, F::Italic, "Italic"),
+                    (format.underline, icon::TEXT_UNDERLINE, F::Underline, "Underline"),
+                    (format.strike, icon::TEXT_STRIKETHROUGH, F::Strike, "Strikethrough"),
+                ] {
+                    if crate::shell::icon_button(ui, glyph, tip, on, true, 28.0).on_hover_text(tip).clicked() {
+                        actions.push(Action::FormatText(f));
+                    }
+                }
+                ui.separator();
+                for (glyph, f, tip) in [(icon::MINUS, F::Smaller, "Smaller text"), (icon::PLUS, F::Bigger, "Larger text"), (icon::ERASER, F::Clear, "Clear formatting")] {
+                    if crate::shell::icon_button(ui, glyph, tip, false, true, 28.0).on_hover_text(tip).clicked() {
+                        actions.push(Action::FormatText(f));
+                    }
                 }
             });
-            ui.end_row();
-            label(ui, "Duration");
-            ui.add(egui::Slider::new(&mut step.transition.duration, 0.2..=5.0).suffix(" s").fixed_decimals(1));
-            ui.end_row();
-            label(ui, "Easing");
-            egui::ComboBox::from_id_salt("teasing").selected_text(easing_name(step.transition.easing)).show_ui(ui, |ui| {
-                for e in [Easing::EaseInOutCubic, Easing::EaseInOutSine, Easing::EaseInOutQuint, Easing::EaseOutExpo, Easing::Linear] {
-                    ui.selectable_value(&mut step.transition.easing, e, easing_name(e));
-                }
-            });
-            ui.end_row();
         });
-        ui.add_space(6.0);
-        ui.label(RichText::new(format!("{}  Speaker notes", icon::NOTE)).color(p.text_muted));
-        crate::bidi::multiline(ui, "step-notes", &mut step.notes, |e| e.hint_text("Markdown notes for the presenter view…").desired_rows(4).desired_width(f32::INFINITY));
-    });
+    }
 }
 
 fn replace_image_file(app: &mut GlideDeckApp, ctx: &egui::Context, id: &str) {
@@ -739,7 +633,7 @@ fn weight_name(w: u16) -> &'static str {
     }
 }
 
-fn layers(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
+pub fn layers(app: &mut GlideDeckApp, ui: &mut egui::Ui) {
     let p = theme::palette(ui.ctx());
     let multi = ui.input(|i| i.modifiers.shift || i.modifiers.command);
     egui::CollapsingHeader::new(RichText::new(format!("{}  Layers", icon::STACK)).font(theme::semibold(13.0)))
