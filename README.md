@@ -16,7 +16,8 @@
 </p>
 
 <p align="center">
-  Free and open source · Works with your PowerPoint files · 100% offline: it runs entirely on your computer
+  Free and open source · Works with your PowerPoint files · 100% offline: it runs entirely on your computer<br>
+  <b><a href="https://nirlotan.com/GlideDeck/">nirlotan.com/GlideDeck</a></b>: see it fly in your browser
 </p>
 
 <p align="center">
