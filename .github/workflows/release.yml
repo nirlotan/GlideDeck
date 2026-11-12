@@ -115,6 +115,11 @@ jobs:
   windows:
     name: Windows MSI
     runs-on: windows-latest
+    env:
+      # Releases are signed through SignPath Foundation once these are set
+      # (CODE_SIGNING_POLICY.md): the secret SIGNPATH_API_TOKEN and the variable
+      # SIGNPATH_ORGANIZATION_ID. Until then the MSI is built unsigned.
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -130,11 +135,57 @@ jobs:
           "WIX_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build the MSI
+        id: build
         shell: pwsh
         run: |
           & .\packaging\windows\build-msi.ps1 -WixDir $env:WIX_DIR
           $msi = Get-ChildItem dist\GlideDeck-*-x64.msi | Select-Object -First 1
           if (-not $msi) { throw "No MSI was produced." }
+          $version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          "name=$($msi.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # Code signing, for tagged releases only (every signing request is approved by hand).
+      - name: Upload the unsigned MSI for signing
+        id: unsigned
+        if: env.SIGNPATH_API_TOKEN != '' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/${{ steps.build.outputs.name }}
+          archive: false
+
+      - name: Sign with SignPath
+        if: env.SIGNPATH_API_TOKEN != '' && startsWith(github.ref, 'refs/tags/v')
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'glidedeck' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signed
+          skip-decompress: true
+          parameters: |
+            version: "${{ steps.build.outputs.version }}"
+
+      - name: Use the signed MSI
+        if: env.SIGNPATH_API_TOKEN != '' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $name = "${{ steps.build.outputs.name }}"
+          $signed = Get-ChildItem dist\signed -Recurse -Filter *.msi | Select-Object -First 1
+          if (-not $signed) { throw "SignPath returned no MSI." }
+          Copy-Item $signed.FullName "dist\$name" -Force
+          Remove-Item dist\signed -Recurse -Force
+          $sig = Get-AuthenticodeSignature "dist\$name"
+          if ($sig.Status -ne 'Valid') { throw "The signed MSI doesn't verify: $($sig.StatusMessage)" }
+          "Signed by: $($sig.SignerCertificate.Subject)"
+
+      - name: Stable name and checksum
+        shell: pwsh
+        run: |
+          $msi = Get-Item "dist\${{ steps.build.outputs.name }}"
           # Same file under a name that never changes (README's download link).
           Copy-Item $msi.FullName dist\GlideDeck-x64.msi
           Get-FileHash $msi.FullName -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $($msi.Name)" } |
@@ -164,6 +215,7 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           notes="packaging/release-notes-${GITHUB_REF_NAME}.md"
           if [ -f "$notes" ]; then cp "$notes" notes.md; else printf '## GlideDeck %s\n' "$v" > notes.md; fi
+          printf '\n---\nCode signing policy: Windows installers are signed for free by SignPath Foundation, see [CODE_SIGNING_POLICY.md](https://github.com/nirlotan/GlideDeck/blob/main/CODE_SIGNING_POLICY.md).\n' >> notes.md
           # Same DMG under a name that never changes (README's download link).
           cp "release/GlideDeck-$v.dmg" release/GlideDeck.dmg
           ls -la release
