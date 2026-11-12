@@ -302,6 +302,46 @@ kbd { display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em
 .foot-legal { margin-top: auto; padding-top: 64px; display: flex; justify-content: space-between; gap: 24px; font-size: var(--t-s); }
 .foot-name { font: 800 20vw/0.8 var(--display); letter-spacing: -0.05em; white-space: nowrap; margin: 12px 0 0 -0.04em; transform: translateY(24%); color: var(--bone); user-select: none; }
 
+/* ---------------------------------------------------------------- flight */
+/* flight.js turns the page into one canvas and flies a camera over it. It places each
+   section and moves .world; these rules only lift the sections out of the page flow. */
+.flight { scroll-behavior: auto; }
+.flight .sky { position: fixed; inset: 0; overflow: hidden; overflow: clip; background: var(--surface-2); }
+.flight .world { position: absolute; inset: 0; transform-origin: 0 0; }
+.flight .world > .hero, .flight .world > .foot, .flight main > section {
+  position: absolute; left: 0; top: 0; width: 100%; min-height: 100%;
+  will-change: transform; /* one layer each, drawn at full size: sharp when the camera lands */
+}
+/* Every stop fills the window, so short sections sit in the middle of theirs. */
+.flight .fly, .flight .commands, .flight .start, .flight .works, .flight .faq { align-content: center; }
+.flight .values { display: grid; }
+.flight .why { display: flex; flex-direction: column; }
+.flight .why-film { flex: 1 0 auto; }
+.flight .skip { position: fixed; }
+
+/* The path: one tick per stop, like the strip under the canvas in the app. */
+.path { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 5; display: grid; color: #fff; mix-blend-mode: difference; }
+.path button { position: relative; display: block; width: 44px; height: 24px; }
+.path button::after {
+  content: ""; position: absolute; right: 12px; top: 50%; width: 10px; height: 3px; margin-top: -1.5px;
+  background: currentColor; transform-origin: 100% 50%; transition: transform var(--t-ui) var(--ease-out);
+}
+.path button:hover::after, .path button:focus-visible::after { transform: scaleX(1.7); }
+.path button[aria-current="step"]::after { transform: scaleX(2.6); }
+.path span {
+  position: absolute; right: 46px; top: 50%; transform: translateY(-50%); white-space: nowrap;
+  font: 600 var(--t-s)/1 var(--text); opacity: 0; pointer-events: none; transition: opacity var(--t-hover) ease;
+}
+.path button:hover span, .path button:focus-visible span { opacity: 1; }
+.path button:focus-visible { outline-offset: -3px; }
+
+@media print {
+  .flight body { height: auto !important; }
+  .flight .sky { position: static; }
+  .flight .world, .flight .world > .hero, .flight .world > .foot, .flight main > section { position: relative !important; transform: none !important; }
+  .path { display: none; }
+}
+
 /* ---------------------------------------------------------------- motion */
 @media (prefers-reduced-motion: no-preference) {
   .js [data-reveal] .rise,

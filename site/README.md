@@ -24,6 +24,17 @@ npx wrangler dev
 
 Then open http://localhost:8787/GlideDeck/.
 
+## The flight
+
+On screens wider than 900px the page is one canvas and scrolling flies a camera across it
+(`flight.js`). Each section is a stop. The `PLAN` list at the top of that file sets where
+every stop sits relative to the one before it (`go`), how big it is on the canvas (`size`)
+and its angle (`turn`); the pans, zooms and spins follow from those. Section heights are
+measured, and stops slide apart until nothing overlaps, so the plan needs no coordinates.
+
+Adding a section to `index.html` means adding a line to `PLAN`. Phones, and visitors who
+ask for reduced motion, get the ordinary scrolling page.
+
 ## Refresh the content
 
 - **The live show** in "Fly it yourself" is GlideDeck's own web page export of the welcome
