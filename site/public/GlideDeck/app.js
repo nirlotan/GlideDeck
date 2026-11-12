@@ -110,7 +110,7 @@
       if (rows.length && !rows.some((li) => li.classList.contains('is-on'))) pick(rows[0]);
     });
     addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); search.focus(); search.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' }); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); search.focus(); if (!document.documentElement.classList.contains('flight')) search.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' }); }
     });
   }
 
