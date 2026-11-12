@@ -36,6 +36,8 @@ mod theme;
 mod update;
 #[cfg(test)]
 mod ui_tests;
+#[cfg(test)]
+mod video_capture;
 
 use clap::Parser;
 

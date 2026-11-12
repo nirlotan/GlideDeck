@@ -1,0 +1,17 @@
+[
+  {"id": "hook", "gap": 0.35, "text": "Your best ideas don't arrive in a straight line."},
+  {"id": "problem", "gap": 0.45, "text": "So why present them one flat slide at a time? Next. Next. Next. By slide twelve, nobody remembers how it all connects."},
+  {"id": "turn", "gap": 0.55, "text": "Now put your whole story in one place. One infinite canvas, where every idea has a home, and you can see how they connect."},
+  {"id": "reveal", "gap": 0.7, "text": "This is GlideDeck. Presentations that move."},
+  {"id": "idea1", "gap": 0.55, "text": "Start with the big picture."},
+  {"id": "idea2", "gap": 0.9, "text": "Fly into the detail."},
+  {"id": "idea3", "gap": 0.8, "text": "A million times deeper, still razor sharp."},
+  {"id": "idea4", "gap": 0.6, "text": "Pull back, and everyone knows exactly where they are."},
+  {"id": "proof", "gap": 0.5, "text": "In a Harvard study, audiences rated zooming presentations more engaging and more persuasive than slides."},
+  {"id": "flow1a", "gap": 0.45, "text": "Got a PowerPoint? Drop it in."},
+  {"id": "flow1b", "gap": 2.3, "text": "One click makes it a spiral, an orbit, a carousel."},
+  {"id": "flow2a", "gap": 1.4, "text": "Animate a slide in one click."},
+  {"id": "flow2b", "gap": 0.5, "text": "Then share it as a web page, a PDF, or back to PowerPoint."},
+  {"id": "values", "gap": 0.5, "text": "No account. No cloud. No subscription. Free, open source, and it runs entirely on your computer."},
+  {"id": "close", "gap": 0, "text": "Stop flipping. Start flying. GlideDeck. Free on GitHub."}
+]

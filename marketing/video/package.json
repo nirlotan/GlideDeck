@@ -1,0 +1,29 @@
+{
+  "name": "glidedeck-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The GlideDeck marketing video (Remotion).",
+  "scripts": {
+    "studio": "remotion studio",
+    "voice": "node scripts/voice.mjs",
+    "music": "node scripts/sound.mjs music",
+    "music:synth": "node scripts/music-synth.mjs",
+    "sfx": "python scripts/sfx.py",
+    "render:desktop": "remotion render Desktop out/glidedeck-desktop-master.mp4 --crf=15",
+    "render:mobile": "remotion render Mobile out/glidedeck-mobile-master.mp4 --crf=15",
+    "encode": "node scripts/encode.mjs",
+    "build": "npm run render:desktop && npm run render:mobile && npm run encode"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.543",
+    "@remotion/google-fonts": "4.0.543",
+    "@remotion/media-utils": "4.0.543",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.543"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}
