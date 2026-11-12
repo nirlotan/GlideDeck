@@ -1,0 +1,346 @@
+<title>GlideDeck Identity Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@500..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..700&display=swap">
+<style>
+/* Layout: short brief, then three identity bands. Each band: light/dark switch, editor mock, welcome deck, three fact columns. */
+:root{
+  --bg:#F4F3F1; --fg:#131210; --muted:#5F5C57; --panel:#FFFFFF; --line:#D9D6D0; --accent:#FF4B14;
+  --display:"Archivo","Arial Black",system-ui,sans-serif; --text:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#121110; --fg:#F1EFEB; --muted:#A29E97; --panel:#1C1B19; --line:#33312E; --accent:#FF6A3A; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#121110; --fg:#F1EFEB; --muted:#A29E97; --panel:#1C1B19; --line:#33312E; --accent:#FF6A3A; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--text);padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:64px}
+.col{max-width:66ch}
+h1,h2{font-family:var(--display);font-stretch:118%;font-weight:800;text-wrap:balance;margin:0;letter-spacing:-0.02em}
+h1{font-size:clamp(32px,5vw,56px);line-height:1}
+h2{font-size:clamp(26px,3.4vw,40px);line-height:1.05}
+h3{font-size:16px;font-weight:700;margin:0 0 4px}
+p{margin:0}
+.lede{font-size:19px;color:var(--muted);margin-top:16px}
+.stack{display:flex;flex-direction:column;gap:20px}
+.jump{display:flex;flex-wrap:wrap;gap:8px}
+.jump a{color:var(--fg);text-decoration:none;font-weight:600;padding:8px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
+.jump a:hover,.jump a:focus-visible{border-color:var(--fg);outline:none}
+.band{display:flex;flex-direction:column;gap:20px;scroll-margin-top:16px}
+.head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.head p{color:var(--muted);font-size:18px;max-width:60ch;margin-top:6px}
+.mode{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;gap:2px}
+.mode button{font:600 14px var(--text);color:var(--muted);background:none;border:0;border-radius:999px;padding:8px 18px;cursor:pointer;transition:transform 140ms ease-out}
+.mode button:active{transform:scale(.97)}
+.mode button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.mode button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cap{font-size:14px;color:var(--muted);font-weight:600}
+.fit{position:relative;width:100%;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:var(--canvas)}
+.fit>.win,.fit>.art{position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(var(--k,1))}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 32px}
+.facts div{min-width:0}
+.facts p{color:var(--muted);font-size:15px}
+.rec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.rec p{max-width:72ch}
+
+/* ---------- identities: every colour in the mocks comes from these ---------- */
+.idA{--canvas:#F5F5FD;--panel:#FFFFFF;--inset:#E9E7FB;--edge:#1B14D9;--ink:#1B14D9;--mute:#6660D6;--acc:#FF4B14;--onacc:#FFFFFF;
+     --c1:#FF4B14;--t1:#FFFFFF;--c2:#D6D2FF;--t2:#1B14D9;--c3:#1B14D9;--t3:#F5F5FD;--c4:#FFD4C4;--t4:#1B14D9;
+     --ui:"Archivo",sans-serif;--sx:768px;--sy:504px;--sw:252px;--sh:99px;--sr:-6deg;--cx:800px;--cy:634px}
+.idA.dark{--canvas:#0E0A4A;--panel:#19137A;--inset:#0E0A4A;--edge:#4038D6;--ink:#F3F1FF;--mute:#ABA6F2;--acc:#FF5A1F;--onacc:#1A0700;
+     --c1:#FF5A1F;--t1:#1A0700;--c2:#2D26BE;--t2:#F3F1FF;--c3:#F3F1FF;--t3:#0E0A4A;--c4:#FFB199;--t4:#1A0700}
+.idB{--canvas:#F5EFE3;--panel:#FFFDF7;--inset:#EBE2CF;--edge:#23308C;--ink:#23308C;--mute:#6B74B5;--acc:#FF48B0;--onacc:#1A1F5C;
+     --c1:#FF48B0;--t1:#1A1F5C;--c2:#FFE600;--t2:#1A1F5C;--c3:#23308C;--t3:#F5EFE3;--c4:#F5EFE3;--t4:#23308C;
+     --ui:"Onest",sans-serif;--sx:822px;--sy:172px;--sw:216px;--sh:138px;--sr:4deg;--cx:770px;--cy:112px}
+.idB.dark{--canvas:#1B2570;--panel:#25318C;--inset:#151D5C;--edge:#F5EFE3;--ink:#F5EFE3;--mute:#AEB6EA;--acc:#FF5DB8;--onacc:#1A1F5C;
+     --c1:#FF5DB8;--t1:#1A1F5C;--c2:#FFE600;--t2:#1A1F5C;--c3:#F5EFE3;--t3:#1B2570;--c4:#1B2570;--t4:#F5EFE3}
+.idC{--canvas:#FFE4EB;--panel:#FFF7F9;--inset:#FFD3DD;--edge:#0A3D2E;--ink:#0A3D2E;--mute:#55796C;--acc:#FFB627;--onacc:#2A1B00;
+     --c1:#FF7A9A;--t1:#2A0A14;--c2:#0A3D2E;--t2:#FFE4EB;--c3:#FFB627;--t3:#2A1B00;--c4:#BDE5CB;--t4:#0A3D2E;
+     --ui:"Figtree",sans-serif;--sx:612px;--sy:400px;--sw:192px;--sh:216px;--sr:0deg;--cx:596px;--cy:346px}
+.idC.dark{--canvas:#0A3D2E;--panel:#10503C;--inset:#072C21;--edge:#2F7A61;--ink:#FFE4EB;--mute:#A0C7B8;--acc:#FFB627;--onacc:#2A1B00;
+     --c1:#FF8FAB;--t1:#2A0A14;--c2:#FFE4EB;--t2:#0A3D2E;--c3:#FFB627;--t3:#2A1B00;--c4:#1C6B52;--t4:#FFE4EB}
+
+/* ---------- welcome deck scenes, 1600x900 ---------- */
+.art{width:calc(1600px*var(--s,1));height:calc(900px*var(--s,1));overflow:hidden;position:relative;flex:none}
+.art>.scene{transform:scale(var(--s,1));transform-origin:0 0}
+.scene{width:1600px;height:900px;position:relative;overflow:hidden;background:var(--canvas);color:var(--ink)}
+.scene>*,.bank>*{position:absolute;margin:0}
+.slab{padding:26px 30px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}
+.slab span{font-size:21px;line-height:1.3}
+.k1{background:var(--c1);color:var(--t1)}.k2{background:var(--c2);color:var(--t2)}.k3{background:var(--c3);color:var(--t3)}.k4{background:var(--c4);color:var(--t4)}
+/* A: Jetstream */
+.sa{font-family:"Archivo",sans-serif}
+.sa h4{font:italic 900 236px/0.86 "Archivo",sans-serif;font-stretch:125%;letter-spacing:-0.03em}
+.sa .tag{font:italic 800 52px/1 "Archivo",sans-serif;font-stretch:118%}
+.sa .sub{font-size:24px;color:var(--mute)}
+.sa .bar{height:34px;display:block}
+.sa .slab{transform:rotate(-6deg);width:420px;height:165px}
+.sa .slab b{font:italic 800 32px/1 "Archivo",sans-serif;font-stretch:115%}
+/* B: Riso */
+.sb{font-family:"Onest",sans-serif}
+.sb h4{font:800 188px/0.9 "Syne",sans-serif;letter-spacing:-0.045em;text-shadow:11px 9px 0 var(--c1)}
+.sb .tag{font:700 54px/1 "Syne",sans-serif;letter-spacing:-0.02em}
+.sb .sub{font-size:24px;color:var(--mute)}
+.sb .slab b{font:800 34px/1 "Syne",sans-serif;letter-spacing:-0.02em}
+.sb .mis::after{content:"";position:absolute;inset:0;border:4px solid var(--ink);border-radius:inherit;transform:translate(14px,14px)}
+/* C: Marquee */
+.sc{font-family:"Figtree",sans-serif}
+.sc h4{font:800 172px/0.94 "Fraunces",serif;letter-spacing:-0.035em}
+.sc h4 i{font-weight:700}
+.sc .sub{font-size:26px;color:var(--mute)}
+.sc .slab{width:320px;height:360px;border-radius:160px 160px 0 0;padding:26px 28px 30px}
+.sc .slab b{font:italic 700 36px/1 "Fraunces",serif;letter-spacing:-0.01em}
+
+/* ---------- the floating shell, 1280x800 ---------- */
+.win{width:1280px;height:800px;overflow:hidden;font:13px/1.3 var(--ui);background:var(--canvas);color:var(--ink);position:relative}
+.win>*{position:absolute}
+.win svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.win .art{--s:.6;left:132px;top:118px}
+.float{background:var(--panel);border-radius:12px;box-shadow:0 0 0 1.5px var(--edge)}
+.row{display:flex;align-items:center;gap:8px}
+.tl{left:16px;top:14px;padding:8px 14px 8px 10px;display:flex;align-items:center;gap:10px}
+.tl b{font-size:15px}
+.mute{color:var(--mute)}
+.tr{right:16px;top:14px;padding:6px;display:flex;gap:6px;align-items:center}
+.tr .ic{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--mute);background:none;border:0;cursor:pointer;padding:0}
+.tr .ic.th{color:var(--ink);background:var(--inset)}
+.btn{padding:7px 12px;border-radius:8px;font-weight:600;display:flex;gap:6px;align-items:center}
+.btn.pri{background:var(--acc);color:var(--onacc)}
+.film{left:16px;top:66px;width:100px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.thb{border-radius:5px;aspect-ratio:16/9;display:flex;align-items:flex-end;padding:5px 6px;font-weight:700;font-size:9px;line-height:1.05}
+.thb.cv{background:var(--canvas);color:var(--ink);box-shadow:inset 0 0 0 1px var(--mute)}
+.thb.on{outline:2px solid var(--acc);outline-offset:2px}
+.film .add{height:30px;border-radius:5px;background:var(--inset);display:flex;align-items:center;justify-content:center;color:var(--mute)}
+.dock{left:50%;bottom:18px;transform:translateX(-50%);padding:6px;display:flex;gap:2px;align-items:center}
+.dock span{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.dock span.on{background:var(--acc);color:var(--onacc)}
+.dock hr{width:2px;height:22px;border:0;background:var(--inset);margin:0 6px}
+.dock svg.i{width:20px;height:20px}
+.selbox{left:var(--sx);top:var(--sy);width:var(--sw);height:var(--sh);transform:rotate(var(--sr));border:2px solid var(--ink)}
+.selbox i{position:absolute;width:10px;height:10px;background:var(--panel);border:2px solid var(--ink)}
+.ctx{left:var(--cx);top:var(--cy);padding:4px;display:flex;gap:2px;align-items:center}
+.ctx span{padding:6px 9px;border-radius:7px;font-weight:500;display:flex;gap:6px;align-items:center}
+.insp{right:16px;top:66px;width:236px;padding:12px;display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--inset);border-radius:8px;padding:3px;text-align:center;font-weight:600}
+.seg span{padding:6px 0;border-radius:6px;color:var(--mute)}
+.seg .on{background:var(--panel);color:var(--ink)}
+.lab{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
+.grp{display:flex;flex-direction:column;gap:9px}
+.sw{width:22px;height:22px;border-radius:6px;flex:none;box-shadow:inset 0 0 0 1px var(--mute)}
+.chip{padding:5px 10px;border-radius:7px;font-weight:500;background:var(--inset)}
+.chip.on{background:var(--acc);color:var(--onacc);font-weight:700}
+.slider{height:4px;border-radius:2px;position:relative;flex:1;background:var(--inset)}
+.slider i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--ink)}
+.slider u{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;margin-left:-7px;background:var(--panel);border:2px solid var(--ink)}
+.fld{display:flex;justify-content:space-between;gap:8px}
+.zoom{left:132px;bottom:22px;padding:8px 12px;font-weight:600;display:flex;gap:10px;align-items:center}
+.logo{width:22px;height:22px;flex:none;position:relative}
+/* A: banked, hard-edged, italic */
+.idA .float{border-radius:3px}
+.idA .tl b{font:italic 800 16px "Archivo",sans-serif;font-stretch:120%}
+.idA .logo{background:var(--acc);transform:skewX(-14deg);width:18px}
+.idA .btn.pri{transform:skewX(-12deg);border-radius:2px;font:italic 800 13px "Archivo",sans-serif;font-stretch:118%;text-transform:uppercase;letter-spacing:.02em;padding:8px 16px}
+.idA .btn.pri>*{transform:skewX(12deg)}
+.idA .dock span,.idA .chip,.idA .seg,.idA .seg span,.idA .thb,.idA .sw,.idA .ctx span,.idA .tr .ic{border-radius:2px}
+.idA .lab{font-style:italic;font-stretch:115%}
+/* B: printed, square, misregistered */
+.idB .float{border-radius:0;box-shadow:0 0 0 2px var(--ink),6px 6px 0 var(--acc)}
+.idB .tl b{font:700 16px "Syne",sans-serif}
+.idB .logo{border-radius:50%;background:var(--c2);box-shadow:-7px 0 0 var(--c1);margin-left:7px;width:16px;height:16px}
+.idB .btn.pri{border-radius:0;box-shadow:0 0 0 2px var(--ink);font:700 14px "Syne",sans-serif}
+.idB .dock span,.idB .chip,.idB .seg,.idB .seg span,.idB .thb,.idB .sw,.idB .ctx span,.idB .tr .ic{border-radius:0}
+.idB .lab{font-family:"Syne",sans-serif;letter-spacing:.02em}
+/* C: soft, arched, serif italics */
+.idC .float{border-radius:20px}
+.idC .tl b{font:italic 600 18px "Fraunces",serif}
+.idC .logo{background:var(--acc);border-radius:11px 11px 0 0;width:18px}
+.idC .btn{border-radius:999px}
+.idC .btn.pri{font:italic 700 16px "Fraunces",serif;padding:6px 16px}
+.idC .dock span{border-radius:50%}
+.idC .chip,.idC .seg,.idC .seg span{border-radius:999px}
+.idC .thb{border-radius:8px}
+.idC .sw{border-radius:50%}
+.idC .lab{font:italic 600 13px "Fraunces",serif;text-transform:none;letter-spacing:0}
+@media (max-width:640px){ body{font-size:15px} .lede{font-size:17px} }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cursor" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></symbol>
+  <symbol id="hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5m0-1V4.5a1.5 1.5 0 013 0V11m0-4.5a1.5 1.5 0 013 0V14a6 6 0 01-6 6h-.5a6 6 0 01-5-2.8L5 13.5a1.5 1.5 0 012.5-1.6L8 13"/></symbol>
+  <symbol id="frame" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></symbol>
+  <symbol id="text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="shape" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="10" rx="2"/><circle cx="15.5" cy="15.5" r="4.5"/></symbol>
+  <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 5"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></symbol>
+  <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M4 10h10a5 5 0 010 10h-3M4 10l4-4M4 10l4 4"/></symbol>
+  <symbol id="redo" viewBox="0 0 24 24"><path d="M20 10H10a5 5 0 000 10h3M20 10l-4-4M20 10l-4 4"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></symbol>
+  <symbol id="wand" viewBox="0 0 24 24"><path d="M4 20L15 9M14 3v3M20 9h-3M19 4l-1.5 1.5M19 14v2"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/></symbol>
+</svg>
+
+<template id="sceneA">
+<div class="scene sa">
+  <p class="tag" style="left:84px;top:72px">Presentations that move.</p>
+  <p class="sub" style="left:86px;top:142px">Scroll to zoom. Press F5 to play this canvas.</p>
+  <div style="left:880px;top:84px;width:130px;height:130px;border-radius:50%;background:var(--c1)"></div>
+  <div style="left:923px;top:127px;width:44px;height:44px;border-radius:50%;background:var(--canvas)"></div>
+  <p class="sub" style="left:868px;top:226px">Zoom in here</p>
+  <div class="bank" style="left:0;top:0;width:1600px;height:900px;transform:rotate(-6deg)">
+    <i class="bar" style="left:850px;top:735px;width:1100px;background:var(--c1)"></i>
+    <i class="bar" style="left:850px;top:795px;width:1100px;background:var(--c2)"></i>
+    <h4 style="left:64px;top:356px">GLIDE<br>DECK</h4>
+  </div>
+  <div class="slab k1" style="left:1150px;top:56px"><b>Infinite canvas</b><span>A million times deeper.</span></div>
+  <div class="slab k2" style="left:1120px;top:252px"><b>Motion built in</b><span>Swoops, carousels, parallax.</span></div>
+  <div class="slab k3" style="left:1090px;top:448px"><b>PowerPoint in and out</b><span>Morph export, or PDF.</span></div>
+  <div class="slab k4" style="left:1060px;top:644px"><b>AI-ready</b><span>Claude and Copilot build decks.</span></div>
+</div>
+</template>
+
+<template id="sceneB">
+<div class="scene sb">
+  <p class="tag" style="left:80px;top:78px">Presentations<br>that move.</p>
+  <p class="sub" style="left:82px;top:212px">Scroll to zoom. Press F5 to play this canvas.</p>
+  <div style="left:560px;top:300px;width:96px;height:96px;border-radius:50%;background:var(--c2)" class="mis"></div>
+  <p class="sub" style="left:330px;top:330px;color:var(--ink);font-weight:600">Zoom in here</p>
+  <div class="slab k1 mis" style="left:760px;top:56px;width:330px;height:330px;border-radius:50%;justify-content:center;align-items:center;text-align:center"><b>Motion<br>built in</b></div>
+  <div class="slab k2 mis" style="left:1160px;top:86px;width:350px;height:224px;transform:rotate(4deg)"><b>Infinite canvas</b><span>A million times deeper.</span></div>
+  <div class="slab k3" style="left:1130px;top:368px;width:390px;height:196px;transform:rotate(-3deg)"><b>PowerPoint in and out</b><span>Morph export, or PDF.</span></div>
+  <div class="slab k4" style="left:700px;top:420px;width:380px;height:128px;box-shadow:inset 0 0 0 4px var(--ink)"><b>AI-ready</b><span>Claude and Copilot build decks.</span></div>
+  <h4 style="left:66px;top:636px">GlideDeck</h4>
+</div>
+</template>
+
+<template id="sceneC">
+<div class="scene sc">
+  <h4 style="left:78px;top:54px">Presentations<br>that <i>move.</i></h4>
+  <div style="left:1290px;top:70px;width:230px;height:230px;border-radius:50%;background:var(--c3)"></div>
+  <p class="sub" style="left:1296px;top:318px;width:230px;text-align:center">Zoom in here</p>
+  <div class="slab k1" style="left:80px;top:470px"><b>Infinite canvas</b><span>A million times deeper.</span></div>
+  <div class="slab k2" style="left:440px;top:470px"><b>PowerPoint in and out</b><span>Morph export, or PDF.</span></div>
+  <div class="slab k3" style="left:800px;top:470px"><b>Motion built in</b><span>Swoops, carousels, parallax.</span></div>
+  <div class="slab k4" style="left:1160px;top:470px"><b>AI-ready</b><span>Claude and Copilot build decks.</span></div>
+  <div style="left:0;top:830px;width:1600px;height:70px;background:var(--ink)"></div>
+</div>
+</template>
+
+<template id="shell">
+<div class="win">
+  <div class="art" data-scene></div>
+  <div class="selbox"><i style="left:-7px;top:-7px"></i><i style="right:-7px;top:-7px"></i><i style="left:-7px;bottom:-7px"></i><i style="right:-7px;bottom:-7px"></i></div>
+  <div class="float ctx"><span><i class="sw" style="background:var(--c2);width:16px;height:16px"></i>Fill</span><span><svg class="i"><use href="#text"/></svg>Text</span><span><svg class="i"><use href="#wand"/></svg>Animate</span><span><svg class="i"><use href="#layers"/></svg></span></div>
+  <div class="float tl"><span class="logo"></span><b>Welcome to GlideDeck</b><span class="mute">Saved</span></div>
+  <div class="float tr"><span class="ic"><svg class="i"><use href="#undo"/></svg></span><span class="ic"><svg class="i"><use href="#redo"/></svg></span><button class="ic th" type="button" data-flip aria-label="Switch between light and dark"><svg class="i"><use href="#half"/></svg></button><span class="btn"><svg class="i"><use href="#share"/></svg>Share</span><span class="btn pri"><svg class="i"><use href="#play"/></svg><span>Present</span></span></div>
+  <div class="float film">
+    <div class="thb cv on" style="font-size:12px">GlideDeck</div>
+    <div class="thb cv">Presentations that move.</div>
+    <div class="thb k1">Infinite canvas</div>
+    <div class="thb k2">Motion built in</div>
+    <div class="thb k3">PowerPoint in and out</div>
+    <div class="thb k4" style="box-shadow:inset 0 0 0 1px var(--mute)">AI-ready</div>
+    <div class="add"><svg class="i"><use href="#plus"/></svg></div>
+  </div>
+  <div class="float insp">
+    <div class="seg"><span class="on">Style</span><span>Motion</span></div>
+    <div class="grp"><span class="lab">Fill</span><div class="row"><i class="sw" style="background:var(--c1)"></i><i class="sw" style="background:var(--c2);outline:2px solid var(--ink);outline-offset:2px"></i><i class="sw" style="background:var(--c3)"></i><i class="sw" style="background:var(--c4)"></i><i class="sw" style="background:var(--canvas)"></i></div></div>
+    <div class="grp"><span class="lab">Corners</span><div class="row"><div class="slider"><i style="width:28%"></i><u style="left:28%"></u></div><span>14</span></div></div>
+    <div class="grp"><span class="lab">Opacity</span><div class="row"><div class="slider"><i style="width:100%"></i><u style="left:100%"></u></div><span>100</span></div></div>
+    <div class="grp"><span class="lab">Appears with</span><div class="row" style="flex-wrap:wrap"><span class="chip on">Pop</span><span class="chip">Rise</span><span class="chip">Fade</span><span class="chip">Focus</span></div></div>
+    <div class="grp"><span class="lab">Camera into this slide</span><div class="fld"><span>Swoop</span><span class="mute">1.3 s</span></div></div>
+  </div>
+  <div class="float zoom"><svg class="i"><use href="#minus"/></svg>60%<svg class="i"><use href="#plus"/></svg></div>
+  <div class="float dock">
+    <span class="on"><svg class="i"><use href="#cursor"/></svg></span><span><svg class="i"><use href="#hand"/></svg></span><hr>
+    <span><svg class="i"><use href="#frame"/></svg></span><span><svg class="i"><use href="#text"/></svg></span><span><svg class="i"><use href="#shape"/></svg></span><span><svg class="i"><use href="#image"/></svg></span><span><svg class="i"><use href="#star"/></svg></span><span><svg class="i"><use href="#video"/></svg></span><hr>
+    <span><svg class="i"><use href="#grid"/></svg></span><span><svg class="i"><use href="#search"/></svg></span>
+  </div>
+</div>
+</template>
+
+<div class="wrap">
+
+<div class="stack col">
+  <h1>Same shell, three bolder identities</h1>
+  <p class="lede">The floating, canvas-first layout from the last round stays as it was. What changes here is type and colour. Each identity has a light and a dark theme, and the switch on each mockup works.</p>
+  <nav class="jump" aria-label="Identities"><a href="#jetstream">A · Jetstream</a><a href="#riso">B · Riso</a><a href="#marquee">C · Marquee</a></nav>
+</div>
+
+<section class="band idA dark" id="jetstream" data-scene="sceneA">
+  <div class="head"><div><h2>A · Jetstream</h2><p>Speed as the brand. Wide italic capitals, everything banked six degrees, ultramarine and tangerine.</p></div>
+    <div class="mode" role="group" aria-label="Theme for Jetstream"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div></div>
+  <div class="fit" data-w="1280" data-h="800" data-shell></div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" style="--s:1" data-scene></div></div>
+  <div class="facts">
+    <div><h3>Type</h3><p>Archivo, one family. Expanded black italic for the wordmark and titles, regular width for the interface, so the app needs a single bundled font.</p></div>
+    <div><h3>Colour</h3><p>Light mode writes in ultramarine ink on white, not black. Dark mode is deep ultramarine, not grey. Tangerine is the only action colour in both.</p></div>
+    <div><h3>Signature</h3><p>The six-degree bank. The wordmark, the slabs and the speed stripes share one angle, and the camera levels out as it flies into each slide. The Present button leans the same way.</p></div>
+  </div>
+</section>
+
+<section class="band idB" id="riso" data-scene="sceneB">
+  <div class="head"><div><h2>B · Riso</h2><p>Printed, not rendered. Three inks, square corners, and outlines that sit slightly off their shapes like a misregistered print.</p></div>
+    <div class="mode" role="group" aria-label="Theme for Riso"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div></div>
+  <div class="fit" data-w="1280" data-h="800" data-shell></div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" style="--s:1" data-scene></div></div>
+  <div class="facts">
+    <div><h3>Type</h3><p>Syne for the wordmark, titles and labels: wide, a little odd, instantly recognisable. Onest for interface text, which stays quiet at 13px.</p></div>
+    <div><h3>Colour</h3><p>Blue ink, fluorescent pink and yellow on paper. Dark mode floods the page with the blue ink and prints in paper white. There is no black or grey anywhere.</p></div>
+    <div><h3>Signature</h3><p>The offset. Panels cast a hard pink shadow, shapes carry an outline shifted a few pixels, and the wordmark has a pink ghost. All of it is two flat elements, so it ships with what the renderer has today.</p></div>
+  </div>
+</section>
+
+<section class="band idC dark" id="marquee" data-scene="sceneC">
+  <div class="head"><div><h2>C · Marquee</h2><p>A presentation is a show. Emerald and blush, a soft serif in italics, and slides that stand on a stage as a row of arches.</p></div>
+    <div class="mode" role="group" aria-label="Theme for Marquee"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div></div>
+  <div class="fit" data-w="1280" data-h="800" data-shell></div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" style="--s:1" data-scene></div></div>
+  <div class="facts">
+    <div><h3>Type</h3><p>Fraunces for titles, the deck name and panel labels, with the italic doing the moving. Figtree for interface text.</p></div>
+    <div><h3>Colour</h3><p>Dark mode is emerald with blush text. Light mode swaps them: blush ground, emerald ink. Marigold is the action colour in both.</p></div>
+    <div><h3>Signature</h3><p>The arch. Feature slides are arches on a stage line, the logo is an arch, and controls are fully round. It is the warmest of the three and the furthest from a typical software look.</p></div>
+  </div>
+</section>
+
+<section class="rec">
+  <h2>My pick</h2>
+  <p><b>Jetstream.</b> It is the only one whose idea comes from the product's name and its one unique feature, the moving camera. It also needs one font file, and its dark theme being blue instead of grey is something users will remember.</p>
+  <p>Riso is the most original on screen. Marquee is the most charming, but it would suit a consumer storytelling tool better than one that imports PowerPoint decks.</p>
+  <p>All three fonts are open-licence and can ship inside the app. None of them covers Hebrew, Arabic or CJK, so those scripts keep today's system-font fallback in every option.</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  function fill(host, id){ var t=document.getElementById(id); if(t) host.appendChild(t.content.cloneNode(true)); }
+  document.querySelectorAll('.band').forEach(function(band){
+    band.querySelectorAll('[data-shell]').forEach(function(h){ fill(h,'shell'); });
+    band.querySelectorAll('.art[data-scene]').forEach(function(a){ fill(a, band.dataset.scene); });
+    function set(dark){
+      band.classList.toggle('dark', dark);
+      band.querySelectorAll('.mode button').forEach(function(b){ b.setAttribute('aria-pressed', String((b.dataset.mode==='dark')===dark)); });
+    }
+    set(band.classList.contains('dark'));
+    band.addEventListener('click', function(e){
+      var m=e.target.closest('[data-mode]'), f=e.target.closest('[data-flip]');
+      if(m) set(m.dataset.mode==='dark'); else if(f) set(!band.classList.contains('dark'));
+    });
+  });
+  var fits=[].slice.call(document.querySelectorAll('.fit'));
+  function all(){ fits.forEach(function(f){ var w=+f.dataset.w,h=+f.dataset.h,k=f.clientWidth/w; f.style.height=(h*k)+'px'; if(f.firstElementChild) f.firstElementChild.style.setProperty('--k',k); }); }
+  all();
+  if(window.ResizeObserver){ var ro=new ResizeObserver(all); fits.forEach(function(f){ro.observe(f)}); } else { window.addEventListener('resize',all); }
+})();
+</script>

@@ -1,0 +1,476 @@
+<title>GlideDeck Revamp Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Geist:wght@400;500;600;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one reading column of proposal text; each direction is a full-width band holding two scaled mockups and three fact columns. */
+:root{
+  --bg:#F5F6F4; --fg:#14171A; --muted:#5A636A; --panel:#FFFFFF; --line:#DCE0DD; --accent:#1F4FFF; --mark:#FFD43A;
+  --display:"Bricolage Grotesque","Hanken Grotesk",system-ui,sans-serif;
+  --text:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#111315; --fg:#ECEEEF; --muted:#9BA4AB; --panel:#1A1D20; --line:#2B3034; --accent:#8EA8FF; --mark:#FFD43A; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#111315; --fg:#ECEEEF; --muted:#9BA4AB; --panel:#1A1D20; --line:#2B3034; --accent:#8EA8FF; --mark:#FFD43A; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--text);padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+.col{max-width:68ch}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-0.02em}
+h1{font-size:clamp(34px,5.4vw,60px);line-height:1;font-weight:800}
+h2{font-size:clamp(26px,3.4vw,38px);line-height:1.05;font-weight:800}
+h3{font-size:18px;font-weight:600;letter-spacing:0;font-family:var(--text)}
+p{margin:0}
+.lede{font-size:19px;color:var(--muted);margin-top:16px}
+.stack{display:flex;flex-direction:column;gap:20px}
+.old{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px 40px;padding:0;margin:0;list-style:none}
+.old li{padding-block:12px;border-top:2px solid var(--fg)}
+.old b{display:block}
+.old span{color:var(--muted);font-size:15px}
+.jump{display:flex;flex-wrap:wrap;gap:8px}
+.jump a{color:var(--fg);text-decoration:none;font-weight:600;padding:8px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
+.jump a:hover,.jump a:focus-visible{border-color:var(--fg);outline:none}
+.dir{display:flex;flex-direction:column;gap:20px;scroll-margin-top:16px}
+.dir header{display:flex;flex-direction:column;gap:6px}
+.tagline{color:var(--muted);font-size:18px;max-width:68ch}
+.cap{font-size:14px;color:var(--muted);font-weight:600}
+.fit{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000}
+.fit>.win,.fit>.art{position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(var(--k,1))}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 32px}
+.facts div{min-width:0}
+.facts h3{margin-bottom:4px}
+.facts p{color:var(--muted);font-size:15px}
+.rec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.rec p{max-width:72ch}
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.plan section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.plan .when{font-weight:700;color:var(--accent);font-size:14px}
+.plan ul{margin:0;padding-left:18px;color:var(--muted);font-size:15px;display:flex;flex-direction:column;gap:4px}
+.pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pick div{padding:16px;border-radius:12px;background:var(--fg);color:var(--bg)}
+.pick b{font-family:var(--display);font-size:22px;display:block}
+.pick span{font-size:14px;opacity:.8}
+
+/* ---------- mock windows: fixed 1280x800 "screenshots", literal colours on purpose ---------- */
+.win{width:1280px;height:800px;overflow:hidden;font-size:13px;line-height:1.3}
+.win svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.art{width:calc(1600px*var(--s,1));height:calc(900px*var(--s,1));overflow:hidden;position:relative;flex:none}
+.art>.scene{transform:scale(var(--s,1));transform-origin:0 0}
+.fit>.art{--s:1}
+.scene{width:1600px;height:900px;position:relative;overflow:hidden}
+.scene>*{position:absolute;margin:0}
+.scene svg.route{left:0;top:0;width:1600px;height:900px}
+.slab{padding:28px 30px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
+.slab b{font-size:38px;line-height:1;letter-spacing:-0.02em;font-weight:800}
+.slab span{font-size:21px;line-height:1.3;opacity:.85}
+/* scene 1: Daylight */
+.s1{background:#F3F5F4;color:#101314;font-family:"Hanken Grotesk",sans-serif}
+.s1 h4{font:800 118px/0.94 "Bricolage Grotesque",sans-serif;letter-spacing:-0.04em}
+.s1 .sub{font-size:30px;line-height:1.35;width:540px}
+.s1 .slab{border-radius:6px}
+/* scene 2: Darkroom */
+.s2{background:#0F1113;color:#F1EFE9;font-family:"Geist",sans-serif}
+.s2 h4{font:800 292px/0.9 "Geist",sans-serif;letter-spacing:-0.06em}
+.s2 .tag{font-size:56px;font-weight:600;letter-spacing:-0.02em}
+.s2 .sub{font-size:25px;color:#8F969C}
+.s2 .slab{border-radius:14px}
+/* scene 3: Flightpath */
+.s3{background:#0D1524;color:#EEF3F7;font-family:"Geist",sans-serif}
+.s3 h4{font:800 176px/0.95 "Bricolage Grotesque",sans-serif;letter-spacing:-0.04em}
+.s3 .tag{font-size:44px;font-weight:500;color:#9FB2C8}
+.s3 .stop b{display:block;font-size:32px;font-weight:600;letter-spacing:-0.01em}
+.s3 .stop span{font-size:21px;color:#9FB2C8}
+
+/* shared mock bits */
+.row{display:flex;align-items:center;gap:8px}
+.sp{flex:1}
+.th{border-radius:6px;aspect-ratio:16/9;display:flex;align-items:flex-end;padding:6px 7px;font-weight:700;font-size:10px;line-height:1.05}
+.slider{height:4px;border-radius:2px;position:relative;flex:1}
+.slider i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.slider u{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;margin-left:-7px}
+.lab{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.fld{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{padding:5px 10px;border-radius:7px;font-weight:500;white-space:nowrap}
+.sw{width:22px;height:22px;border-radius:6px;flex:none}
+
+/* shell 1: Daylight */
+.w1{background:#E9ECEB;color:#14181A;font-family:"Hanken Grotesk",sans-serif;display:grid;grid-template:52px 1fr / 196px 1fr 264px}
+.w1 .top{grid-column:1/-1;background:#fff;border-bottom:1px solid #DDE1DF;padding:0 14px;display:flex;align-items:center;gap:14px}
+.w1 .logo{width:22px;height:22px;border-radius:6px;background:#1F4FFF}
+.w1 .tools{display:flex;gap:2px;margin:0 auto}
+.w1 .tool{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;font-weight:500}
+.w1 .tool.on{background:#E8EEFF;color:#1F4FFF}
+.w1 .btn{padding:8px 14px;border-radius:8px;font-weight:600;display:flex;align-items:center;gap:6px}
+.w1 .btn.pri{background:#1F4FFF;color:#fff}
+.w1 .btn.sec{background:#F1F3F2}
+.w1 .muted{color:#6B7478}
+.w1 .side{background:#fff;border-right:1px solid #DDE1DF;padding:14px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.w1 .side .it{display:grid;grid-template-columns:16px 1fr;gap:6px;color:#6B7478;font-size:11px}
+.w1 .side .it.on .th{outline:2px solid #1F4FFF;outline-offset:2px}
+.w1 .mid{display:flex;flex-direction:column;min-width:0}
+.w1 .stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+.w1 .stage .art{--s:.48;border-radius:4px;box-shadow:0 1px 2px rgba(16,24,32,.08),0 12px 32px rgba(16,24,32,.10)}
+.w1 .zoom{position:absolute;right:16px;bottom:14px;background:#fff;border-radius:8px;padding:6px 10px;display:flex;gap:10px;align-items:center;font-weight:600;box-shadow:0 1px 3px rgba(16,24,32,.12)}
+.w1 .notes{background:#fff;border-top:1px solid #DDE1DF;padding:11px 16px;display:flex;gap:10px;align-items:center;color:#6B7478}
+.w1 .insp{background:#fff;border-left:1px solid #DDE1DF;padding:12px 14px;display:flex;flex-direction:column;gap:16px}
+.w1 .seg{display:grid;grid-template-columns:repeat(3,1fr);background:#F1F3F2;border-radius:8px;padding:3px;font-weight:600;text-align:center}
+.w1 .seg span{padding:6px 0;border-radius:6px;color:#6B7478}
+.w1 .seg .on{background:#fff;color:#14181A;box-shadow:0 1px 2px rgba(16,24,32,.12)}
+.w1 .lab{color:#6B7478}
+.w1 .grp{display:flex;flex-direction:column;gap:9px}
+.w1 .themes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.w1 .themes i{aspect-ratio:4/3;border-radius:6px;display:block;position:relative;overflow:hidden}
+.w1 .themes i::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38%;background:var(--c)}
+.w1 .themes .on{outline:2px solid #1F4FFF;outline-offset:2px}
+.w1 .sel{background:#F1F3F2;border-radius:7px;padding:6px 10px;font-weight:500}
+.w1 .chip{background:#F1F3F2}
+.w1 .slider{background:#E3E7E5}.w1 .slider i{background:#1F4FFF}.w1 .slider u{background:#fff;border:2px solid #1F4FFF}
+
+/* shell 2: Darkroom */
+.w2{background:#0F1113;color:#E9E7E1;font-family:"Geist",sans-serif;position:relative}
+.w2>*{position:absolute}
+.w2 .art{--s:.6;left:132px;top:118px}
+.w2 .float{background:#1B1E22;border-radius:12px;box-shadow:0 0 0 1px #2A2E33,0 12px 32px rgba(0,0,0,.5)}
+.w2 .tl{left:16px;top:14px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-weight:600}
+.w2 .logo{width:20px;height:20px;border-radius:50%;background:#FFD23F}
+.w2 .muted{color:#8B9298;font-weight:400}
+.w2 .tr{right:16px;top:14px;padding:6px;display:flex;gap:6px;align-items:center}
+.w2 .btn{padding:7px 12px;border-radius:8px;font-weight:600;display:flex;gap:6px;align-items:center}
+.w2 .btn.pri{background:#FFD23F;color:#14110A}
+.w2 .film{left:16px;top:66px;width:100px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.w2 .film .th{font-size:9px}
+.w2 .film .on{outline:2px solid #FFD23F;outline-offset:2px}
+.w2 .film .add{height:30px;border-radius:6px;background:#24282D;display:flex;align-items:center;justify-content:center;color:#8B9298}
+.w2 .dock{left:50%;bottom:18px;transform:translateX(-50%);padding:6px;display:flex;gap:2px;align-items:center}
+.w2 .dock span{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#C9CED3}
+.w2 .dock span.on{background:#FFD23F;color:#14110A}
+.w2 .dock hr{width:1px;height:22px;border:0;background:#30353B;margin:0 6px}
+.w2 .dock svg.i{width:20px;height:20px}
+.w2 .selbox{left:824px;top:156px;width:188px;height:120px;border:2px solid #FFD23F;transform:rotate(3deg)}
+.w2 .selbox i{position:absolute;width:9px;height:9px;background:#0F1113;border:2px solid #FFD23F;border-radius:2px}
+.w2 .ctx{left:742px;top:104px;padding:4px;display:flex;gap:2px;align-items:center;border-radius:10px}
+.w2 .ctx span{padding:6px 9px;border-radius:7px;font-weight:500;display:flex;gap:6px;align-items:center}
+.w2 .insp{right:16px;top:66px;width:236px;padding:12px;display:flex;flex-direction:column;gap:14px}
+.w2 .seg{display:grid;grid-template-columns:1fr 1fr;background:#121417;border-radius:8px;padding:3px;text-align:center;font-weight:600}
+.w2 .seg span{padding:6px 0;border-radius:6px;color:#8B9298}
+.w2 .seg .on{background:#2A2E33;color:#F1EFE9}
+.w2 .lab{color:#8B9298}
+.w2 .grp{display:flex;flex-direction:column;gap:9px}
+.w2 .chip{background:#24282D}
+.w2 .chip.on{background:#FFD23F;color:#14110A}
+.w2 .slider{background:#30353B}.w2 .slider i{background:#F1EFE9}.w2 .slider u{background:#F1EFE9}
+.w2 .zoom{left:132px;bottom:22px;padding:8px 12px;font-weight:600;border-radius:10px;display:flex;gap:10px;align-items:center}
+
+/* shell 3: Flightpath */
+.w3{background:#0A111D;color:#E6EDF4;font-family:"Geist",sans-serif;display:grid;grid-template:46px 1fr 136px / 56px 1fr 248px}
+.w3 .top{grid-column:1/-1;background:#111B2C;display:flex;align-items:center;gap:14px;padding:0 14px 0 18px}
+.w3 .logo{width:20px;height:20px;border-radius:5px;background:#35D0BA}
+.w3 .muted{color:#8296AD}
+.w3 .cmd{margin:0 auto;width:380px;background:#0A111D;border-radius:8px;padding:7px 12px;display:flex;gap:8px;align-items:center;color:#8296AD}
+.w3 kbd{font:500 11px "Geist",sans-serif;background:#1B2942;border-radius:4px;padding:2px 6px;color:#B8C6D6}
+.w3 .btn{padding:7px 13px;border-radius:8px;font-weight:600;display:flex;gap:6px;align-items:center}
+.w3 .btn.pri{background:#35D0BA;color:#06201B}
+.w3 .rail{grid-area:2/1;background:#111B2C;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:10px}
+.w3 .rail span{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#A9B8C9}
+.w3 .rail span.on{background:#1B2942;color:#35D0BA}
+.w3 .stage{grid-area:2/2;display:flex;align-items:center;justify-content:center;position:relative;min-width:0}
+.w3 .stage .art{--s:.565;border-radius:4px}
+.w3 .insp{background:#111B2C;padding:14px;display:flex;flex-direction:column;gap:16px;grid-area:2/3/4/4}
+.w3 .lab{color:#8296AD}
+.w3 .grp{display:flex;flex-direction:column;gap:9px}
+.w3 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.w3 .chip{background:#1B2942}
+.w3 .chip.on{background:#35D0BA;color:#06201B;font-weight:600}
+.w3 .slider{background:#1B2942}.w3 .slider i{background:#35D0BA}.w3 .slider u{background:#E6EDF4}
+.w3 .note{background:#0A111D;border-radius:8px;padding:9px 10px;color:#8296AD;min-height:74px}
+.w3 .path{grid-area:3/1/4/3;background:#111B2C;border-top:1px solid #1B2942;padding:10px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.w3 .lane{display:flex;align-items:center;gap:0}
+.w3 .st{width:118px;flex:none;display:flex;flex-direction:column;gap:5px;font-size:11px;color:#A9B8C9}
+.w3 .st.on .th{outline:2px solid #35D0BA;outline-offset:2px}
+.w3 .st.on{color:#E6EDF4}
+.w3 .mv{flex:none;width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:#8296AD;margin-bottom:18px}
+.w3 .mv i{height:3px;width:100%;background:#35D0BA;border-radius:2px;display:block}
+.w3 .mv b{font-weight:600;color:#B8C6D6}
+@media (max-width:640px){ body{font-size:15px} .lede{font-size:17px} }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cursor" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></symbol>
+  <symbol id="hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5m0-1V4.5a1.5 1.5 0 013 0V11m0-4.5a1.5 1.5 0 013 0V14a6 6 0 01-6 6h-.5a6 6 0 01-5-2.8L5 13.5a1.5 1.5 0 012.5-1.6L8 13"/></symbol>
+  <symbol id="frame" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></symbol>
+  <symbol id="text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="shape" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="10" rx="2"/><circle cx="15.5" cy="15.5" r="4.5"/></symbol>
+  <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 5"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></symbol>
+  <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M4 10h10a5 5 0 010 10h-3M4 10l4-4M4 10l4 4"/></symbol>
+  <symbol id="redo" viewBox="0 0 24 24"><path d="M20 10H10a5 5 0 000 10h3M20 10l-4-4M20 10l-4 4"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></symbol>
+  <symbol id="wand" viewBox="0 0 24 24"><path d="M4 20L15 9M14 3v3M20 9h-3M19 4l-1.5 1.5M19 14v2"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5zM14 20v-5h5"/></symbol>
+</svg>
+
+<!-- Welcome deck scenes, 1600x900, cloned into the editor canvases and shown full size -->
+<template id="scene1">
+<div class="scene s1">
+  <svg class="route" viewBox="0 0 1600 900" aria-hidden="true"><path d="M150 720 C 520 800, 700 560, 900 340 S 1260 140, 1420 330 S 1330 660, 1130 730" fill="none" stroke="#1F4FFF" stroke-width="5" stroke-dasharray="1 17" stroke-linecap="round"/></svg>
+  <h4 style="left:88px;top:78px">Presentations<br>that move.</h4>
+  <p class="sub" style="left:96px;top:340px">Your whole talk on one canvas. Glide, zoom and swoop between ideas. Press F5 to play this one.</p>
+  <div class="slab" style="left:850px;top:84px;width:470px;height:270px;transform:rotate(-5deg);background:#1F4FFF;color:#fff"><b>Infinite canvas</b><span>Zoom a million times deeper. Everything stays sharp.</span></div>
+  <div class="slab" style="left:1190px;top:330px;width:360px;height:220px;transform:rotate(6deg);background:#101314;color:#F3F5F4"><b>PowerPoint in and out</b><span>Import .pptx. Export with Morph, or PDF.</span></div>
+  <div class="slab" style="left:800px;top:470px;width:400px;height:226px;transform:rotate(3deg);background:#FFD43A;color:#101314"><b>Motion built in</b><span>Swoops, carousels, parallax.</span></div>
+  <div class="slab" style="left:1150px;top:650px;width:380px;height:196px;transform:rotate(-4deg);background:#CFE0FF;color:#101314"><b>AI-ready</b><span>Claude and Copilot build decks for you.</span></div>
+  <div style="left:520px;top:590px;width:160px;height:160px;border-radius:50%;background:#101314"></div>
+  <div style="left:572px;top:642px;width:56px;height:56px;border-radius:50%;background:#1F4FFF"></div>
+  <div style="left:593px;top:663px;width:14px;height:14px;border-radius:50%;background:#FFD43A"></div>
+  <p style="left:320px;top:652px;font-size:27px;font-weight:700;transform:rotate(-6deg)">Zoom in here</p>
+  <p style="left:96px;top:806px;font-size:25px;color:#59636A">Hello · Здравствуйте · こんにちは · नमस्ते · مرحبا · שלום</p>
+</div>
+</template>
+
+<template id="scene2">
+<div class="scene s2">
+  <p class="tag" style="left:78px;top:84px">Presentations that move.</p>
+  <p class="sub" style="left:80px;top:168px">Scroll to zoom. Press F5 to play this canvas.</p>
+  <div class="slab" style="left:800px;top:60px;width:310px;height:196px;transform:rotate(-3deg);background:#1D2125"><b>Infinite canvas</b><span>A million times deeper.</span></div>
+  <div class="slab" style="left:1160px;top:70px;width:310px;height:196px;transform:rotate(3deg);background:#FFD23F;color:#14110A"><b>Motion built in</b><span>Swoops, carousels, parallax.</span></div>
+  <div class="slab" style="left:690px;top:296px;width:310px;height:196px;transform:rotate(2deg);background:#F1EFE9;color:#14110A"><b>PowerPoint in and out</b><span>Morph export, or PDF.</span></div>
+  <div class="slab" style="left:1040px;top:306px;width:310px;height:196px;transform:rotate(-2deg);background:#1D2125"><b>AI-ready</b><span>Claude and Copilot build decks.</span></div>
+  <div style="left:1395px;top:330px;width:160px;height:160px;border-radius:50%;background:#FFD23F"></div>
+  <div style="left:1447px;top:382px;width:56px;height:56px;border-radius:50%;background:#0F1113"></div>
+  <div style="left:1468px;top:403px;width:14px;height:14px;border-radius:50%;background:#FFD23F"></div>
+  <p style="left:1398px;top:508px;font-size:22px;color:#8F969C;width:180px">Zoom in here</p>
+  <h4 style="left:58px;top:560px">GlideDeck</h4>
+</div>
+</template>
+
+<template id="scene3">
+<div class="scene s3">
+  <svg class="route" viewBox="0 0 1600 900" aria-hidden="true">
+    <path d="M150 720 H520 L700 540 H1000 L1180 360 H1470" fill="none" stroke="#35D0BA" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#0D1524" stroke="#EEF3F7" stroke-width="7"><circle cx="150" cy="720" r="19"/><circle cx="520" cy="720" r="19"/><circle cx="700" cy="540" r="19"/><circle cx="1000" cy="540" r="19"/><circle cx="1180" cy="360" r="19"/><circle cx="1470" cy="360" r="19"/></g>
+  </svg>
+  <h4 style="left:112px;top:70px">GlideDeck</h4>
+  <p class="tag" style="left:120px;top:262px">Presentations that move.</p>
+  <div class="stop" style="left:118px;top:760px"><b>Start here</b><span>Press F5 to play</span></div>
+  <div class="stop" style="left:440px;top:760px"><b>Infinite canvas</b><span>A million times deeper</span></div>
+  <div class="stop" style="left:560px;top:420px"><b>PowerPoint in and out</b><span>Morph export, or PDF</span></div>
+  <div class="stop" style="left:930px;top:580px"><b>Motion built in</b><span>Swoops, carousels, parallax</span></div>
+  <div class="stop" style="left:1120px;top:244px"><b>AI-ready</b><span>Claude and Copilot build decks</span></div>
+  <div class="stop" style="left:1370px;top:400px"><b>100% offline</b><span>Nothing leaves your computer</span></div>
+  <div class="slab" style="left:1160px;top:668px;width:380px;height:180px;background:#35D0BA;color:#06201B;border-radius:10px"><b>Zoom in here</b><span>Four levels down, still sharp.</span></div>
+</div>
+</template>
+
+<div class="wrap">
+
+<div class="stack col">
+  <h1>Three ways to make GlideDeck look current</h1>
+  <p class="lede">A proposal for the editor and the welcome deck. Each direction below is a mockup of the same screen: the editor open on a new welcome canvas. Pick one, or mix a shell from one with a deck from another.</p>
+  <nav class="jump" aria-label="Directions"><a href="#daylight">1 · Daylight</a><a href="#darkroom">2 · Darkroom</a><a href="#flightpath">3 · Flightpath</a><a href="#plan">Plan</a></nav>
+</div>
+
+<div class="stack">
+  <h2>What makes today's app read as old</h2>
+  <ul class="old">
+    <li><b>The Office ribbon</b><span>About 150px of grouped commands labelled Clipboard, History and Arrange, most of them greyed out at rest. It is the 2007 PowerPoint pattern, and it is the first thing a new user sees.</span></li>
+    <li><b>Boxes inside boxes</b><span>Three docked panels, then cards inside the Properties panel, then a permanent Tips card. The canvas, which is the product, gets what is left.</span></li>
+    <li><b>Indigo accent on the system font</b><span>Violet buttons with Segoe UI is the default look of a generic app. Nothing in the chrome says GlideDeck.</span></li>
+    <li><b>The welcome deck's aurora look</b><span>Starfield dots, translucent gradient orbs, frosted cards, a pill badge and a tilted sticker. That style peaked around 2021.</span></li>
+    <li><b>The welcome deck is small</b><span>At the overview the title fills about a sixth of the canvas width and the four feature cards cannot be read. The first frame should already impress.</span></li>
+    <li><b>The camera path is hidden</b><span>The one thing competitors do not have is shown as a PowerPoint-style slide list. The moves between stops are invisible until you open a tab.</span></li>
+  </ul>
+</div>
+
+<!-- ======================= 1 ======================= -->
+<section class="dir" id="daylight">
+  <header><h2>1 · Daylight</h2><p class="tagline">Light, calm and familiar. The ribbon becomes one toolbar, the panels stay docked, and the welcome deck turns into flat colour and very large type.</p></header>
+  <div class="fit" data-w="1280" data-h="800">
+    <div class="win w1">
+      <div class="top">
+        <span class="logo"></span><b>Welcome to GlideDeck</b><span class="muted">Saved</span>
+        <div class="tools">
+          <span class="tool on"><svg class="i"><use href="#cursor"/></svg>Select</span>
+          <span class="tool"><svg class="i"><use href="#frame"/></svg>Slide</span>
+          <span class="tool"><svg class="i"><use href="#text"/></svg>Text</span>
+          <span class="tool"><svg class="i"><use href="#shape"/></svg>Shape</span>
+          <span class="tool"><svg class="i"><use href="#image"/></svg>Picture</span>
+          <span class="tool"><svg class="i"><use href="#star"/></svg>Icon</span>
+          <span class="tool"><svg class="i"><use href="#video"/></svg>Video</span>
+        </div>
+        <svg class="i muted"><use href="#undo"/></svg><svg class="i muted"><use href="#redo"/></svg>
+        <span class="btn sec"><svg class="i"><use href="#share"/></svg>Share</span>
+        <span class="btn pri"><svg class="i"><use href="#play"/></svg>Present</span>
+      </div>
+      <div class="side">
+        <div class="row"><b>Slides</b><span class="muted">13</span><span class="sp"></span><svg class="i"><use href="#plus"/></svg></div>
+        <div class="it on"><span>1</span><div><div class="th" style="background:#F3F5F4;color:#101314;box-shadow:inset 0 0 0 1px #DDE1DF">Presentations that move.</div>Overview</div></div>
+        <div class="it"><span>2</span><div><div class="th" style="background:#F3F5F4;color:#101314;box-shadow:inset 0 0 0 1px #DDE1DF;font-size:15px">Title</div>Title</div></div>
+        <div class="it"><span>3</span><div><div class="th" style="background:#1F4FFF;color:#fff">Infinite canvas</div>Infinite canvas</div></div>
+        <div class="it"><span>4</span><div><div class="th" style="background:#101314;color:#fff">PowerPoint in and out</div>PowerPoint in and out</div></div>
+        <div class="it"><span>5</span><div><div class="th" style="background:#FFD43A;color:#101314">Motion built in</div>Motion built in</div></div>
+      </div>
+      <div class="mid">
+        <div class="stage"><div class="art" data-scene="scene1"></div>
+          <div class="zoom"><svg class="i"><use href="#minus"/></svg>48%<svg class="i"><use href="#plus"/></svg></div></div>
+        <div class="notes"><svg class="i"><use href="#note"/></svg><b style="color:#14181A">Speaker notes</b>Click to add notes for slide 1</div>
+      </div>
+      <div class="insp">
+        <div class="seg"><span class="on">Design</span><span>Animate</span><span>Slide</span></div>
+        <div class="grp"><span class="lab">Theme</span>
+          <div class="themes"><i class="on" style="background:#F3F5F4;--c:#1F4FFF;box-shadow:inset 0 0 0 1px #DDE1DF"></i><i style="background:#0F1113;--c:#FFD23F"></i><i style="background:#0D1524;--c:#35D0BA"></i><i style="background:#FBFAF7;--c:#B4232C;box-shadow:inset 0 0 0 1px #DDE1DF"></i></div></div>
+        <div class="grp"><span class="lab">Background</span>
+          <div class="row"><i class="sw" style="background:#F3F5F4;box-shadow:inset 0 0 0 1px #CCD2CF"></i><i class="sw" style="background:#fff;box-shadow:inset 0 0 0 1px #CCD2CF"></i><i class="sw" style="background:#CFE0FF"></i><i class="sw" style="background:#FFD43A"></i><i class="sw" style="background:#1F4FFF"></i><i class="sw" style="background:#101314"></i></div></div>
+        <div class="grp"><span class="lab">Type</span>
+          <div class="fld"><span>Headings</span><span class="sel">Bricolage Grotesque</span></div>
+          <div class="fld"><span>Body</span><span class="sel">Hanken Grotesk</span></div></div>
+        <div class="grp"><span class="lab">Arrange the path</span>
+          <div class="row" style="flex-wrap:wrap"><span class="chip">Carousel</span><span class="chip">Spiral</span><span class="chip">Orbits</span><span class="chip">Tree</span></div></div>
+        <div class="grp"><span class="lab">Depth</span><div class="row"><div class="slider"><i style="width:35%"></i><u style="left:35%"></u></div><span>0.35</span></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" data-scene="scene1"></div></div>
+  <div class="facts">
+    <div><h3>What changes</h3><p>One 52px toolbar replaces the ribbon. Design, Animate and Slide move into tabs on the right panel, so nothing is lost. Cobalt replaces violet. A bundled UI typeface replaces Segoe UI.</p></div>
+    <div><h3>The welcome deck</h3><p>Paper ground, a headline that fills half the canvas, four flat colour slabs along a dotted flight path. No gradients, glass or starfield. The portal is three solid circles.</p></div>
+    <div><h3>Cost and risk</h3><p>Lowest. The panel layout in app.rs stays; ribbon.rs is rewritten as a toolbar and the tab contents move into inspector.rs. Existing users find everything where they expect it.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 2 ======================= -->
+<section class="dir" id="darkroom">
+  <header><h2>2 · Darkroom</h2><p class="tagline">Canvas first. The window is the infinite canvas, and the tools float over it, the way Figma and tldraw work. Graphite with one signal yellow.</p></header>
+  <div class="fit" data-w="1280" data-h="800">
+    <div class="win w2">
+      <div class="art" data-scene="scene2"></div>
+      <div class="selbox"><i style="left:-6px;top:-6px"></i><i style="right:-6px;top:-6px"></i><i style="left:-6px;bottom:-6px"></i><i style="right:-6px;bottom:-6px"></i></div>
+      <div class="float ctx"><span><i class="sw" style="background:#FFD23F;width:16px;height:16px;border-radius:4px"></i>Fill</span><span><svg class="i"><use href="#text"/></svg>Text</span><span><svg class="i"><use href="#wand"/></svg>Animate</span><span><svg class="i"><use href="#layers"/></svg></span></div>
+      <div class="float tl"><span class="logo"></span>Welcome to GlideDeck<span class="muted">Saved</span></div>
+      <div class="float tr"><svg class="i" style="margin:0 6px;color:#8B9298"><use href="#undo"/></svg><svg class="i" style="margin-right:6px;color:#8B9298"><use href="#redo"/></svg><span class="btn"><svg class="i"><use href="#share"/></svg>Share</span><span class="btn pri"><svg class="i"><use href="#play"/></svg>Present</span></div>
+      <div class="float film">
+        <div class="th on" style="background:#0F1113;color:#F1EFE9;box-shadow:inset 0 0 0 1px #30353B;font-size:13px">GlideDeck</div>
+        <div class="th" style="background:#0F1113;color:#F1EFE9;box-shadow:inset 0 0 0 1px #30353B">Presentations that move.</div>
+        <div class="th" style="background:#1D2125;color:#F1EFE9">Infinite canvas</div>
+        <div class="th" style="background:#F1EFE9;color:#14110A">PowerPoint in and out</div>
+        <div class="th" style="background:#FFD23F;color:#14110A">Motion built in</div>
+        <div class="th" style="background:#1D2125;color:#F1EFE9">AI-ready</div>
+        <div class="add"><svg class="i"><use href="#plus"/></svg></div>
+      </div>
+      <div class="float insp">
+        <div class="seg"><span class="on">Style</span><span>Motion</span></div>
+        <div class="grp"><span class="lab">Fill</span><div class="row"><i class="sw" style="background:#FFD23F;box-shadow:0 0 0 2px #1B1E22,0 0 0 4px #FFD23F"></i><i class="sw" style="background:#F1EFE9"></i><i class="sw" style="background:#1D2125;box-shadow:inset 0 0 0 1px #3A4046"></i><i class="sw" style="background:#0F1113;box-shadow:inset 0 0 0 1px #3A4046"></i></div></div>
+        <div class="grp"><span class="lab">Corners</span><div class="row"><div class="slider"><i style="width:28%"></i><u style="left:28%"></u></div><span>14</span></div></div>
+        <div class="grp"><span class="lab">Opacity</span><div class="row"><div class="slider"><i style="width:100%"></i><u style="left:100%"></u></div><span>100</span></div></div>
+        <div class="grp"><span class="lab">Appears with</span><div class="row" style="flex-wrap:wrap"><span class="chip on">Pop</span><span class="chip">Rise</span><span class="chip">Fade</span><span class="chip">Focus</span></div></div>
+        <div class="grp"><span class="lab">Camera into this slide</span><div class="fld"><span>Swoop</span><span class="muted">1.3 s</span></div></div>
+      </div>
+      <div class="float zoom"><svg class="i"><use href="#minus"/></svg>60%<svg class="i"><use href="#plus"/></svg></div>
+      <div class="float dock">
+        <span class="on"><svg class="i"><use href="#cursor"/></svg></span><span><svg class="i"><use href="#hand"/></svg></span><hr>
+        <span><svg class="i"><use href="#frame"/></svg></span><span><svg class="i"><use href="#text"/></svg></span><span><svg class="i"><use href="#shape"/></svg></span><span><svg class="i"><use href="#image"/></svg></span><span><svg class="i"><use href="#star"/></svg></span><span><svg class="i"><use href="#video"/></svg></span><hr>
+        <span><svg class="i"><use href="#grid"/></svg></span><span><svg class="i"><use href="#search"/></svg></span>
+      </div>
+    </div>
+  </div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" data-scene="scene2"></div></div>
+  <div class="facts">
+    <div><h3>What changes</h3><p>No ribbon and no docked panels. A tool dock sits at the bottom, a filmstrip on the left, and the inspector appears only when something is selected, with a small bar above the selection for the common edits.</p></div>
+    <div><h3>The welcome deck</h3><p>The wordmark runs the full width of the canvas, so the overview reads as a poster. Feature slabs are solid graphite, bone and yellow. The yellow disc is the zoom portal.</p></div>
+    <div><h3>Cost and risk</h3><p>Medium. Floating panels need hit-testing against the canvas and a rule for small windows. Menus that lived in the ribbon need a home, most likely a command search. It is the biggest visible change.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 3 ======================= -->
+<section class="dir" id="flightpath">
+  <header><h2>3 · Flightpath</h2><p class="tagline">The camera path becomes the interface. Stops and the moves between them sit on a timeline under the canvas, and the welcome deck is drawn as a route map.</p></header>
+  <div class="fit" data-w="1280" data-h="800">
+    <div class="win w3">
+      <div class="top"><span class="logo"></span><b>Welcome to GlideDeck</b><span class="muted">Saved</span>
+        <div class="cmd"><svg class="i"><use href="#search"/></svg>Search or run a command<span class="sp"></span><kbd>Ctrl K</kbd></div>
+        <span class="btn"><svg class="i"><use href="#share"/></svg>Share</span><span class="btn pri"><svg class="i"><use href="#play"/></svg>Present</span></div>
+      <div class="rail">
+        <span class="on"><svg class="i"><use href="#cursor"/></svg></span><span><svg class="i"><use href="#hand"/></svg></span><span><svg class="i"><use href="#frame"/></svg></span><span><svg class="i"><use href="#text"/></svg></span><span><svg class="i"><use href="#shape"/></svg></span><span><svg class="i"><use href="#image"/></svg></span><span><svg class="i"><use href="#star"/></svg></span><span><svg class="i"><use href="#video"/></svg></span><span><svg class="i"><use href="#grid"/></svg></span>
+      </div>
+      <div class="stage"><div class="art" data-scene="scene3"></div></div>
+      <div class="insp">
+        <div class="grp"><span class="lab">Move into stop 3</span>
+          <div class="chips"><span class="chip">Smooth</span><span class="chip on">Swoop</span><span class="chip">Direct</span><span class="chip">Punch</span><span class="chip">Spin</span><span class="chip">Fade</span><span class="chip">Cut</span></div></div>
+        <div class="grp"><span class="lab">Duration</span><div class="row"><div class="slider"><i style="width:42%"></i><u style="left:42%"></u></div><span>1.3 s</span></div></div>
+        <div class="grp"><span class="lab">Easing</span><div class="chips"><span class="chip on">Smooth</span><span class="chip">Snappy</span><span class="chip">Linear</span></div></div>
+        <div class="grp"><span class="lab">Builds on this stop</span><div class="fld"><span>Icon, Pulse</span><span class="muted">after previous</span></div><div class="fld"><span>Heading, Underline</span><span class="muted">with previous</span></div></div>
+        <div class="grp"><span class="lab">Speaker notes</span><div class="note">Mention PowerPoint import: File, Import PowerPoint, then Arrange.</div></div>
+      </div>
+      <div class="path">
+        <div class="row"><b>Path</b><span class="muted">13 stops · 19 s of camera moves</span><span class="sp"></span><span class="muted">Drag a stop to reorder</span></div>
+        <div class="lane">
+          <div class="st"><div class="th" style="background:#0D1524;color:#EEF3F7;box-shadow:inset 0 0 0 1px #24344F">Overview</div>1 · Overview</div>
+          <div class="mv"><b>Smooth</b><i></i>1.4 s</div>
+          <div class="st"><div class="th" style="background:#0D1524;color:#EEF3F7;box-shadow:inset 0 0 0 1px #24344F;font-size:13px">GlideDeck</div>2 · Title</div>
+          <div class="mv"><b>Swoop</b><i></i>1.3 s</div>
+          <div class="st on"><div class="th" style="background:#17233A;color:#EEF3F7">Infinite canvas</div>3 · Infinite canvas</div>
+          <div class="mv"><b>Direct</b><i style="width:70%"></i>1.0 s</div>
+          <div class="st"><div class="th" style="background:#17233A;color:#EEF3F7">PowerPoint in and out</div>4 · PowerPoint</div>
+          <div class="mv"><b>Punch</b><i style="width:80%"></i>1.1 s</div>
+          <div class="st"><div class="th" style="background:#17233A;color:#EEF3F7">Motion built in</div>5 · Motion</div>
+          <div class="mv"><b>Direct</b><i style="width:70%"></i>1.0 s</div>
+          <div class="st"><div class="th" style="background:#35D0BA;color:#06201B">Zoom in here</div>6 · Portal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">The welcome deck at its overview stop</p>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" data-scene="scene3"></div></div>
+  <div class="facts">
+    <div><h3>What changes</h3><p>A vertical tool rail, a command search in the title bar, and a path timeline where each move shows its style and length and can be edited in place. The slide list and the Transitions tab merge into it.</p></div>
+    <div><h3>The welcome deck</h3><p>A transit-map route in one colour, with a stop per feature. It teaches the product's idea, that a talk is a journey, before the user clicks anything.</p></div>
+    <div><h3>Cost and risk</h3><p>Highest. The timeline is a new component with drag-to-reorder, and it changes how people navigate slides. It is also the only direction a competitor cannot copy by reskinning.</p></div>
+  </div>
+</section>
+
+<section class="rec">
+  <h2>Recommendation</h2>
+  <p><b>Ship Darkroom's look and canvas-first shell, with Daylight as its light mode, and add Flightpath's timeline later.</b> The app already has a light and dark switch, so directions 1 and 2 can be the same design system in two palettes. That gives the fastest visible change without betting the release on a new component.</p>
+  <p>The quickest win is independent of the shell: a new welcome deck, a new accent and a bundled typeface change every screenshot and the first thirty seconds of use, and they touch only theme.rs, demo.rs and the theme list in glide-core.</p>
+</section>
+
+<section class="stack" id="plan">
+  <h2>Emergency plan</h2>
+  <div class="plan">
+    <section><span class="when">Days 1 to 3 · release 0.2.0</span><h3>New face</h3><ul><li>New palette, radii and spacing tokens in theme.rs</li><li>Bundle one UI typeface instead of reading Segoe UI</li><li>Rebuild the welcome deck in demo.rs and examples/demo.glide.json</li><li>Two new default themes; retire the aurora gradients from the top of the gallery</li><li>New README screenshots</li></ul></section>
+    <section><span class="when">Week 1 to 2 · release 0.3.0</span><h3>New shell</h3><ul><li>Replace the ribbon with the toolbar or dock</li><li>Move Design, Animate and Transitions into the inspector</li><li>Inspector shows only what the selection needs; Tips card removed</li><li>Press, hover and panel motion at 120 to 200ms</li><li>Update the UI snapshot tests and the tab names in the docs and the AI skill</li></ul></section>
+    <section><span class="when">Week 3 · release 0.4.0</span><h3>Templates</h3><ul><li>Restyle the 18 templates on the new themes</li><li>Larger template picker with live previews</li><li>Start screen: recent files, templates, Import PowerPoint</li></ul></section>
+    <section><span class="when">Week 4 onward</span><h3>Path timeline</h3><ul><li>Stops and moves on one strip</li><li>Command search for every action</li><li>Web page export picks up the new themes</li></ul></section>
+  </div>
+</section>
+
+<section class="stack">
+  <h2>How to choose</h2>
+  <p class="col" style="color:var(--muted)">Reply with a number, or mix them. A shell and a welcome deck can come from different directions.</p>
+  <div class="pick">
+    <div><b>1 · Daylight</b><span>Safest. Ships fastest.</span></div>
+    <div><b>2 · Darkroom</b><span>Biggest visible change.</span></div>
+    <div><b>3 · Flightpath</b><span>Most distinctive. Most work.</span></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  document.querySelectorAll('[data-scene]').forEach(function(el){
+    var t=document.getElementById(el.dataset.scene); if(t) el.appendChild(t.content.cloneNode(true));
+  });
+  var fits=[].slice.call(document.querySelectorAll('.fit'));
+  function size(f){ var w=+f.dataset.w,h=+f.dataset.h,k=f.clientWidth/w; f.style.height=(h*k)+'px'; f.firstElementChild.style.setProperty('--k',k); }
+  function all(){ fits.forEach(size); }
+  all();
+  if(window.ResizeObserver){ var ro=new ResizeObserver(all); fits.forEach(function(f){ro.observe(f)}); } else { window.addEventListener('resize',all); }
+})();
+</script>

@@ -1,0 +1,313 @@
+<title>GlideDeck Unified Proposal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Geist:wght@400;500;600;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one reading column; the editor mock, the command-search mock and the welcome deck run full width between short text sections. */
+:root{
+  --bg:#F5F6F4; --fg:#14171A; --muted:#5A636A; --panel:#FFFFFF; --line:#DCE0DD; --accent:#1F4FFF;
+  --display:"Bricolage Grotesque","Hanken Grotesk",system-ui,sans-serif;
+  --text:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#111315; --fg:#ECEEEF; --muted:#9BA4AB; --panel:#1A1D20; --line:#2B3034; --accent:#8EA8FF; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#111315; --fg:#ECEEEF; --muted:#9BA4AB; --panel:#1A1D20; --line:#2B3034; --accent:#8EA8FF; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--text);padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+.col{max-width:68ch}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-0.02em;font-weight:800}
+h1{font-size:clamp(34px,5.4vw,60px);line-height:1}
+h2{font-size:clamp(26px,3.4vw,38px);line-height:1.05}
+h3{font-size:17px;font-weight:700;margin:0 0 4px}
+p{margin:0}
+.lede{font-size:19px;color:var(--muted);margin-top:16px}
+.stack{display:flex;flex-direction:column;gap:20px}
+.sub{color:var(--muted);font-size:18px;max-width:68ch}
+.decided{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 32px;margin:0;padding:0;list-style:none}
+.decided li{padding-block:12px;border-top:2px solid var(--fg)}
+.decided b{display:block}
+.decided span{color:var(--muted);font-size:15px}
+.head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.mode{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;gap:2px}
+.mode button{font:600 14px var(--text);color:var(--muted);background:none;border:0;border-radius:999px;padding:8px 18px;cursor:pointer;transition:transform 140ms ease-out}
+.mode button:active{transform:scale(.97)}
+.mode button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.mode button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fit{position:relative;width:100%;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#0F1113}
+.fit>.win,.fit>.art{position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(var(--k,1))}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 32px}
+.facts div{min-width:0}
+.facts p{color:var(--muted);font-size:15px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:15px}
+th,td{text-align:left;padding:10px 16px 10px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:700}
+td:first-child{font-weight:700;white-space:nowrap}
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.plan section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.plan .when{font-weight:700;color:var(--accent);font-size:14px}
+.plan ul{margin:0;padding-left:18px;color:var(--muted);font-size:15px;display:flex;flex-direction:column;gap:4px}
+
+/* ---------- app themes: the editor mock takes every colour from these ---------- */
+.app{--a-bg:#E9ECEB;--a-panel:#FFFFFF;--a-inset:#F1F3F2;--a-line:#DDE1DF;--a-ink:#14181A;--a-mute:#6B7478;--a-acc:#1F4FFF;--a-on:#FFFFFF;--a-soft:#E8EEFF;--a-softink:#1F4FFF;--a-shadow:rgba(16,24,32,.18)}
+.app.dark{--a-bg:#0A111D;--a-panel:#111B2C;--a-inset:#0A111D;--a-line:#1B2942;--a-ink:#E6EDF4;--a-mute:#8FA2B8;--a-acc:#35D0BA;--a-on:#06201B;--a-soft:#1B2942;--a-softink:#35D0BA;--a-shadow:rgba(0,0,0,.5)}
+
+/* ---------- welcome deck (Darkroom), 1600x900; a deck keeps its own colours in either app theme ---------- */
+.art{width:calc(1600px*var(--s,1));height:calc(900px*var(--s,1));overflow:hidden;position:relative;flex:none}
+.art>.scene{transform:scale(var(--s,1));transform-origin:0 0}
+.scene{width:1600px;height:900px;position:relative;overflow:hidden;background:#0F1113;color:#F1EFE9;font-family:"Geist",sans-serif}
+.scene>*{position:absolute;margin:0}
+.scene h4{font:800 292px/0.9 "Geist",sans-serif;letter-spacing:-0.06em}
+.scene .tag{font-size:56px;font-weight:600;letter-spacing:-0.02em}
+.scene .ssub{font-size:25px;color:#8F969C}
+.slab{padding:28px 30px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;border-radius:14px;width:310px;height:196px}
+.slab b{font-size:38px;line-height:1;letter-spacing:-0.02em;font-weight:800}
+.slab span{font-size:21px;line-height:1.3;opacity:.85}
+
+/* ---------- the editor, 1280x800 ---------- */
+.win{width:1280px;height:800px;overflow:hidden;font:13px/1.3 "Geist",sans-serif;background:var(--a-bg);color:var(--a-ink);display:grid;grid-template:46px 1fr 136px / 56px 1fr 248px;position:relative}
+.win svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.row{display:flex;align-items:center;gap:8px}
+.sp{flex:1}
+.mute{color:var(--a-mute)}
+.top{grid-area:1/1/2/4;background:var(--a-panel);border-bottom:1px solid var(--a-line);display:flex;align-items:center;gap:12px;padding:0 12px 0 18px}
+.logo{width:20px;height:20px;border-radius:5px;background:var(--a-acc);flex:none}
+.menus{display:flex;gap:2px;margin-left:4px}
+.menus span{padding:5px 8px;border-radius:6px;font-weight:500}
+.cmd{margin:0 auto;width:360px;background:var(--a-inset);border-radius:8px;padding:7px 12px;display:flex;gap:8px;align-items:center;color:var(--a-mute)}
+.win kbd{font:500 11px "Geist",sans-serif;background:var(--a-soft);border-radius:4px;padding:2px 6px;color:var(--a-mute)}
+.ic{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--a-mute);background:none;border:0;padding:0}
+button.ic{cursor:pointer;color:var(--a-ink);background:var(--a-inset)}
+.btn{padding:7px 13px;border-radius:8px;font-weight:600;display:flex;gap:6px;align-items:center}
+.btn.pri{background:var(--a-acc);color:var(--a-on)}
+.rail{grid-area:2/1;background:var(--a-panel);border-right:1px solid var(--a-line);display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:10px}
+.rail span{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--a-mute)}
+.rail span.on{background:var(--a-soft);color:var(--a-softink)}
+.rail hr{width:24px;height:1px;border:0;background:var(--a-line);margin:4px 0}
+.stage{grid-area:2/2;display:flex;align-items:center;justify-content:center;position:relative;min-width:0}
+.stage .art{--s:.565;border-radius:4px;box-shadow:0 10px 30px var(--a-shadow)}
+.zoom{position:absolute;right:14px;bottom:12px;background:var(--a-panel);border-radius:8px;padding:6px 10px;display:flex;gap:10px;align-items:center;font-weight:600;box-shadow:0 0 0 1px var(--a-line)}
+.insp{grid-area:2/3/4/4;background:var(--a-panel);border-left:1px solid var(--a-line);padding:12px 14px;display:flex;flex-direction:column;gap:15px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--a-inset);border-radius:8px;padding:3px;font-weight:600;text-align:center}
+.seg span{padding:6px 0;border-radius:6px;color:var(--a-mute)}
+.seg .on{background:var(--a-panel);color:var(--a-ink);box-shadow:0 0 0 1px var(--a-line)}
+.lab{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--a-mute)}
+.grp{display:flex;flex-direction:column;gap:9px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 10px;border-radius:7px;font-weight:500;background:var(--a-soft);white-space:nowrap}
+.app:not(.dark) .chip{background:var(--a-inset)}
+.chip.on,.app:not(.dark) .chip.on{background:var(--a-acc);color:var(--a-on);font-weight:600}
+.slider{height:4px;border-radius:2px;position:relative;flex:1;background:var(--a-line)}
+.slider i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--a-acc)}
+.slider u{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;margin-left:-7px;background:var(--a-panel);border:2px solid var(--a-acc)}
+.fld{display:flex;justify-content:space-between;gap:8px}
+.note{background:var(--a-inset);border-radius:8px;padding:9px 10px;color:var(--a-mute);min-height:70px}
+.path{grid-area:3/1/4/3;background:var(--a-panel);border-top:1px solid var(--a-line);padding:10px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.lane{display:flex;align-items:center}
+.st{width:118px;flex:none;display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--a-mute)}
+.st.on{color:var(--a-ink)}
+.thb{border-radius:6px;aspect-ratio:16/9;display:flex;align-items:flex-end;padding:6px 7px;font-weight:700;font-size:10px;line-height:1.05;background:#0F1113;color:#F1EFE9}
+.st.on .thb{outline:2px solid var(--a-acc);outline-offset:2px}
+.mv{flex:none;width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--a-mute);margin-bottom:18px}
+.mv i{height:3px;width:100%;background:var(--a-acc);border-radius:2px;display:block}
+.mv b{font-weight:600;color:var(--a-ink)}
+/* command search, shown open in the second mock */
+.pal{display:none;position:absolute;left:50%;top:6px;transform:translateX(-50%);width:500px;background:var(--a-panel);border-radius:12px;box-shadow:0 0 0 1px var(--a-line),0 20px 48px var(--a-shadow);padding:8px;flex-direction:column;gap:2px;z-index:2}
+.open .pal{display:flex}
+.pal .q{display:flex;gap:8px;align-items:center;padding:8px 10px 12px;font-size:15px;border-bottom:1px solid var(--a-line);margin-bottom:6px}
+.pal .q u{text-decoration:none;border-right:2px solid var(--a-acc);padding-right:1px}
+.pal .r{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:8px}
+.pal .r.on{background:var(--a-soft)}
+.pal .r small{color:var(--a-mute);font-size:12px}
+.pal .cat{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--a-mute);padding:8px 10px 4px}
+@media (max-width:640px){ body{font-size:15px} .lede{font-size:17px} }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cursor" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></symbol>
+  <symbol id="hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5m0-1V4.5a1.5 1.5 0 013 0V11m0-4.5a1.5 1.5 0 013 0V14a6 6 0 01-6 6h-.5a6 6 0 01-5-2.8L5 13.5a1.5 1.5 0 012.5-1.6L8 13"/></symbol>
+  <symbol id="frame" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></symbol>
+  <symbol id="text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="shape" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="10" rx="2"/><circle cx="15.5" cy="15.5" r="4.5"/></symbol>
+  <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 5"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></symbol>
+  <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M4 10h10a5 5 0 010 10h-3M4 10l4-4M4 10l4 4"/></symbol>
+  <symbol id="redo" viewBox="0 0 24 24"><path d="M20 10H10a5 5 0 000 10h3M20 10l-4-4M20 10l-4 4"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/></symbol>
+  <symbol id="swap" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+</svg>
+
+<template id="scene">
+<div class="scene">
+  <p class="tag" style="left:78px;top:84px">Presentations that move.</p>
+  <p class="ssub" style="left:80px;top:168px">Scroll to zoom. Press F5 to play this canvas.</p>
+  <div class="slab" style="left:800px;top:60px;transform:rotate(-3deg);background:#1D2125"><b>Infinite canvas</b><span>A million times deeper.</span></div>
+  <div class="slab" style="left:1160px;top:70px;transform:rotate(3deg);background:#FFD23F;color:#14110A"><b>Motion built in</b><span>Swoops, carousels, parallax.</span></div>
+  <div class="slab" style="left:690px;top:296px;transform:rotate(2deg);background:#F1EFE9;color:#14110A"><b>PowerPoint in and out</b><span>Morph export, or PDF.</span></div>
+  <div class="slab" style="left:1040px;top:306px;transform:rotate(-2deg);background:#1D2125"><b>AI-ready</b><span>Claude and Copilot build decks.</span></div>
+  <div style="left:1395px;top:330px;width:160px;height:160px;border-radius:50%;background:#FFD23F"></div>
+  <div style="left:1447px;top:382px;width:56px;height:56px;border-radius:50%;background:#0F1113"></div>
+  <div style="left:1468px;top:403px;width:14px;height:14px;border-radius:50%;background:#FFD23F"></div>
+  <p style="left:1398px;top:508px;font-size:22px;color:#8F969C;width:180px">Zoom in here</p>
+  <h4 style="left:58px;top:560px">GlideDeck</h4>
+</div>
+</template>
+
+<template id="shell">
+<div class="win">
+  <div class="top"><span class="logo"></span><b>Welcome to GlideDeck</b>
+    <div class="menus"><span>File</span><span>Edit</span><span>View</span></div>
+    <div class="cmd"><svg class="i"><use href="#search"/></svg>Search or run a command<span class="sp"></span><kbd>Ctrl K</kbd></div>
+    <span class="ic"><svg class="i"><use href="#undo"/></svg></span><span class="ic"><svg class="i"><use href="#redo"/></svg></span>
+    <button class="ic" type="button" data-flip aria-label="Switch between light and dark"><svg class="i"><use href="#half"/></svg></button>
+    <span class="btn"><svg class="i"><use href="#share"/></svg>Share</span><span class="btn pri"><svg class="i"><use href="#play"/></svg>Present</span></div>
+  <div class="rail">
+    <span class="on"><svg class="i"><use href="#cursor"/></svg></span><span><svg class="i"><use href="#hand"/></svg></span><hr>
+    <span><svg class="i"><use href="#frame"/></svg></span><span><svg class="i"><use href="#text"/></svg></span><span><svg class="i"><use href="#shape"/></svg></span><span><svg class="i"><use href="#image"/></svg></span><span><svg class="i"><use href="#star"/></svg></span><span><svg class="i"><use href="#video"/></svg></span><hr>
+    <span><svg class="i"><use href="#grid"/></svg></span>
+  </div>
+  <div class="stage"><div class="art" data-scene></div>
+    <div class="zoom"><svg class="i"><use href="#minus"/></svg>56%<svg class="i"><use href="#plus"/></svg></div></div>
+  <div class="insp">
+    <div class="seg"><span class="on">Slide</span><span>Design</span><span>Animate</span></div>
+    <div class="grp"><span class="lab">Move into stop 3</span>
+      <div class="chips"><span class="chip">Smooth</span><span class="chip on">Swoop</span><span class="chip">Direct</span><span class="chip">Punch</span><span class="chip">Spin</span><span class="chip">Fade</span><span class="chip">Cut</span></div></div>
+    <div class="grp"><span class="lab">Duration</span><div class="row"><div class="slider"><i style="width:42%"></i><u style="left:42%"></u></div><span>1.3 s</span></div></div>
+    <div class="grp"><span class="lab">Easing</span><div class="chips"><span class="chip on">Smooth</span><span class="chip">Snappy</span><span class="chip">Linear</span></div></div>
+    <div class="grp"><span class="lab">Builds on this stop</span><div class="fld"><span>Icon, Pulse</span><span class="mute">after previous</span></div><div class="fld"><span>Heading, Underline</span><span class="mute">with previous</span></div></div>
+    <div class="grp"><span class="lab">Speaker notes</span><div class="note">Mention PowerPoint import: File, Import PowerPoint, then Arrange.</div></div>
+  </div>
+  <div class="path">
+    <div class="row"><b>Path</b><span class="mute">13 stops · 19 s of camera moves</span><span class="sp"></span><span class="mute">Drag a stop to reorder</span><svg class="i mute"><use href="#plus"/></svg></div>
+    <div class="lane">
+      <div class="st"><div class="thb" style="font-size:13px">GlideDeck</div>1 · Overview</div>
+      <div class="mv"><b>Smooth</b><i></i>1.4 s</div>
+      <div class="st"><div class="thb">Presentations that move.</div>2 · Title</div>
+      <div class="mv"><b>Swoop</b><i></i>1.3 s</div>
+      <div class="st on"><div class="thb" style="background:#1D2125">Infinite canvas</div>3 · Infinite canvas</div>
+      <div class="mv"><b>Direct</b><i style="width:70%"></i>1.0 s</div>
+      <div class="st"><div class="thb" style="background:#F1EFE9;color:#14110A">PowerPoint in and out</div>4 · PowerPoint</div>
+      <div class="mv"><b>Punch</b><i style="width:80%"></i>1.1 s</div>
+      <div class="st"><div class="thb" style="background:#FFD23F;color:#14110A">Motion built in</div>5 · Motion</div>
+      <div class="mv"><b>Direct</b><i style="width:70%"></i>1.0 s</div>
+      <div class="st"><div class="thb" style="background:#1D2125">AI-ready</div>6 · AI-ready</div>
+    </div>
+  </div>
+  <div class="pal">
+    <div class="q"><svg class="i mute"><use href="#search"/></svg><span><u>caro</u></span><span class="sp"></span><kbd>Esc</kbd></div>
+    <div class="cat">Commands</div>
+    <div class="r on"><svg class="i"><use href="#swap"/></svg><span>Arrange path as a carousel</span><span class="sp"></span><kbd>Enter</kbd></div>
+    <div class="r"><svg class="i"><use href="#grid"/></svg><span>New from template: Carousel</span></div>
+    <div class="cat">In this deck</div>
+    <div class="r"><svg class="i"><use href="#frame"/></svg><span>Go to stop 5, Motion built in</span><span class="sp"></span><small>mentions carousels</small></div>
+  </div>
+</div>
+</template>
+
+<div class="wrap">
+
+<div class="stack col">
+  <h1>GlideDeck revamp, unified</h1>
+  <p class="lede">One proposal built from your choices: the Flightpath layout, the Darkroom welcome deck, and an app theme the user can switch between dark and light.</p>
+</div>
+
+<ul class="decided">
+  <li><b>Layout from Flightpath</b><span>Tools on the left, details on the right, the slide path along the bottom. The layout is identical in both themes.</span></li>
+  <li><b>Dark theme from Flightpath</b><span>Navy panels with an aqua accent.</span></li>
+  <li><b>Light theme from Daylight</b><span>White panels on cool grey with a cobalt accent.</span></li>
+  <li><b>Welcome deck from Darkroom</b><span>Graphite canvas, full-width wordmark, one signal yellow.</span></li>
+</ul>
+
+<section class="stack app dark">
+  <div class="head"><div><h2>The editor</h2><p class="sub">Use the switch, or the half-circle button in the mockup's top bar, to see the other theme.</p></div>
+    <div class="mode" role="group" aria-label="App theme for the editor mockup"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div></div>
+  <div class="fit" data-w="1280" data-h="800" data-shell></div>
+  <div class="facts">
+    <div><h3>Left: tools</h3><p>Select and Hand, then everything you can add: slide, text, shape, picture, icon, video. Templates sits at the bottom of the rail.</p></div>
+    <div><h3>Right: details</h3><p>Three tabs. Slide holds the camera move, builds and notes for the current stop. Design holds themes, background and Arrange. Animate holds the build list. With an object selected, the panel shows that object's properties.</p></div>
+    <div><h3>Bottom: the path</h3><p>Every stop as a thumbnail, and between each pair the move that connects them, with its style and length. Click a move to change it, drag a stop to reorder.</p></div>
+  </div>
+</section>
+
+<section class="stack app">
+  <div class="head"><div><h2>What "Search or run a command" is</h2><p class="sub">Yes: the user types a few letters and picks a command from the list, without hunting through menus. Ctrl+K opens it from anywhere. It also finds slides by their text.</p></div>
+    <div class="mode" role="group" aria-label="App theme for the command search mockup"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div></div>
+  <div class="fit" data-w="1280" data-h="400" data-shell data-open></div>
+  <div class="facts">
+    <div><h3>Why it is there</h3><p>The ribbon showed every command at once. This layout shows only what the current task needs, so the rest needs one fast way in. Figma, VS Code and Notion use the same pattern.</p></div>
+    <div><h3>It is optional</h3><p>Nothing depends on it. File, Edit and View menus sit beside the deck name and hold every command, so a user who never types still finds everything.</p></div>
+    <div><h3>If you would rather not have it</h3><p>It can be left out of the first release. The top bar then shows the deck name in the centre instead.</p></div>
+  </div>
+</section>
+
+<section class="stack">
+  <div><h2>The welcome deck</h2><p class="sub">The Darkroom deck, unchanged. A deck keeps its own colours, so it looks the same whether the app around it is dark or light.</p></div>
+  <div class="fit" data-w="1600" data-h="900"><div class="art" style="--s:1" data-scene></div></div>
+</section>
+
+<section class="stack">
+  <div><h2>Dark and light</h2><p class="sub">The app already has a theme button, so this replaces its two palettes and keeps the behaviour.</p></div>
+  <div class="facts">
+    <div><h3>How the user chooses</h3><p>The half-circle button in the top bar, View in the menu, or the command search. The choice is remembered between sessions.</p></div>
+    <div><h3>What differs</h3><p>Only colour. Dark is navy with aqua, light is white on cool grey with cobalt. Sizes, positions and icons are the same.</p></div>
+    <div><h3>One thing to confirm</h3><p>The two themes have different accent colours, as you asked. If you would rather have one brand colour in both, say which and I will use it for both.</p></div>
+  </div>
+</section>
+
+<section class="stack">
+  <div><h2>Where the ribbon's commands go</h2><p class="sub">The ribbon is removed. Nothing it held is dropped.</p></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Ribbon tab today</th><th>New home</th></tr></thead>
+    <tbody>
+      <tr><td>File</td><td>File menu beside the deck name</td></tr>
+      <tr><td>Home</td><td>Select and Hand on the left rail; cut, copy, order and align in the Edit menu, the right-click menu and the right panel</td></tr>
+      <tr><td>Insert</td><td>Left rail</td></tr>
+      <tr><td>Design</td><td>Design tab on the right panel; Templates at the bottom of the rail</td></tr>
+      <tr><td>Transitions</td><td>The moves on the path strip, with details on the Slide tab</td></tr>
+      <tr><td>Animate</td><td>Animate tab on the right panel</td></tr>
+      <tr><td>Present</td><td>Present button; exports to web page, PowerPoint and PDF under Share</td></tr>
+      <tr><td>View</td><td>View menu and the zoom control on the canvas</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="stack">
+  <h2>Build order</h2>
+  <div class="plan">
+    <section><span class="when">Step 1</span><h3>Themes and welcome deck</h3><ul><li>Both palettes and a bundled interface font in theme.rs</li><li>The Darkroom deck in demo.rs and the example file</li><li>A matching deck theme in the theme gallery</li></ul></section>
+    <section><span class="when">Step 2</span><h3>New layout</h3><ul><li>Top bar with menus, left tool rail</li><li>Right panel with Slide, Design and Animate tabs</li><li>Ribbon removed</li></ul></section>
+    <section><span class="when">Step 3</span><h3>Path strip</h3><ul><li>Stops and moves along the bottom</li><li>Click a move to edit it, drag to reorder</li><li>Replaces the slide list on the left</li></ul></section>
+    <section><span class="when">Step 4</span><h3>Finish</h3><ul><li>Command search, if you want it</li><li>Tests, screenshots, README and the AI skill's tab names</li><li>Templates restyled on the new themes</li></ul></section>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  function fill(host, id){ var t=document.getElementById(id); if(t) host.appendChild(t.content.cloneNode(true)); }
+  document.querySelectorAll('[data-shell]').forEach(function(h){ fill(h,'shell'); if(h.hasAttribute('data-open')) h.firstElementChild.classList.add('open'); });
+  document.querySelectorAll('.art[data-scene]').forEach(function(a){ fill(a,'scene'); });
+  document.querySelectorAll('.app').forEach(function(app){
+    function set(dark){
+      app.classList.toggle('dark', dark);
+      app.querySelectorAll('.mode button').forEach(function(b){ b.setAttribute('aria-pressed', String((b.dataset.mode==='dark')===dark)); });
+    }
+    set(app.classList.contains('dark'));
+    app.addEventListener('click', function(e){
+      var m=e.target.closest('[data-mode]'), f=e.target.closest('[data-flip]');
+      if(m) set(m.dataset.mode==='dark'); else if(f) set(!app.classList.contains('dark'));
+    });
+  });
+  var fits=[].slice.call(document.querySelectorAll('.fit'));
+  function all(){ fits.forEach(function(f){ var w=+f.dataset.w,h=+f.dataset.h,k=f.clientWidth/w; f.style.height=(h*k)+'px'; if(f.firstElementChild) f.firstElementChild.style.setProperty('--k',k); }); }
+  all();
+  if(window.ResizeObserver){ var ro=new ResizeObserver(all); fits.forEach(function(f){ro.observe(f)}); } else { window.addEventListener('resize',all); }
+})();
+</script>
