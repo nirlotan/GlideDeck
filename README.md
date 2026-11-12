@@ -36,6 +36,7 @@
 - [Let Claude or GitHub Copilot build your deck](#let-claude-or-github-copilot-build-your-deck)
 - [Support GlideDeck](#support-glidedeck)
 - [Privacy](#privacy)
+- [Code signing policy](#code-signing-policy)
 - [Questions](#questions)
 - [For developers](#for-developers)
 
@@ -76,8 +77,10 @@ Dark or light, the layout is the same.
 
 - **Already installed?** Choose **File → Check for updates…**.
   GlideDeck downloads the new installer for you, and installing it upgrades your copy in place.
-- **Windows says "Windows protected your PC"?** The installer isn't code-signed yet. Click
-  **More info → Run anyway**.
+- **Code signing policy:** Windows installers are signed with a free certificate from
+  [SignPath Foundation](https://signpath.org); see the [code signing policy](CODE_SIGNING_POLICY.md).
+- **Windows says "Windows protected your PC"?** Windows warns about new downloads until they
+  build up a reputation. Click **More info → Run anyway**.
 - **Want to play YouTube, Vimeo or Loom videos inside GlideDeck too?** Also install yt-dlp:
   `winget install yt-dlp` on Windows, or `brew install yt-dlp` on a Mac. (They always play in
   the web page export.)
@@ -324,7 +327,20 @@ The **Support GlideDeck** button in the app (File → About GlideDeck) opens thi
 
 GlideDeck has no accounts, no cloud and no telemetry. Your presentation is one file on your
 disk (`.glide.json`), with its pictures in an `assets/` folder next to it. The app goes online
-only when you click **Check for updates**, and then only to GitHub.
+only when you ask it to: when you check for updates (GitHub), and when you add or play a web
+video (the video's site). Details are in the [privacy policy](PRIVACY.md).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [nirlotan](https://github.com/nirlotan)
+- Approvers: [nirlotan](https://github.com/nirlotan)
+
+Only installers built from this repository by its GitHub Actions release workflow are signed,
+and each release is approved by hand. The full [code signing policy](CODE_SIGNING_POLICY.md)
+and [privacy policy](PRIVACY.md) are in the repository.
 
 ## Questions
 

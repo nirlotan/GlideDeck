@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for the Windows installer (paste into the
+  GlideDeck project on app.signpath.io). The release workflow uploads the MSI
+  on its own (not zipped) and passes the version from Cargo.toml.
+
+  SignPath signs glidedeck.exe inside the MSI, re-packages it, then signs the
+  MSI. Product name and version are enforced, as SignPath Foundation requires.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <msi-file path="GlideDeck-*-x64.msi">
+    <pe-file path="glidedeck.exe" product-name="GlideDeck" product-version="${version}" file-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <authenticode-sign />
+  </msi-file>
+</artifact-configuration>

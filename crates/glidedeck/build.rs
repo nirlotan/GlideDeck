@@ -9,7 +9,7 @@ fn main() {
             .set("ProductName", "GlideDeck")
             .set("FileDescription", "GlideDeck - local-first zooming presentations")
             .set("CompanyName", "GlideDeck")
-            .set("LegalCopyright", "MIT OR Apache-2.0");
+            .set("LegalCopyright", "Copyright (c) 2026 The GlideDeck Authors. MIT License.");
         if let Err(e) = res.compile() {
             // A missing resource compiler only costs the icon, never the build.
             println!("cargo:warning=could not embed the Windows icon: {e}");
