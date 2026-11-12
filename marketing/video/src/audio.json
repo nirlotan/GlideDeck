@@ -1,0 +1,9 @@
+{
+  "music": "audio/music.mp3",
+  "musicAlone": 0.5,
+  "musicUnderVoice": 0.16,
+  "whoosh": "audio/whoosh.mp3",
+  "click": "audio/click.mp3",
+  "pop": "audio/pop.mp3",
+  "musicSource": "synthesized by scripts/beat.py"
+}

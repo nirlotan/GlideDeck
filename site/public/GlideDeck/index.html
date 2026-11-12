@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GlideDeck: free, open-source zooming presentations for Windows and Mac</title>
+<meta name="description" content="GlideDeck is a free, open-source zooming presentation app, a Prezi alternative that runs offline on Windows and macOS. Put your talk on one infinite canvas, import and export PowerPoint, and share the show as a web page.">
+<link rel="canonical" href="https://nirlotan.com/GlideDeck/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="author" content="Nir Lotan">
+<link rel="alternate" type="text/plain" title="GlideDeck for AI assistants (llms.txt)" href="https://nirlotan.com/GlideDeck/llms.txt">
+<meta name="theme-color" content="#FFD23F">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GlideDeck">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="GlideDeck: presentations that move">
+<meta property="og:description" content="Stop flipping. Start flying. A free, open-source, offline app for zooming presentations on an infinite canvas.">
+<meta property="og:url" content="https://nirlotan.com/GlideDeck/">
+<meta property="og:image" content="https://nirlotan.com/GlideDeck/media/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GlideDeck: a zooming presentation flying across an infinite canvas">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GlideDeck: presentations that move">
+<meta name="twitter:description" content="Stop flipping. Start flying. A free, open-source, offline app for zooming presentations on an infinite canvas.">
+<meta name="twitter:image" content="https://nirlotan.com/GlideDeck/media/og.jpg">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="icon-64.png">
+<link rel="apple-touch-icon" href="icon-256.png">
+<link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add('js')</script>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://nirlotan.com/GlideDeck/#app",
+   "name": "GlideDeck",
+   "alternateName": "Glide Deck",
+   "description": "GlideDeck is a free, open-source zooming presentation app, a Prezi alternative that runs offline on Windows and macOS. Put your talk on one infinite canvas, import and export PowerPoint, and share the show as a web page.",
+   "url": "https://nirlotan.com/GlideDeck/",
+   "image": "https://nirlotan.com/GlideDeck/media/og.jpg",
+   "screenshot": [
+    "https://nirlotan.com/GlideDeck/media/presenter.webp",
+    "https://nirlotan.com/GlideDeck/media/templates.webp",
+    "https://nirlotan.com/GlideDeck/media/share.webp",
+    "https://nirlotan.com/GlideDeck/media/path.webp",
+    "https://nirlotan.com/GlideDeck/media/animate.webp"
+   ],
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "Presentation software",
+   "operatingSystem": "Windows 10, Windows 11, macOS",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+   },
+   "license": "https://opensource.org/licenses/MIT",
+   "downloadUrl": "https://github.com/nirlotan/GlideDeck/releases/latest",
+   "installUrl": "https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi",
+   "codeRepository": "https://github.com/nirlotan/GlideDeck",
+   "programmingLanguage": "Rust",
+   "featureList": [
+    "Zooming presentations on an infinite canvas",
+    "Import PowerPoint (.pptx) files with text, pictures and speaker notes",
+    "Export to PowerPoint with Morph transitions, to PDF, and to a single self-playing web page",
+    "One-click arrangements: carousel, spiral, orbits, tree, zoom tunnel",
+    "Camera transitions, build animations and parallax",
+    "Presenter view with speaker notes, next slide and timer",
+    "18 templates and 1,500 vector icons",
+    "YouTube, Vimeo and Loom videos on slides",
+    "MCP server so Claude and GitHub Copilot can build presentations",
+    "Works offline: no account, no cloud, no telemetry"
+   ],
+   "keywords": "zooming presentation software, Prezi alternative, free presentation app, open source presentation software, infinite canvas, non-linear presentation, PowerPoint alternative",
+   "sameAs": [
+    "https://github.com/nirlotan/GlideDeck"
+   ],
+   "author": {
+    "@id": "https://nirlotan.com/#person"
+   },
+   "video": {
+    "@id": "https://nirlotan.com/GlideDeck/#film"
+   }
+  },
+  {
+   "@type": "VideoObject",
+   "@id": "https://nirlotan.com/GlideDeck/#film",
+   "name": "GlideDeck in 70 seconds",
+   "description": "A short film showing GlideDeck: a PowerPoint deck imported, arranged on a zooming canvas, animated and presented.",
+   "thumbnailUrl": "https://nirlotan.com/GlideDeck/media/film.webp",
+   "contentUrl": "https://nirlotan.com/GlideDeck/media/film.mp4",
+   "uploadDate": "2026-11-12T16:35:48+02:00",
+   "duration": "PT1M9S"
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://nirlotan.com/GlideDeck/#questions",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Is it really free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. GlideDeck is free and open source, and it stays that way. If it helps a talk land, you can sponsor it on GitHub."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Do my viewers need GlideDeck?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Present from your computer, send a web page that plays the full show in any browser, or export to PowerPoint or PDF."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is GlideDeck a Prezi alternative?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Like Prezi, GlideDeck puts your talk on a zooming canvas instead of a stack of slides. It is free and open source, needs no account or subscription, runs offline on your own computer, opens and exports PowerPoint files, and shares the show as a single web page."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What comes along from PowerPoint?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Slides, text with its formatting, shapes, pictures, backgrounds and speaker notes. Tables, charts and SmartArt aren’t converted yet; GlideDeck lists them for you."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can an AI assistant build the deck?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. GlideDeck includes an MCP server and an agent skill, so Claude and GitHub Copilot can create a complete presentation, with slides, speaker notes, a camera path and animations, that you then open and edit in GlideDeck."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where does my deck live?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "On your disk, as one file with its pictures in a folder beside it. There are no accounts, no cloud and no telemetry. The app goes online only when you ask it to: to check for updates, or to add and play a web video."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What does it run on?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Windows 10 and 11 (64-bit), and Macs with Apple Silicon or Intel. The Mac app is signed and notarized by Apple."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Windows says it protected my PC?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Windows warns about new downloads until they build up a reputation. Click More info, then Run anyway. Windows releases are being signed through SignPath Foundation (see the code signing policy), and every release lists SHA-256 checksums if you want to verify the file."
+     }
+    }
+   ]
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://nirlotan.com/GlideDeck/#site",
+   "name": "GlideDeck",
+   "url": "https://nirlotan.com/GlideDeck/",
+   "publisher": {
+    "@id": "https://nirlotan.com/#person"
+   }
+  },
+  {
+   "@type": "Person",
+   "@id": "https://nirlotan.com/#person",
+   "name": "Nir Lotan",
+   "url": "https://nirlotan.com/",
+   "sameAs": [
+    "https://github.com/nirlotan"
+   ]
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#fly">Skip to the live show</a>
+
+<header class="hero" id="top">
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="#top"><img src="icon-64.png" width="36" height="36" alt="">GlideDeck</a>
+    <ul>
+      <li><a href="#fly">Try it</a></li>
+      <li><a href="#commands">Features</a></li>
+      <li><a href="#questions">Questions</a></li>
+      <li><a href="https://github.com/nirlotan/GlideDeck">GitHub</a></li>
+    </ul>
+  </nav>
+  <div class="hero-field">
+    <h1><span>Stop flipping.</span> <span>Start flying.</span></h1>
+  </div>
+  <a class="scrap" href="#fly" aria-label="A GlideDeck show in flight. Jump to the live show.">
+    <span class="scrap-shutter">
+      <video muted loop playsinline autoplay preload="metadata" poster="media/scrap.webp" width="608" height="1080" data-autoplay>
+        <source src="media/scrap.mp4" type="video/mp4">
+      </video>
+    </span>
+  </a>
+  <div class="hero-band">
+    <p>GlideDeck puts your whole talk on one infinite canvas, then flies from the big picture into the detail. Free, open-source zooming presentations for Windows and Mac.</p>
+    <a class="btn" href="https://github.com/nirlotan/GlideDeck/releases/latest" data-download>Download free</a>
+  </div>
+</header>
+
+<main>
+
+<section class="fly on-bone" id="fly" data-reveal>
+  <div class="fly-head">
+    <h2 class="rise">Fly it yourself</h2>
+    <p class="rise">This is a real GlideDeck show, saved from the app as one web page. Click it to fly on, or pick a stop.</p>
+  </div>
+  <div class="demo rise" data-ui>
+    <div class="stage" id="stage">
+      <iframe src="show/" title="Welcome to GlideDeck: a live zooming show" tabindex="-1"></iframe>
+      <button class="stage-hit" type="button" aria-label="Fly to the next stop"><span class="stage-hint">Click to fly on</span></button>
+    </div>
+    <div class="stops">
+      <p class="stops-title">The path <span id="stop-count">13 stops</span></p>
+      <ol id="stops">
+        <li><button type="button" data-step="0"><span>Overview</span><i>Start</i></button></li>
+        <li><button type="button" data-step="1"><span>Presentations that move</span><i>Smooth zoom</i></button></li>
+        <li><button type="button" data-step="2"><span>Infinite canvas</span><i>Swoop</i></button></li>
+        <li><button type="button" data-step="3"><span>PowerPoint in and out</span><i>Direct</i></button></li>
+        <li><button type="button" data-step="4"><span>Motion built in</span><i>Punch</i></button></li>
+        <li><button type="button" data-step="5"><span>AI-ready</span><i>Direct</i></button></li>
+        <li><button type="button" data-step="6"><span>Every script</span><i>Swoop</i></button></li>
+        <li><button type="button" data-step="7"><span>100% offline</span><i>Spin</i></button></li>
+        <li><button type="button" data-step="8"><span>Zoom in here</span><i>Smooth zoom</i></button></li>
+        <li><button type="button" data-step="9"><span>100× deeper</span><i>Direct</i></button></li>
+        <li><button type="button" data-step="10"><span>10,000× deeper</span><i>Direct</i></button></li>
+        <li><button type="button" data-step="11"><span>1,000,000× deeper</span><i>Direct</i></button></li>
+        <li><button type="button" data-step="12"><span>Back to the overview</span><i>Fade</i></button></li>
+      </ol>
+      <div class="stops-foot">
+        <button type="button" class="step-btn" id="prev" aria-label="Previous stop">←</button>
+        <button type="button" class="step-btn" id="next" aria-label="Next stop">→</button>
+        <a href="show/">Open it full screen</a>
+      </div>
+    </div>
+  </div>
+  <p class="fly-note rise">Arrow keys work too. The whole show is one 230 KB file: every flight, fade and build plays exactly as it does in the app.</p>
+</section>
+
+<section class="why on-graphite" id="why" data-reveal>
+  <div class="why-head">
+    <h2 class="rise">Ideas aren’t a list.</h2>
+    <p class="rise">They connect, nest and branch. Slides push them into single file and hide how they fit together. A canvas shows the whole map first, flies into the detail, then pulls back, so nobody loses the thread.</p>
+  </div>
+  <div class="why-film">
+    <div class="film rise" id="film">
+      <video controls playsinline preload="none" poster="media/film.webp" width="1920" height="1080">
+        <source src="media/film.mp4" type="video/mp4">
+      </video>
+      <button class="film-play" type="button"><span>Play the film</span> 70 seconds, with sound</button>
+    </div>
+    <div class="why-bar">
+      <blockquote class="rise">
+        <p>In a Harvard study, audiences rated zooming presentations more engaging and more persuasive than slides.</p>
+        <footer><a href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0178774">Moulton, Türkay and Kosslyn, PLOS ONE, 2017.</a> The study compared Prezi, slides and talks with no visuals.</footer>
+      </blockquote>
+    </div>
+  </div>
+</section>
+
+<section class="commands on-yellow" id="commands" data-reveal>
+  <h2 class="sr">What GlideDeck does</h2>
+  <div class="palette" data-ui>
+    <label class="palette-search rise">
+      <span class="sr">Find a command</span>
+      <input type="search" id="command-search" placeholder="Search or run a command" autocomplete="off" spellcheck="false">
+      <span class="keys" aria-hidden="true"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+    </label>
+    <ul id="command-list">
+      <li class="rise is-on" tabindex="0"><div><strong>Import PowerPoint…</strong><span class="keys" aria-hidden="true"></span></div><p>Open any .pptx. Slides, text, pictures and speaker notes come along.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Arrange slides</strong><span class="keys" aria-hidden="true"></span></div><p>One click turns the deck into a carousel, a spiral, orbits, a tree or a zoom tunnel.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Auto-animate</strong><span class="keys" aria-hidden="true"></span></div><p>Builds a whole slide in: headings, text and pictures arrive in order.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Draw a frame</strong><span class="keys" aria-hidden="true"><kbd>F</kbd></span></div><p>Drag anywhere on the canvas, even inside another slide, to make a new stop.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Present</strong><span class="keys" aria-hidden="true"><kbd>F5</kbd></span></div><p>A fullscreen show. With a projector connected, presenter view starts by itself.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Rehearse with notes</strong><span class="keys" aria-hidden="true"><kbd>Alt</kbd><kbd>F5</kbd></span></div><p>Your notes, the next slide and a timer, all on one screen.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Share as web page</strong><span class="keys" aria-hidden="true"></span></div><p>One .html file that plays the full show in any browser. Nothing to install.</p></li>
+      <li class="rise" tabindex="0"><div><strong>Export to PowerPoint</strong><span class="keys" aria-hidden="true"></span></div><p>Every camera move becomes a native Morph transition, so PowerPoint flies too.</p></li>
+    </ul>
+    <p class="palette-empty" hidden>No command by that name. Try “share”, “arrange” or “present”.</p>
+  </div>
+</section>
+
+<section class="start on-graphite" id="start" data-reveal>
+  <h2 class="rise">Two minutes to takeoff.</h2>
+  <ol class="stages" data-ui>
+    <li class="s-bone"><div class="seg"><b>Seconds</b></div><p>First, drop in a PowerPoint file or pick one of 18 templates.</p></li>
+    <li class="s-aqua"><div class="seg"><b>One click</b></div><p>Then Arrange turns the grid of slides into a spiral, orbits or a carousel.</p></li>
+    <li class="s-coral"><div class="seg"><b>One click</b></div><p>Next, Auto-animate builds every slide in.</p></li>
+    <li class="s-yellow"><div class="seg"><b>As long as your talk</b></div><p>Finally, press F5 and fly. Afterwards, share the show as a web page, a PDF or a PowerPoint file.</p></li>
+  </ol>
+</section>
+
+<section class="tour on-bone" id="tour" data-reveal>
+  <div class="board">
+    <div class="tile t-head t-yellow"><h2>Every detail, close up</h2></div>
+    <figure class="tile t-path t-graphite"><div class="shot"><img src="media/path.webp" alt="The path strip under the canvas: a thumbnail for every stop, with the camera move between each pair" loading="lazy" width="1500" height="400"></div><figcaption><b>The path</b> Every stop, and the camera move between each pair.</figcaption></figure>
+    <figure class="tile t-arrange t-surface"><div class="shot"><video muted loop playsinline preload="none" poster="media/arrange.webp" width="1280" height="720" data-autoplay aria-label="A PowerPoint deck is imported, then arranged as a spiral, as orbits and as a carousel"><source src="media/arrange.mp4" type="video/mp4"></video></div><figcaption><b>Arrange</b> One click reshapes the whole deck, and the path keeps its order.</figcaption></figure>
+    <figure class="tile t-presenter t-aqua"><div class="shot"><img src="media/presenter.webp" alt="Presenter view: the live slide, the next slide, speaker notes and a timer" loading="lazy" width="1400" height="840"></div><figcaption><b>Presenter view</b> Your notes, the next slide and a timer.</figcaption></figure>
+    <figure class="tile t-templates t-graphite"><div class="shot"><img src="media/templates.webp" alt="The template picker: carousel, pitch deck, roadmap, showcase and more" loading="lazy" width="1100" height="841"></div><figcaption><b>18 templates</b> Each one a complete story.</figcaption></figure>
+    <figure class="tile t-icons t-coral"><div class="shot"><img src="media/icons.webp" alt="The icon library, filtered to charts" loading="lazy" width="900" height="649"></div><figcaption><b>1,500 icons</b> Vectors, sharp at any zoom.</figcaption></figure>
+    <figure class="tile t-animate t-surface"><div class="shot"><img src="media/animate.webp" alt="The Animate tab with the Auto-animate button and the list of builds on a slide" loading="lazy" width="800" height="960"></div><figcaption><b>Auto-animate</b> The click order shows on the canvas.</figcaption></figure>
+    <figure class="tile t-share t-yellow"><div class="shot"><img src="media/share.webp" alt="The Share menu: Web page (HTML), PowerPoint (Morph), PDF" loading="lazy" width="860" height="720"></div><figcaption><b>Share</b> A web page, a PowerPoint file or a PDF.</figcaption></figure>
+    <figure class="tile t-carousel t-graphite"><div class="shot"><video muted loop playsinline preload="none" poster="media/carousel.webp" width="1280" height="720" data-autoplay aria-label="A carousel show: slides glide past over drifting parallax layers"><source src="media/carousel.mp4" type="video/mp4"></video></div><figcaption><b>Parallax</b> Far layers drift slower than the slides.</figcaption></figure>
+  </div>
+</section>
+
+<section class="works on-graphite" id="works" data-reveal>
+  <div class="marks">
+    <div class="mark mark-head"><h2>Plays well with</h2></div>
+    <div class="mark"><b>PowerPoint</b><span>Opens any .pptx. Exports with Morph.</span></div>
+    <div class="mark"><b>PDF</b><span>One page per slide, exactly as presented.</span></div>
+    <div class="mark"><b>Any browser</b><span>The web page export needs nothing installed.</span></div>
+    <div class="mark"><b>YouTube, Vimeo, Loom</b><span>Paste a link. The video zooms with the slide.</span></div>
+    <div class="mark"><b>Claude</b><span>Builds a whole deck through the built-in MCP server.</span></div>
+    <div class="mark"><b>GitHub Copilot</b><span>The same skill, in VS Code and the command line.</span></div>
+  </div>
+</section>
+
+<section class="values" id="values" data-reveal aria-labelledby="values-h">
+  <h2 class="sr" id="values-h">Free, private and offline</h2>
+  <ul>
+    <li class="v-coral"><b>No account.</b><span>Nothing to sign up for. Install it and start.</span></li>
+    <li class="v-aqua"><b>No cloud.</b><span>Your deck is one file on your own disk. No telemetry.</span></li>
+    <li class="v-bone"><b>No subscription.</b><span>Free and open source under the MIT licence: no trials, no watermarks, no locked features.</span></li>
+  </ul>
+</section>
+
+<section class="faq on-graphite" id="questions" data-reveal>
+  <h2 class="rise">Fair questions</h2>
+  <div class="cards">
+    <details name="faq" open style="--i:0" class="c-bone"><summary><i>Price</i><span>Is it really free?</span></summary><p>Yes. GlideDeck is free and open source, and it stays that way. If it helps a talk land, you can <a href="https://github.com/sponsors/nirlotan">sponsor it on GitHub</a>.</p></details>
+    <details name="faq" style="--i:1" class="c-yellow"><summary><i>Viewers</i><span>Do my viewers need GlideDeck?</span></summary><p>No. Present from your computer, send a web page that plays the full show in any browser, or export to PowerPoint or PDF.</p></details>
+    <details name="faq" style="--i:2" class="c-aqua"><summary><i>Prezi</i><span>Is GlideDeck a Prezi alternative?</span></summary><p>Yes. Like Prezi, GlideDeck puts your talk on a zooming canvas instead of a stack of slides. It is free and open source, needs no account or subscription, runs offline on your own computer, opens and exports PowerPoint files, and shares the show as a single web page.</p></details>
+    <details name="faq" style="--i:3" class="c-bone"><summary><i>PowerPoint</i><span>What comes along from PowerPoint?</span></summary><p>Slides, text with its formatting, shapes, pictures, backgrounds and speaker notes. Tables, charts and SmartArt aren’t converted yet; GlideDeck lists them for you.</p></details>
+    <details name="faq" style="--i:4" class="c-yellow"><summary><i>AI</i><span>Can an AI assistant build the deck?</span></summary><p>Yes. GlideDeck includes an MCP server and an agent skill, so Claude and GitHub Copilot can create a complete presentation, with slides, speaker notes, a camera path and animations, that you then open and edit in GlideDeck. See the <a href="https://github.com/nirlotan/GlideDeck/blob/main/docs/AI.md">AI guide</a>.</p></details>
+    <details name="faq" style="--i:5" class="c-aqua"><summary><i>Privacy</i><span>Where does my deck live?</span></summary><p>On your disk, as one file with its pictures in a folder beside it. There are no accounts, no cloud and no telemetry. The app goes online only when you ask it to: to check for updates, or to add and play a web video.</p></details>
+    <details name="faq" style="--i:6" class="c-bone"><summary><i>Computers</i><span>What does it run on?</span></summary><p>Windows 10 and 11 (64-bit), and Macs with Apple Silicon or Intel. The Mac app is signed and notarized by Apple.</p></details>
+    <details name="faq" style="--i:7" class="c-yellow"><summary><i>Installing</i><span>Windows says it protected my PC?</span></summary><p>Windows warns about new downloads until they build up a reputation. Click More info, then Run anyway. Windows releases are being signed through SignPath Foundation (see the <a href="https://github.com/nirlotan/GlideDeck/blob/main/CODE_SIGNING_POLICY.md">code signing policy</a>), and every release lists SHA-256 checksums if you want to verify the file.</p></details>
+  </div>
+</section>
+
+<section class="get on-yellow" id="download" data-reveal>
+  <div class="get-line">
+    <h2 class="rise"><span>Your turn</span> <span>to fly.</span></h2>
+    <p class="rise">Install it and press F5. The welcome canvas is itself a show, so it flies you around.</p>
+  </div>
+  <div class="dialog rise" data-ui role="group" aria-label="Download GlideDeck">
+    <p class="dialog-title"><img src="icon-64.png" width="24" height="24" alt="">Get GlideDeck</p>
+    <div class="seg-choice" role="radiogroup" aria-label="Your computer">
+      <button type="button" role="radio" aria-checked="true" data-os="windows">Windows</button>
+      <button type="button" role="radio" aria-checked="false" data-os="mac">macOS</button>
+    </div>
+    <p class="dialog-file" id="dl-file">GlideDeck-x64.msi, about 40 MB</p>
+    <a class="btn btn-wide" id="dl-button" href="https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi">Download for Windows</a>
+    <p class="dialog-more">Always the latest version. <a href="https://github.com/nirlotan/GlideDeck/releases">All releases and checksums</a> · <a href="https://github.com/nirlotan/GlideDeck/blob/main/CODE_SIGNING_POLICY.md">Code signing policy</a></p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot on-graphite" data-reveal>
+  <div class="foot-top">
+    <div class="foot-invite">
+      <h2 class="rise"><span>Open source.</span> <span>Open to you.</span></h2>
+      <a class="btn rise" href="https://github.com/nirlotan/GlideDeck">See the code on GitHub</a>
+    </div>
+    <ul class="foot-links rise">
+      <li><a href="https://github.com/nirlotan/GlideDeck/releases">Releases</a></li>
+      <li><a href="https://github.com/nirlotan/GlideDeck/issues">Report a bug</a></li>
+      <li><a href="https://github.com/nirlotan/GlideDeck/blob/main/docs/AI.md">AI guide</a></li>
+      <li><a href="https://github.com/sponsors/nirlotan">Sponsor</a></li>
+      <li><a href="https://github.com/nirlotan/GlideDeck/blob/main/CODE_SIGNING_POLICY.md">Code signing policy</a></li>
+      <li><a href="https://github.com/nirlotan/GlideDeck/blob/main/PRIVACY.md">Privacy</a></li>
+    </ul>
+  </div>
+  <div class="foot-legal">
+    <p>MIT licence. Made by <a href="https://nirlotan.com/">Nir Lotan</a>.</p>
+    <p>The screenshots and clips on this page are the app itself.</p>
+  </div>
+  <p class="foot-name" aria-hidden="true">GlideDeck</p>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>
