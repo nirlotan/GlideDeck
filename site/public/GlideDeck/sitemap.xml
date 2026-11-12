@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://nirlotan.com/GlideDeck/</loc>
+    <lastmod>2026-11-12</lastmod>
+    <image:image><image:loc>https://nirlotan.com/GlideDeck/media/og.jpg</image:loc></image:image>
+    <image:image><image:loc>https://nirlotan.com/GlideDeck/media/presenter.webp</image:loc></image:image>
+    <image:image><image:loc>https://nirlotan.com/GlideDeck/media/templates.webp</image:loc></image:image>
+    <image:image><image:loc>https://nirlotan.com/GlideDeck/media/share.webp</image:loc></image:image>
+    <image:image><image:loc>https://nirlotan.com/GlideDeck/media/path.webp</image:loc></image:image>
+    <video:video>
+      <video:thumbnail_loc>https://nirlotan.com/GlideDeck/media/film.webp</video:thumbnail_loc>
+      <video:title>GlideDeck in 70 seconds</video:title>
+      <video:description>A short film showing GlideDeck: a PowerPoint deck imported, arranged on a zooming canvas, animated and presented.</video:description>
+      <video:content_loc>https://nirlotan.com/GlideDeck/media/film.mp4</video:content_loc>
+      <video:duration>69</video:duration>
+    </video:video>
+  </url>
+</urlset>

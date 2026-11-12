@@ -3,16 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GlideDeck: presentations that move</title>
-<meta name="description" content="GlideDeck is a free, open-source app for zooming presentations. Put your whole talk on one infinite canvas and fly from the big picture into the detail. Works with PowerPoint, runs offline on Windows and macOS.">
+<title>GlideDeck: free, open-source zooming presentations for Windows and Mac</title>
+<meta name="description" content="GlideDeck is a free, open-source zooming presentation app, a Prezi alternative that runs offline on Windows and macOS. Put your talk on one infinite canvas, import and export PowerPoint, and share the show as a web page.">
 <link rel="canonical" href="https://nirlotan.com/GlideDeck/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="author" content="Nir Lotan">
+<link rel="alternate" type="text/plain" title="GlideDeck for AI assistants (llms.txt)" href="https://nirlotan.com/GlideDeck/llms.txt">
 <meta name="theme-color" content="#FFD23F">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="GlideDeck">
+<meta property="og:locale" content="en_US">
 <meta property="og:title" content="GlideDeck: presentations that move">
 <meta property="og:description" content="Stop flipping. Start flying. A free, open-source, offline app for zooming presentations on an infinite canvas.">
 <meta property="og:url" content="https://nirlotan.com/GlideDeck/">
 <meta property="og:image" content="https://nirlotan.com/GlideDeck/media/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GlideDeck: a zooming presentation flying across an infinite canvas">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GlideDeck: presentations that move">
+<meta name="twitter:description" content="Stop flipping. Start flying. A free, open-source, offline app for zooming presentations on an infinite canvas.">
+<meta name="twitter:image" content="https://nirlotan.com/GlideDeck/media/og.jpg">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-256.png">
@@ -21,7 +32,161 @@
 <link rel="stylesheet" href="style.css">
 <script>document.documentElement.classList.add('js')</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GlideDeck","applicationCategory":"BusinessApplication","operatingSystem":"Windows 10, Windows 11, macOS","description":"Zooming presentations on an infinite canvas. Free, open source and offline.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","url":"https://nirlotan.com/GlideDeck/","downloadUrl":"https://github.com/nirlotan/GlideDeck/releases/latest","author":{"@type":"Person","name":"Nir Lotan","url":"https://nirlotan.com/"}}
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://nirlotan.com/GlideDeck/#app",
+   "name": "GlideDeck",
+   "alternateName": "Glide Deck",
+   "description": "GlideDeck is a free, open-source zooming presentation app, a Prezi alternative that runs offline on Windows and macOS. Put your talk on one infinite canvas, import and export PowerPoint, and share the show as a web page.",
+   "url": "https://nirlotan.com/GlideDeck/",
+   "image": "https://nirlotan.com/GlideDeck/media/og.jpg",
+   "screenshot": [
+    "https://nirlotan.com/GlideDeck/media/presenter.webp",
+    "https://nirlotan.com/GlideDeck/media/templates.webp",
+    "https://nirlotan.com/GlideDeck/media/share.webp",
+    "https://nirlotan.com/GlideDeck/media/path.webp",
+    "https://nirlotan.com/GlideDeck/media/animate.webp"
+   ],
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "Presentation software",
+   "operatingSystem": "Windows 10, Windows 11, macOS",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+   },
+   "license": "https://opensource.org/licenses/MIT",
+   "downloadUrl": "https://github.com/nirlotan/GlideDeck/releases/latest",
+   "installUrl": "https://github.com/nirlotan/GlideDeck/releases/latest/download/GlideDeck-x64.msi",
+   "codeRepository": "https://github.com/nirlotan/GlideDeck",
+   "programmingLanguage": "Rust",
+   "featureList": [
+    "Zooming presentations on an infinite canvas",
+    "Import PowerPoint (.pptx) files with text, pictures and speaker notes",
+    "Export to PowerPoint with Morph transitions, to PDF, and to a single self-playing web page",
+    "One-click arrangements: carousel, spiral, orbits, tree, zoom tunnel",
+    "Camera transitions, build animations and parallax",
+    "Presenter view with speaker notes, next slide and timer",
+    "18 templates and 1,500 vector icons",
+    "YouTube, Vimeo and Loom videos on slides",
+    "MCP server so Claude and GitHub Copilot can build presentations",
+    "Works offline: no account, no cloud, no telemetry"
+   ],
+   "keywords": "zooming presentation software, Prezi alternative, free presentation app, open source presentation software, infinite canvas, non-linear presentation, PowerPoint alternative",
+   "sameAs": [
+    "https://github.com/nirlotan/GlideDeck"
+   ],
+   "author": {
+    "@id": "https://nirlotan.com/#person"
+   },
+   "video": {
+    "@id": "https://nirlotan.com/GlideDeck/#film"
+   }
+  },
+  {
+   "@type": "VideoObject",
+   "@id": "https://nirlotan.com/GlideDeck/#film",
+   "name": "GlideDeck in 70 seconds",
+   "description": "A short film showing GlideDeck: a PowerPoint deck imported, arranged on a zooming canvas, animated and presented.",
+   "thumbnailUrl": "https://nirlotan.com/GlideDeck/media/film.webp",
+   "contentUrl": "https://nirlotan.com/GlideDeck/media/film.mp4",
+   "uploadDate": "2026-11-12T16:35:48+02:00",
+   "duration": "PT1M9S"
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://nirlotan.com/GlideDeck/#questions",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Is it really free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. GlideDeck is free and open source, and it stays that way. If it helps a talk land, you can sponsor it on GitHub."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Do my viewers need GlideDeck?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Present from your computer, send a web page that plays the full show in any browser, or export to PowerPoint or PDF."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is GlideDeck a Prezi alternative?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Like Prezi, GlideDeck puts your talk on a zooming canvas instead of a stack of slides. It is free and open source, needs no account or subscription, runs offline on your own computer, opens and exports PowerPoint files, and shares the show as a single web page."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What comes along from PowerPoint?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Slides, text with its formatting, shapes, pictures, backgrounds and speaker notes. Tables, charts and SmartArt aren’t converted yet; GlideDeck lists them for you."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can an AI assistant build the deck?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. GlideDeck includes an MCP server and an agent skill, so Claude and GitHub Copilot can create a complete presentation, with slides, speaker notes, a camera path and animations, that you then open and edit in GlideDeck."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where does my deck live?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "On your disk, as one file with its pictures in a folder beside it. There are no accounts, no cloud and no telemetry. The app goes online only when you ask it to: to check for updates, or to add and play a web video."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What does it run on?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Windows 10 and 11 (64-bit), and Macs with Apple Silicon or Intel. The Mac app is signed and notarized by Apple."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Windows says it protected my PC?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "The Windows installer isn’t code-signed yet. Click More info, then Run anyway. Every release lists SHA-256 checksums if you want to verify the file."
+     }
+    }
+   ]
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://nirlotan.com/GlideDeck/#site",
+   "name": "GlideDeck",
+   "url": "https://nirlotan.com/GlideDeck/",
+   "publisher": {
+    "@id": "https://nirlotan.com/#person"
+   }
+  },
+  {
+   "@type": "Person",
+   "@id": "https://nirlotan.com/#person",
+   "name": "Nir Lotan",
+   "url": "https://nirlotan.com/",
+   "sameAs": [
+    "https://github.com/nirlotan"
+   ]
+  }
+ ]
+}
 </script>
 </head>
 <body>
@@ -48,7 +213,7 @@
     </span>
   </a>
   <div class="hero-band">
-    <p>Put your whole talk on one infinite canvas, then fly from the big picture into the detail. Free, open source and offline.</p>
+    <p>GlideDeck puts your whole talk on one infinite canvas, then flies from the big picture into the detail. Free, open-source zooming presentations for Windows and Mac.</p>
     <a class="btn" href="https://github.com/nirlotan/GlideDeck/releases/latest" data-download>Download free</a>
   </div>
 </header>
@@ -185,10 +350,12 @@
   <div class="cards">
     <details name="faq" open style="--i:0" class="c-bone"><summary><i>Price</i><span>Is it really free?</span></summary><p>Yes. GlideDeck is free and open source, and it stays that way. If it helps a talk land, you can <a href="https://github.com/sponsors/nirlotan">sponsor it on GitHub</a>.</p></details>
     <details name="faq" style="--i:1" class="c-yellow"><summary><i>Viewers</i><span>Do my viewers need GlideDeck?</span></summary><p>No. Present from your computer, send a web page that plays the full show in any browser, or export to PowerPoint or PDF.</p></details>
-    <details name="faq" style="--i:2" class="c-aqua"><summary><i>PowerPoint</i><span>What comes along from PowerPoint?</span></summary><p>Slides, text with its formatting, shapes, pictures, backgrounds and speaker notes. Tables, charts and SmartArt aren’t converted yet; GlideDeck lists them for you.</p></details>
-    <details name="faq" style="--i:3" class="c-bone"><summary><i>Privacy</i><span>Where does my deck live?</span></summary><p>On your disk, as one file with its pictures in a folder beside it. There are no accounts, no cloud and no telemetry. The app goes online only when you click Check for updates.</p></details>
-    <details name="faq" style="--i:4" class="c-yellow"><summary><i>Computers</i><span>What does it run on?</span></summary><p>Windows 10 and 11 (64-bit), and Macs with Apple Silicon or Intel. The Mac app is signed and notarized by Apple.</p></details>
-    <details name="faq" style="--i:5" class="c-aqua"><summary><i>Installing</i><span>Windows says it protected my PC?</span></summary><p>The Windows installer isn’t code-signed yet. Click More info, then Run anyway. Every release lists SHA-256 checksums if you want to verify the file.</p></details>
+    <details name="faq" style="--i:2" class="c-aqua"><summary><i>Prezi</i><span>Is GlideDeck a Prezi alternative?</span></summary><p>Yes. Like Prezi, GlideDeck puts your talk on a zooming canvas instead of a stack of slides. It is free and open source, needs no account or subscription, runs offline on your own computer, opens and exports PowerPoint files, and shares the show as a single web page.</p></details>
+    <details name="faq" style="--i:3" class="c-bone"><summary><i>PowerPoint</i><span>What comes along from PowerPoint?</span></summary><p>Slides, text with its formatting, shapes, pictures, backgrounds and speaker notes. Tables, charts and SmartArt aren’t converted yet; GlideDeck lists them for you.</p></details>
+    <details name="faq" style="--i:4" class="c-yellow"><summary><i>AI</i><span>Can an AI assistant build the deck?</span></summary><p>Yes. GlideDeck includes an MCP server and an agent skill, so Claude and GitHub Copilot can create a complete presentation, with slides, speaker notes, a camera path and animations, that you then open and edit in GlideDeck. See the <a href="https://github.com/nirlotan/GlideDeck/blob/main/docs/AI.md">AI guide</a>.</p></details>
+    <details name="faq" style="--i:5" class="c-aqua"><summary><i>Privacy</i><span>Where does my deck live?</span></summary><p>On your disk, as one file with its pictures in a folder beside it. There are no accounts, no cloud and no telemetry. The app goes online only when you ask it to: to check for updates, or to add and play a web video.</p></details>
+    <details name="faq" style="--i:6" class="c-bone"><summary><i>Computers</i><span>What does it run on?</span></summary><p>Windows 10 and 11 (64-bit), and Macs with Apple Silicon or Intel. The Mac app is signed and notarized by Apple.</p></details>
+    <details name="faq" style="--i:7" class="c-yellow"><summary><i>Installing</i><span>Windows says it protected my PC?</span></summary><p>The Windows installer isn’t code-signed yet. Click More info, then Run anyway. Every release lists SHA-256 checksums if you want to verify the file.</p></details>
   </div>
 </section>
 
